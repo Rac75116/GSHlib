@@ -1,6 +1,11 @@
 #pragma once
 #include <bit>              // std::rotr, std::bit_cast
+#include <ctime>            // std::time, std::clock
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ftype
+
+namespace std {
+class string;
+}
 
 namespace gsh {
 
@@ -13,7 +18,7 @@ namespace internal {
     }
 }  // namespace internal
 
-// Xoroshiro128+
+// @brief 64bit pseudo random number generator using xoroshiro128+
 class Rand64 {
     gsh::itype::u64 s0, s1;
 public:
@@ -39,7 +44,7 @@ public:
     friend constexpr bool operator==(Rand64 x, Rand64 y) { return x.s0 == y.s0 && x.s1 == y.s1; }
 };
 
-// Permuted congruential generator
+// @brief 64bit pseudo random number generator using Permuted congruential generator
 class Rand32 {
     gsh::itype::u64 val;
 public:
@@ -64,37 +69,60 @@ public:
     friend constexpr bool operator==(Rand32 x, Rand32 y) { return x.val == y.val; }
 };
 
-//https://www.pcg-random.org/posts/bounded-rands.html
-template<class URBG> constexpr gsh::itype::u32 uniform32(URBG& g, gsh::itype::u32 max) {
+// @brief Generate random numbers from std::time and std::clock
+class RandomDevice {
+    static inline gsh::Rand64 engine{ static_cast<gsh::itype::u64>(std::time(nullptr)) };
+public:
+    using result_type = gsh::itype::u32;
+    RandomDevice() {}
+    RandomDevice(const std::string&) {}
+    RandomDevice(const RandomDevice&) = delete;
+    ~RandomDevice() = default;
+    void operator=(const RandomDevice&) = delete;
+    gsh::ftype::f64 entropy() const noexcept { return 0.0; }
+    static constexpr result_type max() { return 4294967295u; }
+    static constexpr result_type min() { return 0; }
+    result_type operator()() {
+        gsh::itype::u64 a = internal::splitmix(static_cast<gsh::itype::u64>(std::time(nullptr)));
+        gsh::itype::u64 b = internal::splitmix(static_cast<gsh::itype::u64>(std::clock()));
+        return static_cast<result_type>(engine() ^ a ^ b);
+    }
+};
+
+// @brief Generate 32bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
+template<class URBG> constexpr gsh::itype::u32 Uniform32(URBG& g, gsh::itype::u32 max) {
     return (static_cast<gsh::itype::u64>(g() & 4294967295u) * max) >> 32;
 }
-template<class URBG> constexpr gsh::itype::u32 uniform32(URBG& g, gsh::itype::u32 min, gsh::itype::u32 max) {
+// @brief Generate 32bit uniform random numbers in [min, max) (https://www.pcg-random.org/posts/bounded-rands.html)
+template<class URBG> constexpr gsh::itype::u32 Uniform32(URBG& g, gsh::itype::u32 min, gsh::itype::u32 max) {
     return static_cast<gsh::itype::u32>((static_cast<gsh::itype::u64>(g() & 4294967295u) * (max - min)) >> 32) + min;
 }
-template<class URBG> constexpr gsh::itype::u64 uniform64(URBG& g, gsh::itype::u64 max) {
+// @brief Generate 64bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
+template<class URBG> constexpr gsh::itype::u64 Uniform64(URBG& g, gsh::itype::u64 max) {
     return (static_cast<gsh::itype::u128>(g()) * max) >> 64;
 }
-template<class URBG> constexpr gsh::itype::u64 uniform64(URBG& g, gsh::itype::u64 min, gsh::itype::u64 max) {
+// @brief Generate 64bit uniform random numbers in [min, max) (https://www.pcg-random.org/posts/bounded-rands.html)
+template<class URBG> constexpr gsh::itype::u64 Uniform64(URBG& g, gsh::itype::u64 min, gsh::itype::u64 max) {
     return static_cast<gsh::itype::u64>((static_cast<gsh::itype::u128>(g()) * (max - min)) >> 64) + min;
 }
 
 //https://speakerdeck.com/hole/rand01?slide=31
-template<class URBG> constexpr gsh::ftype::f32 canocicaled32(URBG& g) {
+template<class URBG> constexpr gsh::ftype::f32 Canocicaled32(URBG& g) {
     return std::bit_cast<gsh::ftype::f32>((127u << 23) | (static_cast<gsh::itype::u32>(g()) & 0x7fffff)) - 1.0f;
 }
-template<class URBG> constexpr gsh::ftype::f32 uniformf32(URBG& g, gsh::ftype::f32 max) {
+template<class URBG> constexpr gsh::ftype::f32 Uniformf32(URBG& g, gsh::ftype::f32 max) {
     return canocicaled32(g) * max;
 }
-template<class URBG> constexpr gsh::ftype::f32 uniformf32(URBG& g, gsh::ftype::f32 min, gsh::ftype::f32 max) {
+template<class URBG> constexpr gsh::ftype::f32 Uniformf32(URBG& g, gsh::ftype::f32 min, gsh::ftype::f32 max) {
     return canocicaled32(g) * (max - min) + min;
 }
-template<class URBG> constexpr gsh::ftype::f64 canocicaled64(URBG& g) {
+template<class URBG> constexpr gsh::ftype::f64 Canocicaled64(URBG& g) {
     return std::bit_cast<gsh::ftype::f64>((1023ull << 52) | (g() & 0xfffffffffffffull)) - 1.0;
 }
-template<class URBG> constexpr gsh::ftype::f64 uniformf64(URBG& g, gsh::ftype::f64 max) {
+template<class URBG> constexpr gsh::ftype::f64 Uniformf64(URBG& g, gsh::ftype::f64 max) {
     return canocicaled64(g) * max;
 }
-template<class URBG> constexpr gsh::ftype::f64 uniformf64(URBG& g, gsh::ftype::f64 min, gsh::ftype::f64 max) {
+template<class URBG> constexpr gsh::ftype::f64 Uniformf64(URBG& g, gsh::ftype::f64 min, gsh::ftype::f64 max) {
     return canocicaled64(g) * (max - min) + min;
 }
 

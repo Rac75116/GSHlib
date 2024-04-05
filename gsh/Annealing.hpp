@@ -11,8 +11,8 @@ namespace sa {
         std::clock_t start, end;
         gsh::itype::i64 cnt = 0, sum = 0, gap = 4;
     public:
-        Time(gsh::itype::u32 time) { start = std::clock(), end = start + time * 1000 / CLOCKS_PER_SEC; }
-        bool operator()() {
+        Time(gsh::itype::u32 time) { start = std::clock(), end = start + static_cast<std::clock_t>(time) * 1000 / CLOCKS_PER_SEC; }
+        bool get() {
             if (++cnt == gap) {
                 sum += cnt;
                 cnt = 0;
@@ -37,7 +37,7 @@ template<class State> void SimulatedAnealing(const State& s, gsh::sa::Time time)
     score_type bestscore = curscore;
     State best = s;
     State cur = s;
-    while (time()) {}
+    while (time.get()) {}
     return best;
 }
 

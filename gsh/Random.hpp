@@ -44,7 +44,7 @@ public:
     friend constexpr bool operator==(Rand64 x, Rand64 y) { return x.s0 == y.s0 && x.s1 == y.s1; }
 };
 
-// @brief 64bit pseudo random number generator using Permuted congruential generator
+// @brief 32bit pseudo random number generator using Permuted congruential generator
 class Rand32 {
     gsh::itype::u64 val;
 public:

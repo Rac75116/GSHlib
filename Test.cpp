@@ -6,7 +6,7 @@
 using namespace gsh::itype;
 using namespace gsh::ftype;
 int main() {
-    using mint = gsh::MontgomeryModint32<>;
+    using mint = gsh::DynamicModint32<>;
     //mint::set_mod((1ll << 61) - 1);
     mint::set_mod(998244353);
     mint a = 2, b = 3;

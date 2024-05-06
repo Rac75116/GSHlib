@@ -1,4 +1,4 @@
-import sys, re, os, copy
+import sys, re, os
 assert len(sys.argv) >= 2
 try:
     os.chdir(os.path.dirname(__file__))

@@ -3,10 +3,6 @@
 #include <ctime>            // std::time, std::clock
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ftype
 
-namespace std {
-class string;
-}
-
 namespace gsh {
 
 namespace internal {

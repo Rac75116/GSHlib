@@ -288,7 +288,6 @@ namespace internal {
         using value_type = gsh::itype::u32;
         using modint_type = DynamicModint32_impl;
         static inline value_type mod_ = 0;
-        static inline gsh::itype::u64 mod64_ = 0;
         static inline gsh::itype::u128 L_ = 0;
         value_type val_ = 0;
         value_type reduce(gsh::itype::u32 c) const noexcept {
@@ -297,12 +296,12 @@ namespace internal {
         }
         value_type reduce(gsh::itype::u64 c) const noexcept {
             gsh::itype::u64 q = (c * L_) >> 96;
-            return c - q * mod64_;
+            return c - q * mod_;
         }
     protected:
         DynamicModint32_impl() noexcept {}
         static void set_mod(value_type newmod) noexcept {
-            mod_ = newmod, mod64_ = newmod;
+            mod_ = newmod;
             L_ = ((gsh::itype::u128(1) << 96) - 1) / mod_ + 1;
         }
         value_type val() const noexcept { return val_; }
@@ -314,8 +313,9 @@ namespace internal {
         void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
         void dec() noexcept { val_ = (val_ == 0 ? mod_ - 1 : val_ - 1); }
         void add(modint_type x) noexcept {
-            if (mod_ - val_ > x.val_) val_ += x.val_;
-            else val_ = x.val_ - (mod_ - val_);
+            const auto tmp = val_ + x.val_;
+            const auto tmp2 = mod_ - val_;
+            val_ = tmp2 > x.val_ ? tmp : x.val_ - tmp2;
         }
         void sub(modint_type x) noexcept {
             if (val_ >= x.val_) val_ -= x.val_;
@@ -344,8 +344,9 @@ namespace internal {
         void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
         void dec() noexcept { val_ = (val_ == 0 ? mod_ - 1 : val_ - 1); }
         void add(modint_type x) noexcept {
-            if (mod_ - val_ > x.val_) val_ += x.val_;
-            else val_ = x.val_ - (mod_ - val_);
+            const auto tmp = val_ + x.val_;
+            const auto tmp2 = mod_ - val_;
+            val_ = tmp2 > x.val_ ? tmp : x.val_ - tmp2;
         }
         void sub(modint_type x) noexcept {
             if (val_ >= x.val_) val_ -= x.val_;
@@ -362,6 +363,48 @@ namespace internal {
         }
     };
 
+    template<int id> class MontgomeryModint32_impl {
+        using value_type = gsh::itype::u32;
+        using modint_type = MontgomeryModint32_impl;
+        static inline value_type mod_ = 0;
+        static inline value_type R2 = 0;
+        static inline value_type Ni = 0;
+        value_type val_ = 0;
+        static value_type MR(gsh::itype::u64 x) noexcept {
+            value_type tmp = (x + (gsh::itype::u64)((value_type) x * Ni) * mod_) >> 32;
+            return tmp >= mod_ ? tmp - mod_ : tmp;
+        }
+    protected:
+        MontgomeryModint32_impl() noexcept {}
+        static void set_mod(value_type newmod) {
+            if (newmod % 2 == 0) throw gsh::Exception("MontgomeryModint32 / Mod must be odd.");
+            mod_ = newmod;
+            Ni = mod_ * (2u - mod_ * mod_);
+            Ni *= (2u - mod_ * Ni);
+            Ni *= (2u - mod_ * Ni);
+            Ni = -(Ni * (2u - mod_ * Ni));
+            R2 = -(gsh::itype::u64) mod_ % mod_;
+        }
+        value_type val() const noexcept { return MR(val_); }
+        static value_type mod() noexcept { return mod_; }
+        void assign(gsh::itype::u32 x) noexcept { val_ = MR((gsh::itype::u64)(x % mod_) * R2); }
+        void assign(gsh::itype::u64 x) noexcept { val_ = MR((x % mod_) * R2); }
+        void rawassign(value_type x) noexcept { val_ = MR((gsh::itype::u64) x * R2); }
+        void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
+        void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
+        void dec() noexcept { val_ = (val_ == 0 ? mod_ - 1 : val_ - 1); }
+        void add(modint_type x) noexcept {
+            const auto tmp = val_ + x.val_;
+            const auto tmp2 = mod_ - val_;
+            val_ = tmp2 > x.val_ ? tmp : x.val_ - tmp2;
+        }
+        void sub(modint_type x) noexcept {
+            if (val_ >= x.val_) val_ -= x.val_;
+            else val_ = mod_ - (x.val_ - val_);
+        }
+        void mul(modint_type x) noexcept { val_ = MR((gsh::itype::u64) val_ * x.val_); }
+    };
+
 }  // namespace internal
 
 template<gsh::itype::u32 mod_ = 998244353> using StaticModint32 = gsh::internal::ModintTraits<gsh::internal::StaticModint32_impl<mod_>>;
@@ -369,5 +412,6 @@ template<gsh::itype::u64 mod_ = 998244353> using StaticModint64 = gsh::internal:
 template<gsh::itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ < (1ull << 32)), StaticModint32<mod_>, StaticModint64<mod_>>;
 template<int id = 0> using DynamicModint32 = gsh::internal::ModintTraits<gsh::internal::DynamicModint32_impl<id>>;
 template<int id = 0> using DynamicModint64 = gsh::internal::ModintTraits<gsh::internal::DynamicModint64_impl<id>>;
+template<int id = 0> using MontgomeryModint32 = gsh::internal::ModintTraits<gsh::internal::MontgomeryModint32_impl<id>>;
 
 }  // namespace gsh

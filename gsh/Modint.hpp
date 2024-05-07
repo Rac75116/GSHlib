@@ -2,8 +2,8 @@
 #include <type_traits>        // std::conditional_t, std::decay_t, std::is_same_v, std::is_integral_v, std::is_unsigned_v
 #include <limits>             // std::numeric_limits
 #include <bit>                // std::countr_zero, std::has_single_bit
-#include <gsh/TypeDef.hpp>    // gsh::itype
-#include <gsh/Exception.hpp>  // gsh::Exception
+#include <gsh/TypeDef.hpp>    // itype
+#include <gsh/Exception.hpp>  // Exception
 
 namespace gsh {
 
@@ -13,13 +13,13 @@ namespace internal {
     template<class T> constexpr T calc_gcd(T x, T y) {
         if (x == 0 || y == 0) [[unlikely]]
             return x | y;
-        const int n = std::countr_zero(x);
-        const int m = std::countr_zero(y);
-        const int l = n < m ? n : m;
+        const itype::i32 n = std::countr_zero(x);
+        const itype::i32 m = std::countr_zero(y);
+        const itype::i32 l = n < m ? n : m;
         x >>= n;
         y >>= m;
         T s;
-        int t;
+        itype::i32 t;
         while (x != y) {
             s = y < x ? x - y : y - x;
             t = std::countr_zero(s);
@@ -40,7 +40,7 @@ namespace internal {
         constexpr explicit operator value_type() const noexcept { return val(); }
         constexpr static void set_mod(value_type x) {
             static_assert(!is_staticmod, "ModintTraits::set_mod / Mod must be dynamic.");
-            if (x <= 1) throw gsh::Exception("ModintTraits::set_mod / Mod must be at least 2.");
+            if (x <= 1) throw Exception("ModintTraits::set_mod / Mod must be at least 2.");
             if (x == mod()) return;
             base_type::set_mod(x);
         }
@@ -49,16 +49,16 @@ namespace internal {
         template<class U> constexpr modint_type& operator=(U x) noexcept {
             static_assert(std::is_integral_v<U>, "ModintTraits::operator= / Only integer types can be assigned.");
             if constexpr (std::is_unsigned_v<U>) {
-                if constexpr (std::is_same_v<U, unsigned long long> || std::is_same_v<U, unsigned long>) base_type::assign(static_cast<gsh::itype::u64>(x));
-                else base_type::assign(static_cast<gsh::itype::u32>(x));
+                if constexpr (std::is_same_v<U, unsigned long long> || std::is_same_v<U, unsigned long>) base_type::assign(static_cast<itype::u64>(x));
+                else base_type::assign(static_cast<itype::u32>(x));
             } else {
                 if (x < 0) {
-                    if constexpr (std::is_same_v<U, long long> || std::is_same_v<U, long>) base_type::assign(static_cast<gsh::itype::u64>(-x));
-                    else base_type::assign(static_cast<gsh::itype::u32>(-x));
+                    if constexpr (std::is_same_v<U, long long> || std::is_same_v<U, long>) base_type::assign(static_cast<itype::u64>(-x));
+                    else base_type::assign(static_cast<itype::u32>(-x));
                     base_type::neg();
                 } else {
-                    if constexpr (std::is_same_v<U, long long> || std::is_same_v<U, long>) base_type::assign(static_cast<gsh::itype::u64>(x));
-                    else base_type::assign(static_cast<gsh::itype::u32>(x));
+                    if constexpr (std::is_same_v<U, long long> || std::is_same_v<U, long>) base_type::assign(static_cast<itype::u64>(x));
+                    else base_type::assign(static_cast<itype::u32>(x));
                 }
             }
             return *this;
@@ -77,7 +77,7 @@ namespace internal {
         template<class Ostream> friend Ostream& operator<<(Ostream& ost, modint_type x) { return ost << x.val(); }
         constexpr modint_type inv() const {
             value_type a = 1, b = 0, x = val(), y = mod();
-            if (x == 0) throw gsh::Exception("ModintTraits::inv / Zero division is not possible.");
+            if (x == 0) throw Exception("ModintTraits::inv / Zero division is not possible.");
             while (true) {
                 if (x <= 1) {
                     if (x == 0) [[unlikely]]
@@ -94,9 +94,9 @@ namespace internal {
                 a += b * (x / y);
                 x %= y;
             }
-            throw gsh::Exception("ModintTraits::inv / Cannot calculate inverse element.");
+            throw Exception("ModintTraits::inv / Cannot calculate inverse element.");
         }
-        constexpr modint_type pow(gsh::itype::u64 e) const noexcept {
+        constexpr modint_type pow(itype::u64 e) const noexcept {
             modint_type res = modint_type::raw(1), pow = *this;
             while (e) {
                 modint_type tmp = pow * pow;
@@ -164,9 +164,9 @@ namespace internal {
             while (a != 0) {
                 while (!(a & 1) && a != 0) {
                     a >>= 1;
-                    if ((n & 0b111) == 3 || (n & 0b111) == 5) res = -res;
+                    res = ((n & 0b111) == 3 || (n & 0b111) == 5) ? -res : res;
                 }
-                if ((a & 0b11) == 3 || (n & 0b11) == 3) res = -res;
+                res = ((a & 0b11) == 3 || (n & 0b11) == 3) ? -res : res;
                 value_type tmp = n;
                 n = a;
                 a = tmp;
@@ -191,21 +191,21 @@ namespace internal {
                 return get_min(res);
             } else {
                 value_type Q = md - 1;
-                gsh::itype::u32 S = 0;
+                itype::u32 S = 0;
                 while ((Q & 1) == 0) Q >>= 1, ++S;
                 if (std::countr_zero(md - 1) < 6) {
                     modint_type z = modint_type::raw(1);
                     while (z.legendre() != -1) ++z;
                     modint_type t = pow(Q), R = pow((Q + 1) / 2);
                     if (t.val() == 1) return R;
-                    gsh::itype::u32 M = S;
+                    itype::u32 M = S;
                     modint_type c = z.pow(Q);
                     do {
                         modint_type U = t * t;
-                        gsh::itype::u32 i = 1;
+                        itype::u32 i = 1;
                         while (U.val() != 1) U = U * U, ++i;
                         modint_type b = c;
-                        for (gsh::itype::u32 j = 0; j < (M - i - 1); ++j) b *= b;
+                        for (itype::u32 j = 0; j < (M - i - 1); ++j) b *= b;
                         M = i, c = b * b, t *= c, R *= b;
                     } while (t.val() != 1);
                     return get_min(R);
@@ -231,16 +231,16 @@ namespace internal {
         }
     };
 
-    template<gsh::itype::u32 mod_> class StaticModint32_impl {
-        using value_type = gsh::itype::u32;
+    template<itype::u32 mod_> class StaticModint32_impl {
+        using value_type = itype::u32;
         using modint_type = StaticModint32_impl;
         value_type val_ = 0;
     protected:
         constexpr StaticModint32_impl() noexcept {}
         constexpr value_type val() const noexcept { return val_; }
         static constexpr value_type mod() noexcept { return mod_; }
-        constexpr void assign(gsh::itype::u32 x) noexcept { val_ = x % mod_; }
-        constexpr void assign(gsh::itype::u64 x) noexcept { val_ = x % mod_; }
+        constexpr void assign(itype::u32 x) noexcept { val_ = x % mod_; }
+        constexpr void assign(itype::u64 x) noexcept { val_ = x % mod_; }
         constexpr void rawassign(value_type x) noexcept { val_ = x; }
         constexpr void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
         constexpr void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
@@ -253,22 +253,22 @@ namespace internal {
             if (val_ >= x.val_) val_ -= x.val_;
             else val_ = mod_ - (x.val_ - val_);
         }
-        constexpr void mul(modint_type x) noexcept { val_ = static_cast<gsh::itype::u64>(val_) * x.val_ % mod_; }
+        constexpr void mul(modint_type x) noexcept { val_ = static_cast<itype::u64>(val_) * x.val_ % mod_; }
     };
 
-    template<gsh::itype::u64 mod_> class StaticModint64_impl {
-        using value_type = gsh::itype::u64;
+    template<itype::u64 mod_> class StaticModint64_impl {
+        using value_type = itype::u64;
         using modint_type = StaticModint64_impl;
         value_type val_ = 0;
     protected:
         constexpr StaticModint64_impl() noexcept {}
         constexpr value_type val() const noexcept { return val_; }
         static constexpr value_type mod() noexcept { return mod_; }
-        constexpr void assign(gsh::itype::u32 x) noexcept {
+        constexpr void assign(itype::u32 x) noexcept {
             if constexpr (mod_ < (1ull << 32)) val_ = x % mod_;
             else val_ = x;
         }
-        constexpr void assign(gsh::itype::u64 x) noexcept { val_ = x % mod_; }
+        constexpr void assign(itype::u64 x) noexcept { val_ = x % mod_; }
         constexpr void rawassign(value_type x) noexcept { val_ = x; }
         constexpr void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
         constexpr void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
@@ -281,25 +281,25 @@ namespace internal {
             if (val_ >= x.val_) val_ -= x.val_;
             else val_ = mod_ - (x.val_ - val_);
         }
-        constexpr void mul(modint_type x) noexcept { val_ = static_cast<gsh::itype::u128>(val_) * x.val_ % mod_; }
+        constexpr void mul(modint_type x) noexcept { val_ = static_cast<itype::u128>(val_) * x.val_ % mod_; }
     };
 
     template<int id> class DynamicModint32_impl {
-        using value_type = gsh::itype::u32;
+        using value_type = itype::u32;
         using modint_type = DynamicModint32_impl;
         static inline value_type mod_ = 0;
-        static inline gsh::itype::u64 M_ = 0;
+        static inline itype::u64 M_ = 0;
         value_type val_ = 0;
     protected:
         DynamicModint32_impl() noexcept {}
         static void set_mod(value_type newmod) noexcept {
             mod_ = newmod;
-            M_ = std::numeric_limits<gsh::itype::u64>::max() / mod_ + std::has_single_bit(mod_);
+            M_ = std::numeric_limits<itype::u64>::max() / mod_ + std::has_single_bit(mod_);
         }
         value_type val() const noexcept { return val_; }
         static value_type mod() noexcept { return mod_; }
-        void assign(gsh::itype::u32 x) noexcept { val_ = x % mod_; }
-        void assign(gsh::itype::u64 x) noexcept { val_ = x % mod_; }
+        void assign(itype::u32 x) noexcept { val_ = x % mod_; }
+        void assign(itype::u64 x) noexcept { val_ = x % mod_; }
         void rawassign(value_type x) noexcept { val_ = x; }
         void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
         void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
@@ -325,21 +325,21 @@ namespace internal {
     };
 
     template<int id> class DynamicModint64_impl {
-        using value_type = gsh::itype::u64;
+        using value_type = itype::u64;
         using modint_type = DynamicModint64_impl;
         static inline value_type mod_ = 0;
-        static inline gsh::itype::u128 M_ = 0;
+        static inline itype::u128 M_ = 0;
         value_type val_ = 0;
     protected:
         DynamicModint64_impl() noexcept {}
         static void set_mod(value_type newmod) noexcept {
             mod_ = newmod;
-            M_ = std::numeric_limits<gsh::itype::u128>::max() / mod_ + std::has_single_bit(mod_);
+            M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
         }
         value_type val() const noexcept { return val_; }
         static value_type mod() noexcept { return mod_; }
-        void assign(gsh::itype::u32 x) noexcept { val_ = x % mod_; }
-        void assign(gsh::itype::u64 x) noexcept { val_ = x % mod_; }
+        void assign(itype::u32 x) noexcept { val_ = x % mod_; }
+        void assign(itype::u64 x) noexcept { val_ = x % mod_; }
         void rawassign(value_type x) noexcept { val_ = x; }
         void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
         void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
@@ -366,10 +366,11 @@ namespace internal {
 
 }  // namespace internal
 
-template<gsh::itype::u32 mod_ = 998244353> using StaticModint32 = gsh::internal::ModintTraits<gsh::internal::StaticModint32_impl<mod_>>;
-template<gsh::itype::u64 mod_ = 998244353> using StaticModint64 = gsh::internal::ModintTraits<gsh::internal::StaticModint64_impl<mod_>>;
-template<gsh::itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ < (1ull << 32)), StaticModint32<mod_>, StaticModint64<mod_>>;
-template<int id = 0> using DynamicModint32 = gsh::internal::ModintTraits<gsh::internal::DynamicModint32_impl<id>>;
-template<int id = 0> using DynamicModint64 = gsh::internal::ModintTraits<gsh::internal::DynamicModint64_impl<id>>;
+template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintTraits<internal::StaticModint32_impl<mod_>>;
+template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintTraits<internal::StaticModint64_impl<mod_>>;
+template<itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ < (1ull << 32)), StaticModint32<mod_>, StaticModint64<mod_>>;
+template<int id = 0> using DynamicModint32 = internal::ModintTraits<internal::DynamicModint32_impl<id>>;
+template<int id = 0> using DynamicModint64 = internal::ModintTraits<internal::DynamicModint64_impl<id>>;
+template<int id = 0> using DynamicModint = DynamicModint64<id>;
 
 }  // namespace gsh

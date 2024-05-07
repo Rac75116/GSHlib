@@ -1,20 +1,21 @@
+#pragma GCC optimize("Ofast")
 //#include <cmath>
-#include <gsh/Modint.hpp>
 #include <gsh/Timer.hpp>
+#include <gsh/Random.hpp>
+#include <gsh/Numeric.hpp>
 #include <iostream>
+#include <cassert>
 
 using namespace gsh::itype;
 using namespace gsh::ftype;
 int main() {
-    using mint = gsh::DynamicModint32<>;
-    //mint::set_mod((1ll << 61) - 1);
-    mint::set_mod(998244353);
-    mint a = 2, b = 3;
     gsh::ClockTimer t;
-    for (i64 i = 0; i != 1000000000; ++i) {
-        b *= a;
-        a *= b;
+    u64 res = 0;
+    for (u64 i = 2; i != 1000000000; ++i) {
+        u64 tmp = gsh::IntSqrt(i);
+        assert(tmp * tmp <= i && (tmp + 1) * (tmp + 1) > i);
+        res += tmp;
     }
-    std::cout << a << std::endl;
     t.print();
+    std::cout << res << std::endl;
 }

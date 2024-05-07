@@ -2,8 +2,8 @@
 #include <type_traits>       // std::is_same_v, std::is_integral_v, std::is_unsigned_v, std::make_unsigned_t, std::common_type_t
 #include <bit>               // std::countr_zero, std::bit_width
 #include <initializer_list>  // std::initializer_list
-#include <gsh/TypeDef.hpp>   // itype
-#include <gsh/Modint.hpp>    // DynamicModint
+#include <gsh/TypeDef.hpp>   // gsh::itype
+#include <gsh/Modint.hpp>    // gsh::DynamicModint
 
 namespace gsh {
 

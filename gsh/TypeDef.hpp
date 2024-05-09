@@ -25,4 +25,41 @@ namespace ftype {
     using flong = long double;
 }  // namespace ftype
 
+class Byte {
+    itype::u8 b = 0;
+public:
+    friend constexpr Byte operator&(Byte l, Byte r) noexcept { return Byte::from_integer(l.b & r.b); }
+    constexpr Byte& operator&=(Byte r) noexcept {
+        b &= r.b;
+        return *this;
+    }
+    friend constexpr Byte operator|(Byte l, Byte r) noexcept { return Byte::from_integer(l.b | r.b); }
+    constexpr Byte& operator|=(Byte r) noexcept {
+        b |= r.b;
+        return *this;
+    }
+    friend constexpr Byte operator^(Byte l, Byte r) noexcept { return Byte::from_integer(l.b ^ r.b); }
+    constexpr Byte& operator^=(Byte r) noexcept {
+        b ^= r.b;
+        return *this;
+    }
+    template<class IntType> friend constexpr Byte operator<<(Byte l, IntType r) noexcept { return Byte::from_integer(l.b << r); }
+    template<class IntType> constexpr Byte& operator<<=(IntType r) noexcept {
+        b <<= r;
+        return *this;
+    }
+    template<class IntType> friend constexpr Byte operator>>(Byte l, IntType r) noexcept { return Byte::from_integer(l.b >> r); }
+    template<class IntType> constexpr Byte& operator>>=(IntType r) noexcept {
+        b >>= r;
+        return *this;
+    }
+    friend constexpr Byte operator~(Byte l) noexcept { return Byte::from_integer(~l.b); }
+    template<class IntType> constexpr IntType to_integer() noexcept { return static_cast<IntType>(b); }
+    template<class IntType> static constexpr Byte from_integer(IntType l) noexcept {
+        Byte res;
+        res.b = static_cast<itype::u8>(l);
+        return res;
+    }
+};
+
 }  // namespace gsh

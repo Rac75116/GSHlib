@@ -103,7 +103,7 @@ namespace internal {
         return cur.val() == x - 1;
     }
 
-    template<bool Prob = false> bool isPrime64(const itype::u64 x) {
+    template<bool Prob> bool isPrime64(const itype::u64 x) {
         if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0 || x % 23 == 0 || x % 29 == 0 || x % 31 == 0 || x % 37 == 0 || x % 41 == 0 || x % 43 == 0) return false;
         using mint = DynamicModint64<-1>;
         mint::set_mod(x);
@@ -267,18 +267,24 @@ namespace internal {
 906,319,2572,4727,187,221
             };
             // clang-format on
-            return false;
+            if (x < 684630005672341) {
+                return test(2) && test(base49[((0x3ac69a35ull * x) & 0xffffffffull) >> 21] + 3);
+            } else {
+                if (!test(2)) return false;
+                const itype::u16 mask = base64[((0x3ac69a35ull * x) & 0xffffffffull) >> 18];
+                return test((mask & 0x8000) ? 26460 : 9375) && test((mask & 0x7FFF) + 3);
+            }
         }
     }
 
 }  // namespace internal
 
 // @brief Prime number determination
-bool isPrime(const itype::u64 x) {
+template<bool Prob = false> bool isPrime(const itype::u64 x) {
     if (x <= 2147483647) {
         if (x <= 65535) return internal::isPrime16(x);
         else return internal::isPrime32(x);
-    } else return internal::isPrime64(x);
+    } else return internal::isPrime64<Prob>(x);
 }
 
 

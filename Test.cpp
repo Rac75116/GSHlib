@@ -11,6 +11,4 @@
 
 using namespace gsh::itype;
 using namespace gsh::ftype;
-int main() {
-    std::cout << "AC" << std::endl;
-}
+int main() {}

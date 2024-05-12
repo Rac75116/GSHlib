@@ -2,6 +2,7 @@
 #include <type_traits>        // std::conditional_t, std::decay_t, std::is_same_v, std::is_integral_v, std::is_unsigned_v
 #include <limits>             // std::numeric_limits
 #include <bit>                // std::countr_zero, std::has_single_bit
+#include <optional>           // std::optional
 #include <gsh/TypeDef.hpp>    // itype
 #include <gsh/Exception.hpp>  // Exception
 
@@ -18,11 +19,9 @@ namespace internal {
         const itype::i32 l = n < m ? n : m;
         x >>= n;
         y >>= m;
-        T s;
-        itype::i32 t;
         while (x != y) {
-            s = y < x ? x - y : y - x;
-            t = std::countr_zero(s);
+            const T s = y < x ? x - y : y - x;
+            const itype::i32 t = std::countr_zero(s);
             y = y < x ? y : x;
             x = s >> t;
         }
@@ -82,14 +81,14 @@ namespace internal {
                 if (x <= 1) {
                     if (x == 0) [[unlikely]]
                         break;
-                    else return modint_type::raw(a);
+                    else return modint_type(a);
                 }
                 b += a * (y / x);
                 y %= x;
                 if (y <= 1) {
                     if (y == 0) [[unlikely]]
                         break;
-                    else return modint_type::raw(mod() - b);
+                    else return modint_type(mod() - b);
                 }
                 a += b * (x / y);
                 x %= y;
@@ -175,29 +174,47 @@ namespace internal {
             if (n != 1) return 0;
             return res;
         }
-        constexpr modint_type sqrt() const noexcept {
+        constexpr std::optional<modint_type> sqrt() const noexcept {
             const value_type vl = val(), md = mod();
             if (vl <= 1) return *this;
             auto get_min = [](modint_type x) {
                 return x.val() > (mod() >> 1) ? -x : x;
             };
-            if ((md & 0b11) == 3) return get_min(pow((md + 1) >> 2));
-            else if ((md & 0b111) == 5) {
+            if ((md & 0b11) == 3) {
+                modint_type res = pow((md + 1) >> 2);
+                if (res * res != *this) return std::nullopt;
+                else return get_min(res);
+            } else if ((md & 0b111) == 5) {
                 modint_type res = pow((md + 3) >> 3);
                 if constexpr (is_staticmod) {
                     constexpr modint_type p = modint_type::raw(2).pow((md - 1) >> 2);
                     res *= p;
                 } else if (res * res != *this) res *= modint_type::raw(2).pow((md - 1) >> 2);
-                return get_min(res);
+                if (res * res != *this) return std::nullopt;
+                else return get_min(res);
             } else {
-                value_type Q = md - 1;
-                itype::u32 S = 0;
-                while ((Q & 1) == 0) Q >>= 1, ++S;
-                if (std::countr_zero(md - 1) < 6) {
-                    modint_type z = modint_type::raw(1);
-                    while (z.legendre() != -1) ++z;
-                    modint_type t = pow(Q), R = pow((Q + 1) / 2);
+                const itype::u32 S = std::countr_zero(md - 1);
+                const value_type Q = (md - 1) >> S;
+                if (S < 20) {
+                    const modint_type tmp = pow(Q / 2);
+                    modint_type R = tmp * (*this), t = R * tmp;
                     if (t.val() == 1) return R;
+                    modint_type u = t;
+                    for (itype::u32 i = 0; i != S - 1; ++i) u *= u;
+                    if (u.val() != 1) return std::nullopt;
+                    const modint_type z = [&]() {
+                        if (md % 3 == 2) return modint_type::raw(3);
+                        if (auto x = md % 5; x == 2 || x == 3) return modint_type::raw(5);
+                        if (auto x = md % 7; x == 3 || x == 5 || x == 6) return modint_type::raw(7);
+                        if (auto x = md % 11; x == 2 || x == 6 || x == 7 || x == 8 || x == 10) return modint_type(11);
+                        if (auto x = md % 13; x == 2 || x == 5 || x == 6 || x == 7 || x == 8 || x == 11) return modint_type(13);
+                        for (const itype::u32 x : { 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97 }) {
+                            if (modint_type(x).legendre() == -1) return modint_type(x);
+                        }
+                        modint_type z = 101;
+                        while (z.legendre() != -1) z += 2;
+                        return z;
+                    }();
                     itype::u32 M = S;
                     modint_type c = z.pow(Q);
                     do {
@@ -205,26 +222,28 @@ namespace internal {
                         itype::u32 i = 1;
                         while (U.val() != 1) U = U * U, ++i;
                         modint_type b = c;
-                        for (itype::u32 j = 0; j < (M - i - 1); ++j) b *= b;
+                        for (itype::u32 j = 0, k = M - i - 1; j < k; ++j) b *= b;
                         M = i, c = b * b, t *= c, R *= b;
                     } while (t.val() != 1);
                     return get_min(R);
                 } else {
-                    modint_type a = 1;
+                    if (legendre() != 1) return std::nullopt;
+                    modint_type a = 2;
                     while ((a * a - *this).legendre() != -1) ++a;
                     modint_type res1 = modint_type::raw(1), res2, pow1 = a, pow2 = modint_type::raw(1), w = a * a - *this;
                     value_type e = (md + 1) / 2;
                     while (true) {
+                        const modint_type tmp2 = pow2 * w;
                         if (e & 1) {
-                            modint_type tmp = res1;
-                            res1 = res1 * pow1 + res2 * pow2 * w;
+                            const modint_type tmp = res1;
+                            res1 = res1 * pow1 + res2 * tmp2;
                             res2 = tmp * pow2 + res2 * pow1;
                         }
                         e >>= 1;
                         if (e == 0) return get_min(res1);
-                        modint_type tmp = pow1;
-                        pow1 = pow1 * pow1 + pow2 * pow2 * w;
-                        pow2 *= modint_type::raw(2) * tmp;
+                        const modint_type tmp = pow1;
+                        pow1 = pow1 * pow1 + pow2 * tmp2;
+                        pow2 *= tmp + tmp;
                     }
                 }
             }
@@ -281,7 +300,27 @@ namespace internal {
             if (val_ >= x.val_) val_ -= x.val_;
             else val_ = mod_ - (x.val_ - val_);
         }
-        constexpr void mul(modint_type x) noexcept { val_ = static_cast<itype::u128>(val_) * x.val_ % mod_; }
+        constexpr void mul(modint_type x) noexcept {
+            if constexpr (mod_ < (1ull << 63)) {
+                constexpr itype::u128 M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
+                const value_type a = (((M_ * val_) >> 64) * x.val_) >> 64;
+                const value_type b = val_ * x.val_;
+                const value_type c = a * mod_;
+                const value_type d = b - c;
+                const bool e = d < mod_;
+                const value_type f = d - mod_;
+                val_ = e ? d : f;
+            } else {
+                constexpr itype::u128 M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
+                const value_type a = (((M_ * val_) >> 64) * x.val_) >> 64;
+                const itype::u128 b = (itype::u128) val_ * x.val_;
+                const itype::u128 c = (itype::u128) a * mod_;
+                const itype::u128 d = b - c;
+                const bool e = d < mod_;
+                const itype::u128 f = d - mod_;
+                val_ = e ? d : f;
+            }
+        }
     };
 
     template<int id> class DynamicModint32_impl {

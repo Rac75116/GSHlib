@@ -67,7 +67,7 @@ public:
 
 // @brief Generate random numbers from std::time and std::clock
 class RandomDevice {
-    static inline Rand64 engine{ static_cast<itype::u64>(std::time(nullptr)) };
+    Rand64 engine{ static_cast<itype::u64>(std::time(nullptr)) };
 public:
     using result_type = itype::u32;
     RandomDevice() {}

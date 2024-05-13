@@ -4,6 +4,7 @@
 #include <initializer_list>  // std::initializer_list
 #include <gsh/TypeDef.hpp>   // gsh::itype
 #include <gsh/Modint.hpp>    // gsh::DynamicModint
+#include <cassert>
 
 namespace gsh {
 
@@ -90,7 +91,7 @@ namespace internal {
         mint::set_mod(x);
         const itype::u32 h = x * 0xad625b89;
         itype::u32 d = x - 1;
-        mint cur = bases[h >> 24];
+        mint cur = mint::raw(bases[h >> 24]);
         itype::i32 s = std::countr_zero(d);
         d >>= s;
         cur = cur.pow(d);
@@ -135,6 +136,24 @@ namespace internal {
                 if (!test(2)) return false;
                 const itype::u16 mask = base64[(0x3ac69a35u * (itype::u32) x) >> 18];
                 return test((mask & 0x7fff) + 3) && test((mask & 0x8000) ? 26460 : 9375);
+                /*
+                mint p = mint::raw((mask & 0x7fff) + 3), q = mint::raw((mask & 0x8000) ? 26460 : 9375);
+                mint u = mint::raw(1), v = mint::raw(1);
+                itype::u64 e = d;
+                while (e != 0) {
+                    if (e & 1) u *= p, v *= q;
+                    e >>= 1;
+                    p *= p, q *= q;
+                }
+                if (u.val() <= 1 && v.val() <= 1) return true;
+                bool f1 = u.val() == x - 1, f2 = v.val() == x - 1;
+                itype::i32 i = s;
+                while (--i) {
+                    u *= u, v *= v;
+                    f1 |= u.val() == x - 1, f2 |= v.val() == x - 1;
+                }
+                return f1 & f2;
+                */
             }
         }
     }

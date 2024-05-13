@@ -276,7 +276,6 @@ public:
 };
 YesNoBuf<100000> out;
 int main() {
-    /*
     u32 Q;
     fin >> Q;
     for (u32 i = 0; i != Q; ++i) {
@@ -284,8 +283,8 @@ int main() {
         fin >> N;
         out(gsh::isPrime<true>(N));
     }
-    */
-    gsh::Rand32 engine;
+    /*
+    gsh::Rand64 engine;
     std::vector<u64> primes;
     while (primes.size() <= 10000) {
         u64 n = engine() / 2;
@@ -293,11 +292,12 @@ int main() {
     }
     u32 cnt = 0;
     gsh::ClockTimer t;
-    for (u32 j = 0; j != 1000; ++j) {
+    for (u32 j = 0; j != 100; ++j) {
         for (u32 i = 0; i != 10000; ++i) {
             cnt += gsh::isPrime<true>(primes[i]);
         }
     }
     t.print();
     std::cout << cnt << " " << std::endl;
+    */
 }

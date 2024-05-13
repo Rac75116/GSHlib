@@ -353,6 +353,11 @@ namespace internal {
             else val_ = mod_ - (x.val_ - val_);
         }
         void mul(modint_type x) noexcept {
+            const itype::u64 a = (itype::u64) val_ * x.val_;
+            const itype::u64 b = ((itype::u128) M_ * a) >> 64;
+            const itype::u64 c = a - b * mod_;
+            val_ = c < mod_ ? c : c - mod_;
+            /*
             const value_type a = (((M_ * val_) >> 32) * x.val_) >> 32;
             const value_type b = val_ * x.val_;
             const value_type c = a * mod_;
@@ -360,6 +365,7 @@ namespace internal {
             const bool e = d < mod_;
             const value_type f = d - mod_;
             val_ = e ? d : f;
+            */
         }
     };
 

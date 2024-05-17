@@ -2,32 +2,22 @@
 #include <type_traits>       // std::is_same_v, std::is_integral_v, std::is_unsigned_v, std::make_unsigned_t, std::common_type_t
 #include <bit>               // std::countr_zero, std::bit_width
 #include <initializer_list>  // std::initializer_list
+#include <cmath>             // std::sqrt
 #include <gsh/TypeDef.hpp>   // gsh::itype
 #include <gsh/Modint.hpp>    // gsh::DynamicModint
-#include <cassert>
 
 namespace gsh {
 
-//@brief Find the largest x for which x * x <= n (https://math.stackexchange.com/questions/2469446/what-is-a-fast-algorithm-for-finding-the-integer-square-root)
+//@brief Find the largest x for which x * x <= n (https://rsk0315.hatenablog.com/entry/2023/11/07/221428)
 constexpr itype::u32 IntSqrt(const itype::u32 x) {
-    if (x < 2) return x;
-    const itype::u32 log2x = std::bit_width(x) - 1;
-    const itype::u32 log2y = log2x / 2u;
-    itype::u32 y = 1 << log2y;
-    itype::u32 y_squared = 1 << (2u * log2y);
-    itype::i32 sqr_diff = x - y_squared;
-    y += (sqr_diff / 3u) >> log2y;
-    y_squared = y * y;
-    sqr_diff = x - y_squared;
-    y += sqr_diff / (2 * y);
-    y_squared = y * y;
-    sqr_diff = x - y_squared;
-    if (sqr_diff >= 0) return y;
-    y -= (-sqr_diff / (2 * y)) + 1;
-    y_squared = y * y;
-    sqr_diff = x - y_squared;
-    y -= (sqr_diff < 0);
-    return y;
+    if (x == 0) return 0;
+    itype::u32 tmp = static_cast<itype::u32>(std::sqrt(static_cast<ftype::f32>(x))) - 1;
+    return tmp * (tmp + 2) < x ? tmp + 1 : tmp;
+}
+constexpr itype::u64 IntSqrt(const itype::u64 x) {
+    if (x == 0) return 0;
+    itype::u64 tmp = static_cast<itype::u64>(std::sqrt(static_cast<ftype::f64>(x))) - 1;
+    return tmp * (tmp + 2) < x ? tmp + 1 : tmp;
 }
 
 // @brief Find the greatest common divisor as in std::gcd. (https://lpha-z.hatenablog.com/entry/2020/05/24/231500)
@@ -130,30 +120,12 @@ namespace internal {
                 while (--i && cur.val() != x - 1) cur *= cur;
                 return cur.val() == x - 1;
             };
-            if (x < 684630005672341) {
+            if (x < 684630005672341ull) {
                 return test(2) && test(base49[(0x3ac69a35u * (itype::u32) x) >> 21] + 3);
             } else {
                 if (!test(2)) return false;
                 const itype::u16 mask = base64[(0x3ac69a35u * (itype::u32) x) >> 18];
                 return test((mask & 0x7fff) + 3) && test((mask & 0x8000) ? 26460 : 9375);
-                /*
-                mint p = mint::raw((mask & 0x7fff) + 3), q = mint::raw((mask & 0x8000) ? 26460 : 9375);
-                mint u = mint::raw(1), v = mint::raw(1);
-                itype::u64 e = d;
-                while (e != 0) {
-                    if (e & 1) u *= p, v *= q;
-                    e >>= 1;
-                    p *= p, q *= q;
-                }
-                if (u.val() <= 1 && v.val() <= 1) return true;
-                bool f1 = u.val() == x - 1, f2 = v.val() == x - 1;
-                itype::i32 i = s;
-                while (--i) {
-                    u *= u, v *= v;
-                    f1 |= u.val() == x - 1, f2 |= v.val() == x - 1;
-                }
-                return f1 & f2;
-                */
             }
         }
     }

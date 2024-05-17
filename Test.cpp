@@ -276,6 +276,7 @@ public:
 };
 YesNoBuf<100000> out;
 int main() {
+    /*
     u32 Q;
     fin >> Q;
     for (u32 i = 0; i != Q; ++i) {
@@ -283,6 +284,7 @@ int main() {
         fin >> N;
         out(gsh::isPrime<true>(N));
     }
+    */
     /*
     gsh::Rand64 engine;
     std::vector<u64> primes;

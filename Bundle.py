@@ -1,8 +1,8 @@
-import sys, re, os
+import sys, re, os, glob
 assert len(sys.argv) >= 2
 try:
     os.chdir(os.path.dirname(__file__))
-    files = ['gsh/' + f for f in os.listdir('gsh') if os.path.isfile(os.path.join('gsh', f))]
+    files = [f.replace('\\', '/') for f in glob.glob('gsh\\**', recursive=True) if os.path.isfile(f)]
     lib = [re.sub(r'^#pragma once\n', '', open(f, 'r', encoding='utf-8').read()) for f in files]
 
     allpat = '('

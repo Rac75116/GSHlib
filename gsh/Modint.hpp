@@ -10,6 +10,7 @@ namespace gsh {
 
 namespace internal {
 
+
     // https://lpha-z.hatenablog.com/entry/2020/05/24/231500
     template<class T> constexpr T calc_gcd(T x, T y) {
         if (x == 0 || y == 0) [[unlikely]]

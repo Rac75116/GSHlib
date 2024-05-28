@@ -35,6 +35,14 @@ private:
 public:
     constexpr Vec() noexcept(noexcept(Allocator())) : Vec(Allocator()) {}
     constexpr explicit Vec(const allocator_type& a) noexcept : alloc(a) {}
+    constexpr explicit Vec(size_type n, const Allocator& a = Allocator()) : alloc(a) {
+        if (n == 0) [[unlikely]]
+            return;
+        ptr = traits::allocate(alloc, n);
+        len = n, cap = n;
+        if constexpr (!std::is_trivially_constructible_v<value_type>)
+            for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
+    }
     constexpr explicit Vec(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
@@ -290,7 +298,9 @@ private:
             const pointer new_ptr = traits::allocate(alloc, cap * 2 + 8);
             if (cap != 0) {
                 if (std::is_trivially_move_constructible_v<value_type> && !std::is_constant_evaluated()) {
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
                     std::memcpy(new_ptr, ptr, sizeof(value_type) * len);
+#pragma GCC diagnostic warning "-Wclass-memaccess"
                 } else {
                     for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
                 }
@@ -312,7 +322,8 @@ public:
     }
     template<class... Args> constexpr reference emplace_back(Args&&... args) {
         extend_one();
-        traits::construct(alloc, ptr + (len++), std::forward(args)...);
+        traits::construct(alloc, ptr + len, std::forward<Args>(args)...);
+        return *(ptr + (len++));
     }
     constexpr void pop_back() {
 #ifndef NDEBUG
@@ -375,15 +386,3 @@ public:
 template<class InputIter, class Allocator = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Allocator = Allocator()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Allocator>;
 
 }  // namespace gsh
-
-namespace std {
-
-template<class T> struct hash;
-template<class T, class Allocator> struct hash<gsh::Vec<T, Allocator>> {
-    constexpr gsh::itype::u64 operator()(const gsh::Vec<T, Allocator>& x) {
-        //TODO
-        return 0;
-    }
-};
-
-}  // namespace std

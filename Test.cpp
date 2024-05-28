@@ -4,6 +4,7 @@
 #include <gsh/Timer.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Numeric.hpp>
+#include <gsh/Vec.hpp>
 #include <iostream>
 #include <cassert>
 #include <numeric>
@@ -263,6 +264,262 @@ public:
         cur += n;
     }
 } fin;
+class FastOstream {
+    constexpr static int buffersize = 1 << 18;
+    char buffer[buffersize];
+    char* cur = buffer;
+    inline void reload(ptrdiff_t w) {
+        if (buffer + buffersize - w < cur) [[unlikely]] {
+            [[maybe_unused]] int r = write(1, buffer, cur - buffer);
+            cur = buffer;
+        }
+    }
+    constexpr static std::array<unsigned, 10000> strtable = []() {
+        std::array<unsigned, 10000> res;
+        for (unsigned i = 0; i < 10000; ++i) {
+            unsigned tmp[4];
+            unsigned n = i;
+            tmp[3] = (n % 10 + '0') << 24, n /= 10;
+            tmp[2] = (n % 10 + '0') << 16, n /= 10;
+            tmp[1] = (n % 10 + '0') << 8, n /= 10;
+            tmp[0] = n % 10 + '0';
+            res[i] = tmp[0] + tmp[1] + tmp[2] + tmp[3];
+        }
+        return res;
+    }();
+    constexpr static std::array<unsigned, 10000> strtable2 = []() {
+        std::array<unsigned, 10000> res;
+        for (unsigned i = 0; i < 10000; ++i) {
+            unsigned tmp[4];
+            unsigned n = i;
+            if (i < 10) n *= 1000;
+            else if (i < 100) n *= 100;
+            else if (i < 1000) n *= 10;
+            tmp[3] = (n % 10 + '0') << 24, n /= 10;
+            tmp[2] = (n % 10 + '0') << 16, n /= 10;
+            tmp[1] = (n % 10 + '0') << 8, n /= 10;
+            tmp[0] = n % 10 + '0';
+            res[i] = tmp[0] + tmp[1] + tmp[2] + tmp[3];
+        }
+        return res;
+    }();
+public:
+    FastOstream() {}
+    ~FastOstream() { reload(buffersize); }
+    FastOstream& flush() {
+        reload(buffersize);
+        return *this;
+    }
+    char widen(char c) const { return c; }
+    FastOstream& put(char c) {
+        reload(1);
+        *(cur++) = c;
+        return *this;
+    }
+    FastOstream& operator<<(unsigned short n) {
+        reload(5);
+        if (n >= 10000) {
+            *(cur++) = '0' + n / 10000, n %= 10000;
+            *reinterpret_cast<unsigned*>(cur) = strtable[n];
+            cur += 4;
+        } else if (n >= 1000) {
+            *reinterpret_cast<unsigned*>(cur) = strtable[n];
+            cur += 4;
+        } else if (n >= 100) {
+            *reinterpret_cast<unsigned*>(cur) = strtable[n * 10];
+            cur += 3;
+        } else if (n >= 10) {
+            *(cur++) = '0' + n / 10;
+            *(cur++) = '0' + n % 10;
+        } else *(cur++) = '0' + n;
+        return *this;
+    }
+    FastOstream& operator<<(short n) {
+        reload(6);
+        if (n < 0) *(cur++) = '-', n = -n;
+        if (n >= 10000) {
+            *(cur++) = '0' + n / 10000, n %= 10000;
+            *reinterpret_cast<unsigned*>(cur) = strtable[n];
+            cur += 4;
+        } else if (n >= 1000) {
+            *reinterpret_cast<unsigned*>(cur) = strtable[n];
+            cur += 4;
+        } else if (n >= 100) {
+            *reinterpret_cast<unsigned*>(cur) = strtable[n * 10];
+            cur += 3;
+        } else if (n >= 10) {
+            *reinterpret_cast<unsigned*>(cur) = strtable[n * 100];
+            cur += 2;
+        } else *(cur++) = '0' + n;
+        return *this;
+    }
+    FastOstream& operator<<(unsigned n) {
+        reload(10);
+        unsigned long long buf = 0;
+        char d = 0;
+        if (n >= 100000000) {
+            d = 8;
+            buf = static_cast<unsigned long long>(strtable[n % 10000]) << 32 | strtable[(n / 10000) % 10000];
+            n /= 100000000;
+        } else if (n >= 10000) {
+            d = 4;
+            buf = strtable[n % 10000];
+            n /= 10000;
+        }
+        *reinterpret_cast<unsigned*>(cur) = strtable2[n];
+        cur += (n >= 10) + (n >= 100) + (n >= 1000) + 1;
+        *reinterpret_cast<unsigned long long*>(cur) = buf;
+        cur += d;
+        return *this;
+    }
+    FastOstream& operator<<(int n) {
+        reload(11);
+        if (n < 0) *(cur++) = '-', n = -n;
+        unsigned long long buf = 0;
+        char d = 0;
+        if (n >= 100000000) {
+            d = 8;
+            buf = static_cast<unsigned long long>(strtable[n % 10000]) << 32 | strtable[(n / 10000) % 10000];
+            n /= 100000000;
+        } else if (n >= 10000) {
+            d = 4;
+            buf = strtable[n % 10000];
+            n /= 10000;
+        }
+        *reinterpret_cast<unsigned*>(cur) = strtable2[n];
+        cur += (n >= 10) + (n >= 100) + (n >= 1000) + 1;
+        *reinterpret_cast<unsigned long long*>(cur) = buf;
+        cur += d;
+        return *this;
+    }
+    FastOstream& operator<<(unsigned long long n) {
+        reload(20);
+        static unsigned buf[4];
+        int d = 0;
+        if (n >= 10000000000000000) {
+            d = 16;
+            buf[3] = strtable[n % 10000], n /= 10000;
+            buf[2] = strtable[n % 10000], n /= 10000;
+            buf[1] = strtable[n % 10000], n /= 10000;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        } else if (n >= 1000000000000) {
+            d = 12;
+            buf[2] = strtable[n % 10000], n /= 10000;
+            buf[1] = strtable[n % 10000], n /= 10000;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        } else if (n >= 100000000) {
+            d = 8;
+            buf[1] = strtable[n % 10000], n /= 10000;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        } else if (n >= 10000) {
+            d = 4;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        }
+        *(unsigned*) cur = strtable2[n];
+        cur += (n >= 10) + (n >= 100) + (n >= 1000) + 1;
+        std::memcpy(cur, buf, d);
+        cur += d;
+        return *this;
+    }
+    FastOstream& operator<<(long long n) {
+        reload(21);
+        if (n < 0) *(cur++) = '-', n = -n;
+        static unsigned buf[4];
+        char d = 0;
+        if (n >= 10000000000000000) {
+            d = 16;
+            buf[3] = strtable[n % 10000], n /= 10000;
+            buf[2] = strtable[n % 10000], n /= 10000;
+            buf[1] = strtable[n % 10000], n /= 10000;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        } else if (n >= 1000000000000) {
+            d = 12;
+            buf[2] = strtable[n % 10000], n /= 10000;
+            buf[1] = strtable[n % 10000], n /= 10000;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        } else if (n >= 100000000) {
+            d = 8;
+            buf[1] = strtable[n % 10000], n /= 10000;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        } else if (n >= 10000) {
+            d = 4;
+            buf[0] = strtable[n % 10000], n /= 10000;
+        }
+        *(unsigned*) cur = strtable2[n];
+        cur += (n >= 10) + (n >= 100) + (n >= 1000) + 1;
+        std::memcpy(cur, buf, d);
+        cur += d;
+        return *this;
+    }
+    FastOstream& operator<<(long n) { return operator<<(static_cast<long long>(n)); }
+    FastOstream& operator<<(unsigned long n) { return operator<<(static_cast<unsigned long long>(n)); }
+    FastOstream& operator<<(std::nullptr_t) {
+        reload(7);
+        std::memcpy(cur, "nullptr", 7);
+        cur += 7;
+        return *this;
+    }
+    friend FastOstream& operator<<(FastOstream& os, char c) {
+        os.reload(1);
+        *(os.cur++) = c;
+        return os;
+    }
+    friend FastOstream& operator<<(FastOstream& os, signed char c) {
+        os.reload(1);
+        *(os.cur++) = c;
+        return os;
+    }
+    friend FastOstream& operator<<(FastOstream& os, unsigned char c) {
+        os.reload(1);
+        *(os.cur++) = c;
+        return os;
+    }
+    friend FastOstream& operator<<(FastOstream& os, const char* s) {
+        size_t n = std::strlen(s);
+        if (n >= os.buffersize) {
+            os.reload(buffersize);
+            write(1, s, n);
+        } else {
+            os.reload(n);
+            std::memcpy(os.cur, s, n);
+            os.cur += n;
+        }
+        return os;
+    }
+    friend FastOstream& operator<<(FastOstream& os, const std::string& s) {
+        size_t n = s.length();
+        if (n >= os.buffersize) {
+            os.reload(buffersize);
+            write(1, s.data(), n);
+        } else {
+            os.reload(n);
+            std::memcpy(os.cur, s.data(), n);
+            os.cur += n;
+        }
+        return os;
+    }
+    friend FastOstream& operator<<(FastOstream& os, std::string_view s) {
+        size_t n = s.length();
+        if (n >= os.buffersize) {
+            os.reload(buffersize);
+            write(1, s.data(), n);
+        } else {
+            os.reload(n);
+            std::memcpy(os.cur, s.data(), n);
+            os.cur += n;
+        }
+        return os;
+    }
+    template<std::ranges::range T> friend FastOstream& operator<<(FastOstream& os, const T& v) {
+        size_t n = std::distance(std::ranges::begin(v), std::ranges::end(v)), cnt = 0;
+        for (const auto& x : v) {
+            os << x;
+            if (++cnt != n) os << ' ';
+        }
+        return os;
+    }
+} fout;
+/*
 template<size_t Q> class YesNoBuf {
     char buf[4 * Q];
     char* cur = buf;
@@ -275,31 +532,23 @@ public:
     }
 };
 YesNoBuf<100000> out;
+*/
+
 int main() {
-    /*
-    u32 Q;
-    fin >> Q;
-    for (u32 i = 0; i != Q; ++i) {
-        u64 N;
-        fin >> N;
-        out(gsh::isPrime<true>(N));
-    }
-    */
-    /*
-    gsh::Rand64 engine;
-    std::vector<u64> primes;
-    while (primes.size() <= 10000) {
-        u64 n = engine() / 2;
-        if (gsh::isPrime(n)) primes.push_back(n);
-    }
-    u32 cnt = 0;
+    gsh::Rand32 engine;
     gsh::ClockTimer t;
-    for (u32 j = 0; j != 100; ++j) {
-        for (u32 i = 0; i != 10000; ++i) {
-            cnt += gsh::isPrime<true>(primes[i]);
-        }
+    u32 r = 0;
+    for (u32 i = 0; i != 10000000; ++i) {
+        r += std::gcd(engine() / 2, engine() / 2);
     }
     t.print();
-    std::cout << cnt << " " << std::endl;
-    */
+    std::cerr << r << std::endl;
+    /*
+    for (u32 i = 0; i != 16; ++i) {
+        std::cerr << '{';
+        for (u32 j = 0; j != 16; ++j) {
+            std::cerr << gsh::GCD(i, j) << ",}"[j == 15];
+        }
+        std::cerr << ",\n";
+    }*/
 }

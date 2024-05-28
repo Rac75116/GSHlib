@@ -5,6 +5,7 @@
 #include <cmath>             // std::sqrt
 #include <gsh/TypeDef.hpp>   // gsh::itype
 #include <gsh/Modint.hpp>    // gsh::DynamicModint
+#include <gsh/Vec.hpp>       // gsh::Vec
 
 namespace gsh {
 
@@ -35,15 +36,15 @@ template<class T, class U> constexpr auto GCD(T x, U y) {
     }
 }
 // @brief Find the greatest common divisor of multiple numbers.
-template<class T, class... Args> auto GCD(T x, Args... y) {
+template<class T, class... Args> constexpr auto GCD(T x, Args... y) {
     return GCD(x, GCD(y...));
 }
 // @brief Find the  least common multiple as in std::lcm.
-template<class T, class U> auto LCM(T x, U y) {
+template<class T, class U> constexpr auto LCM(T x, U y) {
     return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y);
 }
 // @brief Find the least common multiple of multiple numbers.
-template<class T, class... Args> auto LCM(T x, Args... y) {
+template<class T, class... Args> constexpr auto LCM(T x, Args... y) {
     return LCM(x, LCM(y...));
 }
 
@@ -140,5 +141,55 @@ template<bool Prob = false> bool isPrime(const itype::u64 x) {
     } else return internal::isPrime64<Prob>(x);
 }
 
+constexpr Vec<itype::u32> EnumeratePrimes(const itype::u32 max_n) {
+    if (max_n <= 1000) {
+        constexpr itype::u32 primes[] = { 2,   3,   5,   7,   11,  13,  17,  19,  23,  29,  31,  37,  41,  43,  47,  53,  59,  61,  67,  71,  73,  79,  83,  89,  97,  101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433,
+                                          439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997 };
+        return Vec<itype::u32>(std::begin(primes), std::upper_bound(std::begin(primes), std::end(primes), max_n));
+    }
+    const itype::u32 flag_size = max_n / 30 + (max_n % 30 != 0);
+    constexpr itype::u32 table1[] = { 0,  1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 23, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1,
+                                      29, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 23, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1 };
+    constexpr itype::u8 table2[] = { 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 4, 0, 8, 0, 0, 0, 16, 0, 32, 0, 0, 0, 64, 0, 0, 0, 0, 0, 128 };
+    Vec<itype::u8> flag(flag_size, 0xffu);
+    flag[0] = 0b11111110u;
+    Vec<itype::u32> primes{ 2, 3, 5 };
+    double primes_size = max_n / std::log(max_n);
+    primes.reserve(static_cast<itype::u32>(1.1 * primes_size));
+    Vec<itype::u32> sieved(static_cast<itype::u32>(primes_size));
+    itype::u32 *first = sieved.data(), *last;
+    itype::u32 k, l, x, y;
+    itype::u8 temp;
+    for (k = 0; k * k < flag_size; ++k) {
+        while (flag[k] != 0) {
+            x = 30ull * k + table1[flag[k]];
+            itype::u32 limit = max_n / x;
+            primes.push_back(x);
+            last = first;
+            bool smaller = true;
+            for (l = k; smaller; ++l) {
+                for (temp = flag[l]; temp != 0; temp &= (temp - 1)) {
+                    y = 30u * l + table1[temp];
+                    if (y > limit) {
+                        smaller = false;
+                        break;
+                    }
+                    *(last++) = x * y;
+                }
+            }
+            flag[k] &= (flag[k] - 1);
+            for (itype::u32* i = first; i < last; ++i) flag[*i / 30] ^= table2[*i % 30];
+        }
+    }
+    for (; k < flag_size; k++) {
+        while (flag[k] != 0) {
+            x = 30 * k + table1[flag[k]];
+            if (x > max_n) return primes;
+            primes.push_back(x);
+            flag[k] &= (flag[k] - 1);
+        }
+    }
+    return primes;
+}
 
 }  // namespace gsh

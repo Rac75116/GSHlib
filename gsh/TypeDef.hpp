@@ -25,6 +25,12 @@ namespace ftype {
     using flong = long double;
 }  // namespace ftype
 
+namespace ctype {
+    using c8 = char8_t;
+    using c16 = char16_t;
+    using c32 = char32_t;
+}  // namespace ctype
+
 class Byte {
     itype::u8 b = 0;
 public:

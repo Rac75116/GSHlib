@@ -3,7 +3,7 @@
 namespace gsh {
 
 namespace itype {
-    using i8 = char;
+    using i8 = signed char;
     using u8 = unsigned char;
     using i16 = short;
     using u16 = unsigned short;
@@ -26,9 +26,10 @@ namespace ftype {
 }  // namespace ftype
 
 namespace ctype {
-    using c8 = char8_t;
-    using c16 = char16_t;
-    using c32 = char32_t;
+    using c8 = char;
+    using utf8 = char8_t;
+    using utf16 = char16_t;
+    using utf32 = char32_t;
 }  // namespace ctype
 
 class Byte {

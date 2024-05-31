@@ -7,32 +7,38 @@ namespace gsh {
 
 template<class T> class Parser;
 
-class IstreamBuf {
+class BufReader {
 public:
     using char_type = ctype::c8;
     using pos_type = itype::u32;
-    using off_type = itype::u32;
+    using off_type = itype::i32;
 private:
-    char_type buf[1 << 18];
+    constexpr static off_type Bufsize = 1 << 18;
+    char_type buf[Bufsize + 1];
     char_type *cur = buf, *eof = buf;
 public:
-    IstreamBuf() { cur = buf, eof = buf; }
-    IstreamBuf(const IstreamBuf& rhs) {
+    BufReader() { cur = buf, eof = buf; }
+    BufReader(const BufReader& rhs) {
         std::memcpy(buf, rhs.buf, rhs.eof - rhs.cur);
         cur = buf + (rhs.cur - rhs.buf);
         eof = buf + (rhs.cur - rhs.eof);
     }
-    IstreamBuf& operator=(const IstreamBuf& rhs) {
+    BufReader& operator=(const BufReader& rhs) {
         std::memcpy(buf, rhs.buf, rhs.eof - rhs.cur);
         cur = buf + (rhs.cur - rhs.buf);
         eof = buf + (rhs.cur - rhs.eof);
     }
-    void swap(IstreamBuf& rhs) {
-        IstreamBuf tmp = rhs;
-        rhs = *this;
-        *this = tmp;
+    off_type in_avail() { return eof - cur; }
+    void uflow() {
+        off_type rem = eof - cur;
+        std::memmove(buf, cur, rem);
+        *(eof = buf + rem + read(0, buf + rem, Bufsize - rem)) = '\0';
+        cur = buf;
     }
-    friend void swap(IstreamBuf& lhs, IstreamBuf& rhs) { lhs.swap(rhs); }
+    char_type* eback() { return buf; }
+    char_type* gptr() { return cur; }
+    char_type* egptr() { return eof; }
+    void gbump(off_type n) { cur += n; }
 };
 
 

@@ -13,12 +13,12 @@ namespace gsh {
 constexpr itype::u32 IntSqrt(const itype::u32 x) {
     if (x == 0) return 0;
     itype::u32 tmp = static_cast<itype::u32>(std::sqrt(static_cast<ftype::f32>(x))) - 1;
-    return tmp * (tmp + 2) < x ? tmp + 1 : tmp;
+    return tmp + (tmp * (tmp + 2) < x);
 }
 constexpr itype::u64 IntSqrt(const itype::u64 x) {
     if (x == 0) return 0;
     itype::u64 tmp = static_cast<itype::u64>(std::sqrt(static_cast<ftype::f64>(x))) - 1;
-    return tmp * (tmp + 2) < x ? tmp + 1 : tmp;
+    return tmp + (tmp * (tmp + 2) < x);
 }
 
 // @brief Find the greatest common divisor as in std::gcd. (https://lpha-z.hatenablog.com/entry/2020/05/24/231500)

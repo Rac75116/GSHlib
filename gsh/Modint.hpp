@@ -156,10 +156,10 @@ namespace internal {
             value_type res = pow((mod() - 1) >> 1).val();
             return (res <= 1 ? static_cast<int>(res) : -1);
         }
-        constexpr int jacobi() const noexcept {
+        constexpr int jacobi(bool skip_calc_gcd = false) const noexcept {
             value_type a = val(), n = mod();
             if (a == 1) return 1;
-            if (calc_gcd(a, n) != 1) return 0;
+            if (!skip_calc_gcd && calc_gcd(a, n) != 1) return 0;
             int res = 1;
             while (a != 0) {
                 while (!(a & 1) && a != 0) {
@@ -172,8 +172,7 @@ namespace internal {
                 a = tmp;
                 a %= n;
             }
-            if (n != 1) return 0;
-            return res;
+            return n == 1 ? res : 0;
         }
         constexpr std::optional<modint_type> sqrt() const noexcept {
             const value_type vl = val(), md = mod();

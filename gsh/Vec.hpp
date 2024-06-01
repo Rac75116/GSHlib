@@ -46,6 +46,7 @@ namespace internal {
             len = n, cap = n;
             if constexpr (!std::is_trivially_constructible_v<value_type>)
                 for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
+            else std::memset(ptr, 0, sizeof(value_type) * n);
         }
         constexpr explicit Vec_impl(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
             if (n == 0) [[unlikely]]

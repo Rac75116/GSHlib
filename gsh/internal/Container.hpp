@@ -56,7 +56,7 @@ namespace internal {
                 return Base::count(x);
             } else {
                 itype::u32 res = 0;
-                for (const auto& el : *this) res += el == x;
+                for (const auto& el : *this) res += (el == x);
                 return res;
             }
         }

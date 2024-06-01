@@ -15,12 +15,6 @@ using namespace gsh::itype;
 using namespace gsh::ftype;
 
 int main() {
-    gsh::Rand32 engine;
-    gsh::ClockTimer t;
-    u64 cnt = 0;
-    for (u32 i = 0; i != 100000000; ++i) {
-        cnt += gsh::isSquare(engine());
-    }
-    std::cout << cnt << std::endl;
-    t.print();
+    using mint = gsh::StaticModint32<43>;
+    std::cout << mint(4).sqrt().value().val() << std::endl;
 }

@@ -44,7 +44,7 @@ namespace internal {
                 return;
             ptr = traits::allocate(alloc, n);
             len = n, cap = n;
-            if constexpr (!std::is_trivially_constructible_v<value_type>)
+            if constexpr (!std::is_trivially_default_constructible_v<value_type>)
                 for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
             else std::memset(ptr, 0, sizeof(value_type) * n);
         }
@@ -164,10 +164,12 @@ namespace internal {
                 ptr = new_ptr;
                 if constexpr (!std::is_trivially_default_constructible_v<value_type>)
                     for (size_type i = len; i != sz; ++i) *(ptr + i) = value_type{};
+                else std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
                 len = sz, cap = sz;
             } else if (len < sz) {
                 if constexpr (!std::is_trivially_default_constructible_v<value_type>)
                     for (size_type i = len; i != sz; ++i) *(ptr + i) = value_type{};
+                else std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
                 len = sz;
             } else {
                 if constexpr (!std::is_trivially_destructible_v<value_type>)
@@ -189,12 +191,10 @@ namespace internal {
                     traits::deallocate(alloc, ptr, cap);
                 }
                 ptr = new_ptr;
-                if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-                    for (size_type i = len; i != sz; ++i) *(ptr + i) = c;
+                for (size_type i = len; i != sz; ++i) *(ptr + i) = c;
                 len = sz, cap = sz;
             } else if (len < sz) {
-                if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-                    for (size_type i = len; i != sz; ++i) *(ptr + i) = c;
+                for (size_type i = len; i != sz; ++i) *(ptr + i) = c;
                 len = sz;
             } else {
                 if constexpr (!std::is_trivially_destructible_v<value_type>)

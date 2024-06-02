@@ -194,7 +194,8 @@ namespace internal {
             } else {
                 const itype::u32 S = std::countr_zero(md - 1);
                 const value_type Q = (md - 1) >> S;
-                if (S < 20) {
+                const itype::u32 W = std::bit_width(md);
+                if (S * S <= 12 * W) {
                     const modint_type tmp = pow(Q / 2);
                     modint_type R = tmp * (*this), t = R * tmp;
                     if (t.val() == 1) return R;

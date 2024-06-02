@@ -3,6 +3,7 @@
 #include <bit>               // std::countr_zero, std::bit_width
 #include <initializer_list>  // std::initializer_list
 #include <cmath>             // std::sqrt
+#include <algorithm>         // std::upper_bound
 #include <gsh/TypeDef.hpp>   // gsh::itype
 #include <gsh/Modint.hpp>    // gsh::DynamicModint
 #include <gsh/Vec.hpp>       // gsh::Vec
@@ -41,6 +42,25 @@ constexpr bool isSquare(const itype::u64 x) {
     if (!std::is_constant_evaluated() && !internal::isSquare_mod9360(x % 9360)) return false;
     const itype::u64 tmp = IntSqrt(x);
     return tmp * tmp == x;
+}
+
+template<class T> constexpr T IntPow(const T x, itype::u64 e) {
+    T res = 1, pow = x;
+    while (e != 0) {
+        if (e & 1) res *= pow;
+        pow *= pow;
+        e >>= 1;
+    }
+    return res;
+}
+template<class T> constexpr T PowMod(const T x, itype::u64 e, const T mod) {
+    T res = 1, pow = x % mod;
+    while (e != 0) {
+        if (e & 1) res = (res * pow) % mod;
+        pow = (pow * pow) % mod;
+        e >>= 1;
+    }
+    return res;
 }
 
 // @brief Find the greatest common divisor as in std::gcd. (https://lpha-z.hatenablog.com/entry/2020/05/24/231500)
@@ -155,14 +175,38 @@ namespace internal {
         }
     }
 
+    constexpr bool isPrimeConstexpr(const itype::u64 x) {
+        if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0) return false;
+        const itype::i32 s = std::countr_zero(x - 1);
+        const itype::u64 d = (x - 1) >> s;
+        auto test = [&](itype::u64 a) -> bool {
+            itype::u64 cur = PowMod<itype::u128>(a, d, x);
+            if (cur <= 1) return true;
+            itype::i32 i = s;
+            while (--i && cur != x - 1) cur = itype::u128(cur) * cur % x;
+            return cur == x - 1;
+        };
+        if (x < 585226005592931977ull) {
+            if (x < 7999252175582851ull) {
+                if (x < 350269456337ull) return test(4230279247111683200ull) && test(14694767155120705706ull) && test(16641139526367750375ull);
+                else if (x < 55245642489451ull) return test(2ull) && test(141889084524735ull) && test(1199124725622454117ull) && test(11096072698276303650ull);
+                else return test(2ull) && test(4130806001517ull) && test(149795463772692060ull) && test(186635894390467037ull) && test(3967304179347715805ull);
+            } else return test(2ull) && test(123635709730000ull) && test(9233062284813009ull) && test(43835965440333360ull) && test(761179012939631437ull) && test(1263739024124850375ull);
+        } else return test(2ull) && test(325ull) && test(9375ull) && test(28178ull) && test(450775ull) && test(9780504ull) && test(1795265022ull);
+    }
+
 }  // namespace internal
 
 // @brief Prime number determination
-template<bool Prob = false> bool isPrime(const itype::u64 x) {
-    if (x <= 2147483647) {
-        if (x <= 65535) return internal::isPrime16(x);
-        else return internal::isPrime32(x);
-    } else return internal::isPrime64<Prob>(x);
+template<bool Prob = false> constexpr bool isPrime(const itype::u64 x) {
+    if (std::is_constant_evaluated() || x >= 9223372036854775808u) {
+        return internal::isPrimeConstexpr(x);
+    } else {
+        if (x < 2147483648u) {
+            if (x < 65536u) return internal::isPrime16(x);
+            else return internal::isPrime32(x);
+        } else return internal::isPrime64<Prob>(x);
+    }
 }
 
 constexpr Vec<itype::u32> EnumeratePrimes(const itype::u32 max_n) {

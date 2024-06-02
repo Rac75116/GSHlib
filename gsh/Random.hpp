@@ -1,7 +1,7 @@
 #pragma once
 #include <bit>              // std::rotr, std::bit_cast
 #include <ctime>            // std::time, std::clock
-#include <gsh/TypeDef.hpp>  // itype, ftype
+#include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ftype
 
 namespace gsh {
 

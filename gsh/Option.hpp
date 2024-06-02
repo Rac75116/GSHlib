@@ -63,7 +63,7 @@ public:
         requires requires(U&& rhs) { static_cast<value_type>(std::forward<U>(rhs)); }
     explicit(is_explicit<U>) constexpr Option(U&& rhs) {
         has = true;
-        construct(static_cast<value_type>(std::forward<U>(rhs)));
+        construct(std::forward<U>(rhs));
     }
     template<class U> explicit(is_explicit<U>) constexpr Option(const Option<U>& rhs) {
         if (rhs.has) {

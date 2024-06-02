@@ -9,12 +9,11 @@
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include <typeinfo>
+#include <gsh/Macro.hpp>
 //#include <gsh/InOut.hpp>
 
 using namespace gsh::itype;
 using namespace gsh::ftype;
 
-int main() {
-    using mint = gsh::StaticModint32<43>;
-    std::cout << mint(4).sqrt().value().val() << std::endl;
-}
+int main() {}

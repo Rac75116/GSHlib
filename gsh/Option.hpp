@@ -3,6 +3,7 @@
 #include <utility>            // std::move, std::forward
 #include <initializer_list>   // std::initializer_list
 #include <compare>            // std::three_way_comparable, std::compare_three_way_result
+#include <tuple>              // std::tuple_size, std::tuple_element
 #include <gsh/Util.hpp>       // gsh::InPlace
 #include <gsh/Exception.hpp>  // gsh::Exception
 
@@ -15,11 +16,9 @@ template<class T> class Option {
 public:
     using value_type = T;
 private:
-    bool has = false;
     alignas(value_type) Byte buffer[sizeof(value_type)];
-    template<class... Args> constexpr void construct(Args&&... args) {
-        if constexpr (!std::is_trivially_constructible_v<T, Args...>) new (buffer) value_type(std::forward<Args>(args)...);
-    }
+    bool has = false;
+    template<class... Args> constexpr void construct(Args&&... args) { new (buffer) value_type(std::forward<Args>(args)...); }
     constexpr void destroy() {
         if constexpr (!std::is_trivially_destructible_v<value_type>) delete reinterpret_cast<value_type*>(buffer);
     }
@@ -60,7 +59,9 @@ public:
         has = true;
         construct(il, std::forward<Args>(args)...);
     }
-    template<class U = T> explicit(is_explicit<U>) constexpr Option(U&& rhs) {
+    template<class U = T>
+        requires requires(U&& rhs) { static_cast<value_type>(std::forward<U>(rhs)); }
+    explicit(is_explicit<U>) constexpr Option(U&& rhs) {
         has = true;
         construct(static_cast<value_type>(std::forward<U>(rhs)));
     }
@@ -147,12 +148,6 @@ public:
 };
 template<class T> Option(T) -> Option<T>;
 
-template<class T> Option<T> Some(const T& x) {
-    return Option<T>(x);
-}
-template<class T> Option<T> Some(T&& x) {
-    return Option<T>(std::move(x));
-}
 template<class T, class U> constexpr bool operator==(const Option<T>& x, const Option<U>& y) {
     if (x.has_value() && y.has_value()) return *x == *y;
     else return x.has_value() ^ y.has_value();
@@ -176,4 +171,25 @@ template<class T, std::three_way_comparable_with<T> U> constexpr std::compare_th
     return x.has_value() ? *x <=> y : std::strong_ordering::less;
 }
 
+}  // namespace gsh
+
+namespace std {
+template<class T> struct tuple_size<gsh::Option<T>> : integral_constant<size_t, 2> {};
+template<class T> struct tuple_element<0, gsh::Option<T>> {
+    using type = T;
+};
+template<class T> struct tuple_element<1, gsh::Option<T>> {
+    using type = bool;
+};
+}  // namespace std
+
+namespace gsh {
+template<std::size_t N, class T> auto get(const Option<T>& x) {
+    if constexpr (N == 0) return *x;
+    else return x.has_value();
+}
+template<std::size_t N, class T> auto get(Option<T>&& x) {
+    if constexpr (N == 0) return *std::move(x);
+    else return x.has_value();
+}
 }  // namespace gsh

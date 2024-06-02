@@ -394,5 +394,19 @@ namespace internal {
 }  // namespace internal
 
 template<class T, class Allocator = std::allocator<T>> using Vec = internal::Container<internal::Vec_impl<T, Allocator>>;
+template<class Alloc = std::allocator<itype::i8>> using Vi8 = Vec<itype::i8, Alloc>;
+template<class Alloc = std::allocator<itype::u8>> using Vu8 = Vec<itype::u8, Alloc>;
+template<class Alloc = std::allocator<itype::i16>> using Vi16 = Vec<itype::i16, Alloc>;
+template<class Alloc = std::allocator<itype::u16>> using Vu16 = Vec<itype::u16, Alloc>;
+template<class Alloc = std::allocator<itype::i32>> using Vi32 = Vec<itype::i32, Alloc>;
+template<class Alloc = std::allocator<itype::u32>> using Vu32 = Vec<itype::u32, Alloc>;
+template<class Alloc = std::allocator<itype::i64>> using Vi64 = Vec<itype::i64, Alloc>;
+template<class Alloc = std::allocator<itype::u64>> using Vu64 = Vec<itype::u64, Alloc>;
+template<class Alloc = std::allocator<itype::i128>> using Vi128 = Vec<itype::i128, Alloc>;
+template<class Alloc = std::allocator<itype::u128>> using Vu128 = Vec<itype::u128, Alloc>;
+template<class Alloc = std::allocator<ftype::f32>> using Vf32 = Vec<ftype::f32, Alloc>;
+template<class Alloc = std::allocator<ftype::f64>> using Vf64 = Vec<ftype::f64, Alloc>;
+template<class Alloc = std::allocator<ftype::flong>> using Vflong = Vec<ftype::flong, Alloc>;
+template<class Alloc = std::allocator<Byte>> using Bytes = Vec<Byte, Alloc>;
 
 }  // namespace gsh

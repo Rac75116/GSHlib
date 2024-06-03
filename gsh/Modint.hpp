@@ -28,25 +28,25 @@ namespace internal {
         return x << l;
     }
 
-    template<class T> class ModintTraits : public T {
+    template<class T> class ModintImpl : public T {
         using base_type = T;
     public:
         using value_type = std::decay_t<decltype(base_type::mod())>;
-        using modint_type = ModintTraits;
+        using modint_type = ModintImpl;
         constexpr static bool is_staticmod = !requires { base_type::set_mod(0); };
-        constexpr ModintTraits() noexcept : T() {}
-        template<class U> constexpr ModintTraits(U x) noexcept { operator=(x); }
+        constexpr ModintImpl() noexcept : T() {}
+        template<class U> constexpr ModintImpl(U x) noexcept { operator=(x); }
         constexpr explicit operator value_type() const noexcept { return val(); }
         constexpr static void set_mod(value_type x) {
-            static_assert(!is_staticmod, "ModintTraits::set_mod / Mod must be dynamic.");
-            if (x <= 1) throw Exception("ModintTraits::set_mod / Mod must be at least 2.");
+            static_assert(!is_staticmod, "gsh::internal::ModintImpl::set_mod / Mod must be dynamic.");
+            if (x <= 1) throw Exception("gsh::internal::ModintImpl::set_mod / Mod must be at least 2.");
             if (x == mod()) return;
             base_type::set_mod(x);
         }
         constexpr value_type val() const noexcept { return base_type::val(); }
         constexpr static value_type mod() noexcept { return base_type::mod(); }
         template<class U> constexpr modint_type& operator=(U x) noexcept {
-            static_assert(std::is_integral_v<U>, "ModintTraits::operator= / Only integer types can be assigned.");
+            static_assert(std::is_integral_v<U>, "gsh::internal::ModintImpl::operator= / Only integer types can be assigned.");
             if constexpr (std::is_unsigned_v<U>) {
                 if constexpr (std::is_same_v<U, unsigned long long> || std::is_same_v<U, unsigned long>) base_type::assign(static_cast<itype::u64>(x));
                 else base_type::assign(static_cast<itype::u32>(x));
@@ -74,9 +74,9 @@ namespace internal {
             return ist;
         }
         template<class Ostream> friend Ostream& operator<<(Ostream& ost, modint_type x) { return ost << x.val(); }
-        constexpr modint_type inv() const {
+        constexpr Option<modint_type> inv() const noexcept {
             value_type a = 1, b = 0, x = val(), y = mod();
-            if (x == 0) throw Exception("ModintTraits::inv / Zero division is not possible.");
+            if (x == 0) return Null;
             while (true) {
                 if (x <= 1) {
                     if (x == 0) [[unlikely]]
@@ -93,7 +93,7 @@ namespace internal {
                 a += b * (x / y);
                 x %= y;
             }
-            throw Exception("ModintTraits::inv / Cannot calculate inverse element.");
+            return Null;
         }
         constexpr modint_type pow(itype::u64 e) const noexcept {
             modint_type res = modint_type::raw(1), pow = *this;
@@ -142,7 +142,9 @@ namespace internal {
             return *this;
         }
         constexpr modint_type& operator/=(modint_type x) {
-            operator*=(x.inv());
+            auto iv = x.inv();
+            if (!iv) throw gsh::Exception("gsh::internal::ModintImpl::operator/= / Cannot calculate inverse.");
+            operator*=(*iv);
             return *this;
         }
         friend constexpr modint_type operator+(modint_type l, modint_type r) noexcept { return modint_type(l) += r; }
@@ -411,11 +413,11 @@ namespace internal {
 
 }  // namespace internal
 
-template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintTraits<internal::StaticModint32_impl<mod_>>;
-template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintTraits<internal::StaticModint64_impl<mod_>>;
+template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintImpl<internal::StaticModint32_impl<mod_>>;
+template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintImpl<internal::StaticModint64_impl<mod_>>;
 template<itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ < (1ull << 32)), StaticModint32<mod_>, StaticModint64<mod_>>;
-template<int id = 0> using DynamicModint32 = internal::ModintTraits<internal::DynamicModint32_impl<id>>;
-template<int id = 0> using DynamicModint64 = internal::ModintTraits<internal::DynamicModint64_impl<id>>;
+template<int id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModint32_impl<id>>;
+template<int id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModint64_impl<id>>;
 template<int id = 0> using DynamicModint = DynamicModint64<id>;
 
 }  // namespace gsh

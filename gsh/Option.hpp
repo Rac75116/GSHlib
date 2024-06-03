@@ -185,11 +185,15 @@ template<class T> struct tuple_element<1, gsh::Option<T>> {
 
 namespace gsh {
 template<std::size_t N, class T> auto get(const Option<T>& x) {
-    if constexpr (N == 0) return *x;
-    else return x.has_value();
+    if constexpr (N == 0) {
+        if (x.has_value()) return *x;
+        else return T();
+    } else return x.has_value();
 }
 template<std::size_t N, class T> auto get(Option<T>&& x) {
-    if constexpr (N == 0) return *std::move(x);
-    else return x.has_value();
+    if constexpr (N == 0) {
+        if (x.has_value()) return std::move(*x);
+        else return T();
+    } else return x.has_value();
 }
 }  // namespace gsh

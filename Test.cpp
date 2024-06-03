@@ -10,6 +10,7 @@
 #include <gsh/Util.hpp>
 #include <iostream>
 #include <cassert>
+#include <set>
 
 using namespace gsh::itype;
 using namespace gsh::ftype;
@@ -18,7 +19,11 @@ int main() {
     try {
         gsh::ClockTimer t;
         [[maybe_unused]] gsh::Rand64 engine;
-        [[maybe_unused]] auto s = gsh::Step(20);
+        u64 res = 0;
+        REP(i, 10, 12) {
+            res += i;
+        }
+        std::cout << res << std::endl;
         t.print();
     } catch (gsh::Exception& e) {
         std::cerr << e.what() << std::endl;

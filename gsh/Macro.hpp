@@ -12,6 +12,7 @@
 #define ALLMID(V, n) std::begin(V), std::next(std::begin(V), n), std::end(V)
 #define VALUE(...)   (([&]() __VA_ARGS__)())
 // clang-format off
+
 #define RET_WITH(...) { __VA_ARGS__; return; } []{}
 #define RETV_WITH(val, ...) { __VA_ARGS__; return val; } []{}
 #define BRK_WITH(...) { __VA_ARGS__; break; } []{}
@@ -20,6 +21,7 @@
 #define ARGS(...) __VA_ARGS__
 #define EXPR(args, ...) [&](auto&&... GSH_EXPR_ARGS){ auto [args] = std::forward_as_tuple(GSH_EXPR_ARGS...); return (__VA_ARGS__); }
 // clang-format on
+
 #define UNWRAP(var_name, ...) if (auto [var_name, GSH_UNWRAP_FLAG_##var_name] = (__VA_ARGS__); GSH_UNWRAP_FLAG_##var_name)
 #define REP(var_name, ...)    for ([[maybe_unused]] auto var_name : gsh::Step(__VA_ARGS__))
 #define RREP(var_name, ...)   for (auto var_name : gsh::Step(__VA_ARGS__) | std::ranges::reverse)

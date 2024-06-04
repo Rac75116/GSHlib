@@ -1,6 +1,7 @@
 #pragma GCC optimize("Ofast")
 #pragma GCC optimize("unroll-loops")
 //#include <cmath>
+#include <gsh/Algorithm.hpp>
 #include <gsh/TypeDef.hpp>
 #include <gsh/Vec.hpp>
 #include <gsh/Random.hpp>

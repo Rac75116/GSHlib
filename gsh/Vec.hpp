@@ -15,17 +15,17 @@ namespace gsh {
 
 namespace internal {
 
-    template<class T, class Allocator = std::allocator<T>> class Vec_impl {
+    template<class T, class Allocator> class Vec_impl {
         using traits = std::allocator_traits<Allocator>;
-        static_assert(std::is_same_v<T, typename traits::value_type>, "Vec_impl / Allocator::value_type must be same as Vec_impl::value_type.");
-        static_assert(!std::is_const_v<typename traits::value_type>, "Vec_impl / This class forbids const elements.");
+        static_assert(std::is_same_v<T, typename traits::value_type>, "gsh::Vec / Allocator::value_type must be same as gsh::Vec::value_type.");
+        static_assert(!std::is_const_v<typename traits::value_type>, "gsh::Vec / This class forbids const elements.");
     public:
         using reference = T&;
         using const_reference = const T&;
         using iterator = T*;
         using const_iterator = const T*;
-        using size_type = gsh::itype::usize;
-        using difference_type = gsh::itype::isize;
+        using size_type = itype::u32;
+        using difference_type = itype::i32;
         using value_type = T;
         using allocator_type = Allocator;
         using pointer = typename traits::pointer;
@@ -90,7 +90,7 @@ namespace internal {
                 } else {
                     for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, std::move(*(x.ptr + i)));
                 }
-                traits::deallocate(x.alloc, x.ptr, x.len);
+                traits::deallocate(x.alloc, x.ptr, x.cap);
                 x.ptr = nullptr, x.len = 0, x.cap = 0;
             }
         }
@@ -112,12 +112,10 @@ namespace internal {
                 ptr = traits::allocate(alloc, cap);
             }
             len = x.len;
-            if (len != 0) {
-                if (std::is_trivially_copy_assignable_v<value_type> && !std::is_constant_evaluated()) {
-                    std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
-                } else {
-                    for (size_type i = 0; i != len; ++i) *(ptr + i) = *(x.ptr + i);
-                }
+            if (std::is_trivially_copy_assignable_v<value_type> && !std::is_constant_evaluated()) {
+                std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
+            } else {
+                for (size_type i = 0; i != len; ++i) *(ptr + i) = *(x.ptr + i);
             }
         }
         constexpr Vec_impl& operator=(Vec_impl&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
@@ -242,25 +240,25 @@ namespace internal {
         constexpr reference operator[](const size_type n) {
 #ifndef NDEBUG
             if (n >= len) [[unlikely]]
-                throw gsh::Exception("Vec_impl::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
+                throw gsh::Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
             return *(ptr + n);
         }
         constexpr const_reference operator[](const size_type n) const {
 #ifndef NDEBUG
             if (n >= len) [[unlikely]]
-                throw gsh::Exception("Vec_impl::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
+                throw gsh::Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
             return *(ptr + n);
         }
         constexpr reference at(const size_type n) {
             if (n >= len) [[unlikely]]
-                throw gsh::Exception("Vec_impl::at / The index is out of range. ( n=", n, ", size=", len, " )");
+                throw gsh::Exception("gsh::Vec::at / The index is out of range. ( n=", n, ", size=", len, " )");
             return *(ptr + n);
         }
         constexpr const_reference at(const size_type n) const {
             if (n >= len) [[unlikely]]
-                throw gsh::Exception("Vec_impl::at / The index is out of range. ( n=", n, ", size=", len, " )");
+                throw gsh::Exception("gsh::Vec::at / The index is out of range. ( n=", n, ", size=", len, " )");
             return *(ptr + n);
         }
         constexpr pointer data() noexcept { return ptr; }
@@ -334,7 +332,7 @@ namespace internal {
         constexpr void pop_back() {
 #ifndef NDEBUG
             if (len == 0) [[unlikely]]
-                throw gsh::Exception("Vec_impl::pop_back / The container is empty.");
+                throw gsh::Exception("gsh::Vec::pop_back / The container is empty.");
 #endif
             if constexpr (std::is_trivially_destructible_v<value_type>) --len;
             else traits::destroy(alloc, ptr + (--len));
@@ -410,5 +408,123 @@ template<class Alloc = std::allocator<ftype::f64>> using Vf64 = Vec<ftype::f64, 
 template<class Alloc = std::allocator<ftype::flong>> using Vflong = Vec<ftype::flong, Alloc>;
 template<class Alloc = std::allocator<Byte>> using Bytes = Vec<Byte, Alloc>;
 */
+
+namespace internal {
+    template<class T, class Allocator> class Arr_impl {
+        using traits = std::allocator_traits<Allocator>;
+        static_assert(std::is_same_v<T, typename traits::value_type>, "gsh::Arr / Allocator::value_type must be same as gsh::Arr::value_type.");
+        static_assert(!std::is_const_v<typename traits::value_type>, "gsh::Arr / This class forbids const elements.");
+    public:
+        using reference = T&;
+        using const_reference = const T&;
+        using iterator = T*;
+        using const_iterator = const T*;
+        using size_type = itype::u32;
+        using difference_type = itype::i32;
+        using value_type = T;
+        using allocator_type = Allocator;
+        using pointer = typename traits::pointer;
+        using const_pointer = typename traits::const_pointer;
+        using reverse_iterator = std::reverse_iterator<iterator>;
+        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    private:
+        [[no_unique_address]] allocator_type alloc;
+        pointer ptr = nullptr;
+        size_type len = 0;
+    public:
+        constexpr Arr_impl() noexcept(noexcept(Allocator())) : Arr_impl(Allocator()) {}
+        constexpr explicit Arr_impl(const allocator_type& a) noexcept : alloc(a) {}
+        constexpr explicit Arr_impl(size_type n, const Allocator& a = Allocator()) : alloc(a) {
+            if (n == 0) [[unlikely]]
+                return;
+            ptr = traits::allocate(alloc, n);
+            len = n;
+            if constexpr (!std::is_trivially_default_constructible_v<value_type>)
+                for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
+            else std::memset(ptr, 0, sizeof(value_type) * n);
+        }
+        constexpr explicit Arr_impl(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
+            if (n == 0) [[unlikely]]
+                return;
+            ptr = traits::allocate(alloc, n);
+            len = n;
+            for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
+        }
+        template<std::input_iterator InputIter> constexpr Arr_impl(const InputIter first, const InputIter last, const allocator_type& a = Allocator()) : alloc(a) {
+            const size_type n = std::distance(first, last);
+            if (n == 0) [[unlikely]]
+                return;
+            ptr = traits::allocate(alloc, n);
+            len = n;
+            size_type i = 0;
+            for (InputIter itr = first; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+        }
+        template<std::ranges::range U> constexpr Arr_impl(const U& x, const allocator_type& a = Allocator()) : Arr_impl(std::ranges::begin(x), std::ranges::end(x), a) {}
+        constexpr Arr_impl(const Vec_impl& x) : Arr_impl(x, traits::select_on_container_copy_construction(x.alloc)) {}
+        constexpr Arr_impl(Vec_impl&& x) noexcept : alloc(std::move(x.alloc)), ptr(x.ptr), len(x.len) { x.ptr = nullptr, x.len = 0; }
+        constexpr Arr_impl(const Vec_impl& x, const allocator_type& a) : alloc(a), ptr(x.len == 0 ? nullptr : traits::allocate(a, x.len)), len(x.len) {
+            if (len == 0) [[unlikely]]
+                return;
+            if constexpr (std::is_trivially_copy_constructible_v<value_type> && !std::is_constant_evaluated()) {
+                std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
+            } else {
+                for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
+            }
+        }
+        constexpr Arr_impl(Vec_impl&& x, const allocator_type& a) : alloc(a) {
+            if (traits::is_always_equal || x.get_allocator() == a) {
+                ptr = x.ptr, len = x.len;
+                x.ptr = nullptr, x.len = 0;
+            } else {
+                if (x.len == 0) [[unlikely]]
+                    return;
+                len = x.len;
+                ptr = traits::allocate(alloc, len);
+                if constexpr (std::is_trivially_move_constructible_v<value_type> && !std::is_constant_evaluated()) {
+                    std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
+                } else {
+                    for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, std::move(*(x.ptr + i)));
+                }
+                traits::deallocate(x.alloc, x.ptr, x.len);
+                x.ptr = nullptr, x.len = 0;
+            }
+        }
+        constexpr Arr_impl(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Arr_impl(il.begin(), il.end(), a) {}
+        constexpr ~Arr_impl() {
+            if (len != 0) {
+                if constexpr (!std::is_trivially_destructible_v<value_type>)
+                    for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+                traits::deallocate(alloc, ptr, len);
+            }
+        }
+        constexpr Arr_impl& operator=(const Arr_impl& x) {
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            if (traits::propagate_on_container_copy_assignment || len != x.len) {
+                if (len != 0) traits::deallocate(alloc, ptr, len);
+                if constexpr (traits::propagate_on_container_copy_assignment) alloc = x.alloc;
+                ptr = traits::allocate(alloc, x.len);
+            }
+            len = x.len;
+            if (std::is_trivially_copy_assignable_v<value_type> && !std::is_constant_evaluated()) {
+                std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
+            } else {
+                for (size_type i = 0; i != len; ++i) *(ptr + i) = *(x.ptr + i);
+            }
+        }
+        constexpr Arr_impl& operator=(Arr_impl&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
+            if (len != 0) {
+                if constexpr (!std::is_trivially_destructible_v<value_type>)
+                    for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+                traits::deallocate(alloc, ptr, len);
+            }
+            if constexpr (traits::propagate_on_container_move_assignment) alloc = std::move(x.alloc);
+            ptr = x.ptr, len = x.len;
+            x.ptr = nullptr, x.len = 0;
+        }
+    };
+}  // namespace internal
+
+//template<class T, class Allocator = std::allocator<T>> using Arr = internal::Container<internal::Arr_impl<T, Allocator>>;
 
 }  // namespace gsh

@@ -1,8 +1,8 @@
 #pragma GCC optimize("Ofast")
 #pragma GCC optimize("unroll-loops")
 //#include <cmath>
-#include <gsh/Algorithm.hpp>
 #include <gsh/TypeDef.hpp>
+#include <gsh/Algorithm.hpp>
 #include <gsh/Vec.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
@@ -20,11 +20,8 @@ int main() {
     try {
         gsh::ClockTimer t;
         [[maybe_unused]] gsh::Rand64 engine;
-        u64 res = 0;
-        REP(i, 10, 12) {
-            res += i;
-        }
-        std::cout << res << std::endl;
+        gsh::Vec<u32> v{ 5, 5, 5 };
+        std::cout << v.count(5) << std::endl;
         t.print();
     } catch (gsh::Exception& e) {
         std::cerr << e.what() << std::endl;

@@ -150,6 +150,10 @@ public:
     }
     constexpr void resize(const size_type sz) {
         if (len == sz) return;
+        if (sz == 0) {
+            clear();
+            return;
+        }
         const pointer new_ptr = traits::allocate(alloc, sz);
         const size_type mn = len < sz ? len : sz;
         if (len != 0) {
@@ -170,6 +174,10 @@ public:
     }
     constexpr void resize(const size_type sz, const value_type& c) {
         if (len == sz) return;
+        if (sz == 0) {
+            clear();
+            return;
+        }
         const pointer new_ptr = traits::allocate(alloc, sz);
         const size_type mn = len < sz ? len : sz;
         if (len != 0) {
@@ -217,7 +225,65 @@ public:
     constexpr const_reference front() const { return *ptr; }
     constexpr reference back() { return *(ptr + len - 1); }
     constexpr const_reference back() const { return *(ptr + len - 1); }
-    //template<class InputIter> constexpr void assign(const InputIter first, const InputIter last) {}
+    template<std::input_iterator InputIter> constexpr void assign(const InputIter first, const InputIter last) {
+        const size_type n = std::distance(first, last);
+        if (n == 0) {
+            clear();
+        } else if (len == n) {
+            InputIter itr = first;
+            for (size_type i = 0; i != len; ++itr, ++i) *(ptr + i) = *itr;
+        } else {
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            traits::deallocate(alloc, ptr, len);
+            ptr = traits::allocate(alloc, n);
+            len = n;
+            InputIter itr = first;
+            for (size_type i = 0; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+        }
+    }
+    constexpr void assign(const size_type n, const value_type& t) {
+        if (n == 0) {
+            clear();
+        } else if (len == n) {
+            for (size_type i = 0; i != len; ++i) *(ptr + i) = t;
+        } else if (n != 0) {
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            traits::deallocate(alloc, ptr, len);
+            ptr = traits::allocate(alloc, n);
+            len = n;
+            for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, t);
+        }
+    }
+    constexpr void assign(std::initializer_list<value_type> il) { assign(il.begin(), il.end()); }
+    constexpr void swap(Arr& x) noexcept(traits::propagate_on_container_swap::value || traits::is_always_equal::value) {
+        using std::swap;
+        swap(ptr, x.ptr);
+        swap(len, x.len);
+        if constexpr (traits::propagate_on_container_swap::value) swap(alloc, x.alloc);
+    }
+    constexpr void clear() {
+        if (len != 0) {
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            traits::deallocate(alloc, ptr, len);
+            ptr = nullptr, len = 0;
+        }
+    }
+    constexpr allocator_type get_allocator() const noexcept { return alloc; }
+    friend constexpr bool operator==(const Arr& x, const Arr& y) {
+        if (x.len != y.len) return false;
+        bool res = true;
+        for (size_type i = 0; i != x.len;) {
+            const bool f = *(x.ptr + i) == *(y.ptr + i);
+            res &= f;
+            i = f ? i + 1 : x.len;
+        }
+        return res;
+    }
+    friend constexpr auto operator<=>(const Arr& x, const Arr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
+    friend constexpr void swap(Arr& x, Arr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
 
-}
+}  // namespace gsh

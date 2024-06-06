@@ -190,10 +190,10 @@ public:
                 traits::deallocate(alloc, ptr, cap);
             }
             ptr = new_ptr;
-            for (size_type i = len; i != sz; ++i) *(ptr + i) = c;
+            for (size_type i = len; i != sz; ++i) traits::construct(alloc, *(ptr + i), c);
             len = sz, cap = sz;
         } else if (len < sz) {
-            for (size_type i = len; i != sz; ++i) *(ptr + i) = c;
+            for (size_type i = len; i != sz; ++i) traits::construct(alloc, *(ptr + i), c);
             len = sz;
         } else {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
@@ -268,33 +268,47 @@ public:
     constexpr const_reference front() const { return *ptr; }
     constexpr reference back() { return *(ptr + len - 1); }
     constexpr const_reference back() const { return *(ptr + len - 1); }
-    template<class InputIter> constexpr void assign(const InputIter first, const InputIter last) {
-        if constexpr (!std::is_trivially_destructible_v<value_type>)
-            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+    template<std::input_iterator InputIter> constexpr void assign(const InputIter first, const InputIter last) {
         const size_type n = std::distance(first, last);
         if (n > cap) {
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
             ptr = traits::allocate(alloc, n);
             cap = n;
+            InputIter itr = first;
+            for (size_type i = 0; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+        } else if (n > len) {
+            size_type i = 0;
+            InputIter itr = first;
+            for (; i != len; ++itr, ++i) *(ptr + i) = *itr;
+            for (; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+        } else {
+            for (size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
+            InputIter itr = first;
+            for (size_type i = 0; i != n; ++itr, ++i) *(ptr + i) = *itr;
         }
         len = n;
-        if (std::is_trivially_copy_constructible_v<value_type> && (std::is_same_v<InputIter, pointer> || std::is_same_v<InputIter, const_pointer>) && !std::is_constant_evaluated()) {
-            std::memcpy(ptr, first, sizeof(value_type) * n);
-        } else {
-            size_type i = 0;
-            for (InputIter itr = first; i != len; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
-        }
     }
     constexpr void assign(const size_type n, const value_type& t) {
-        if constexpr (!std::is_trivially_destructible_v<value_type>)
-            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        const size_type n = std::distance(first, last);
         if (n > cap) {
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
             ptr = traits::allocate(alloc, n);
             cap = n;
+            for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, t);
+        } else if (n > len) {
+            size_type i = 0;
+            for (; i != len; ++i) *(ptr + i) = t;
+            for (; i != n; ++i) traits::construct(alloc, ptr + i, t);
+        } else {
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                for (size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != n; ++i) *(ptr + i) = t;
         }
         len = n;
-        for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, t);
     }
     constexpr void assign(std::initializer_list<value_type> il) { assign(il.begin(), il.end()); }
 private:

@@ -21,7 +21,9 @@ int main() {
     try {
         gsh::ClockTimer t;
         [[maybe_unused]] gsh::Rand64 engine;
-        gsh::StaticArr v{ gsh::AutoArrInit, 2, 3, 4 };
+        gsh::StaticArr v{ gsh::ArrInit<u32>, 2, 5, 4, 3 };
+        auto [a, b, c, d] = v;
+        std::cout << a << ' ' << b << ' ' << c << ' ' << d << '\n';
         t.print();
     } catch (gsh::Exception& e) {
         std::cerr << e.what() << std::endl;

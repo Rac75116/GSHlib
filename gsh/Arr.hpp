@@ -3,9 +3,11 @@
 #include <iterator>           // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
 #include <algorithm>          // std::lexicographical_compare_three_way
 #include <initializer_list>   // std::initializer_list
-#include <type_traits>        // std::is_same_v, std::is_const_v, std::is_trivially_(***), std::is_constant_evaluated
+#include <type_traits>        // std::remove_cv_t, std::is_trivially_(***), std::is_constant_evaluated, std::common_type_t, std::conditional_t, std::is_void_v, std::integral_constant
+#include <concepts>           // std::same_as
 #include <cstring>            // std::memcpy, std::memset
 #include <utility>            // std::move, std::forward, std::swap
+#include <tuple>              // std::tuple_size, std::tuple_element
 #include <gsh/TypeDef.hpp>    // gsh::itype
 #include <gsh/Exception.hpp>  // gsh::Exception
 #include <gsh/Range.hpp>      // gsh::ViewInterface
@@ -13,11 +15,9 @@
 namespace gsh {
 
 template<class T, class Allocator = std::allocator<T>>
-    requires std::is_same_v<T, typename std::allocator_traits<Allocator>::value_type> && (!std::is_const_v<T>)
+    requires std::same_as<T, typename std::allocator_traits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
 class Arr : public ViewInterface<Arr<T, Allocator>, T> {
     using traits = std::allocator_traits<Allocator>;
-    static_assert(std::is_same_v<T, typename traits::value_type>, "gsh::Arr / Allocator::value_type must be same as gsh::Arr::value_type.");
-    static_assert(!std::is_const_v<typename traits::value_type>, "gsh::Arr / This class forbids const elements.");
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -63,9 +63,9 @@ public:
         size_type i = 0;
         for (InputIter itr = first; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
     }
-    constexpr Arr(const Vec& x) : Arr(x, traits::select_on_container_copy_construction(x.alloc)) {}
-    constexpr Arr(Vec&& x) noexcept : alloc(std::move(x.alloc)), ptr(x.ptr), len(x.len) { x.ptr = nullptr, x.len = 0; }
-    constexpr Arr(const Vec& x, const allocator_type& a) : alloc(a), ptr(x.len == 0 ? nullptr : traits::allocate(a, x.len)), len(x.len) {
+    constexpr Arr(const Arr& x) : Arr(x, traits::select_on_container_copy_construction(x.alloc)) {}
+    constexpr Arr(Arr&& x) noexcept : alloc(std::move(x.alloc)), ptr(x.ptr), len(x.len) { x.ptr = nullptr, x.len = 0; }
+    constexpr Arr(const Arr& x, const allocator_type& a) : alloc(a), ptr(x.len == 0 ? nullptr : traits::allocate(a, x.len)), len(x.len) {
         if (len == 0) [[unlikely]]
             return;
         if constexpr (std::is_trivially_copy_constructible_v<value_type> && !std::is_constant_evaluated()) {
@@ -74,7 +74,7 @@ public:
             for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
         }
     }
-    constexpr Arr(Vec&& x, const allocator_type& a) : alloc(a) {
+    constexpr Arr(Arr&& x, const allocator_type& a) : alloc(a) {
         if (traits::is_always_equal || x.get_allocator() == a) {
             ptr = x.ptr, len = x.len;
             x.ptr = nullptr, x.len = 0;
@@ -285,5 +285,53 @@ public:
     friend constexpr auto operator<=>(const Arr& x, const Arr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Arr& x, Arr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
+template<std::input_iterator InputIter, class Allocator = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Allocator = Allocator()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Allocator>;
 
+template<class T>
+    requires std::same_as<T, std::remove_cv_t<T>>
+class ArrInitTag {};
+template<class T> constexpr ArrInitTag<T> ArrInit;
+constexpr ArrInitTag<void> AutoArrInit;
+
+template<class T, itype::u32 N>
+    requires std::same_as<T, std::remove_cv_t<T>>
+class StaticArr {
+    T elems[N]{};
+public:
+    using reference = T&;
+    using const_reference = const T&;
+    using iterator = T*;
+    using const_iterator = const T*;
+    using size_type = itype::u32;
+    using difference_type = itype::i32;
+    using value_type = T;
+    using pointer = T*;
+    using const_pointer = const T*;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    constexpr StaticArr() noexcept(noexcept(value_type{})) = default;
+    //constexpr explicit StaticArr(const value_type& value) {}
+    template<class U, class... Args> constexpr StaticArr(ArrInitTag<U>, Args&&... args) : elems{ static_cast<std::conditional_t<std::is_void_v<U>, value_type, U>>(std::forward<Args>(args))... } { static_assert(N < sizeof...(Args), "gsh::StaticArr::StaticArr / The number of arguments is greater than the length of the array."); }
+};
+template<class U, class... Args> StaticArr(ArrInitTag<U>, Args...) -> StaticArr<std::conditional_t<std::is_void_v<U>, std::common_type_t<Args...>, U>, sizeof...(Args)>;
+
+}  // namespace gsh
+
+namespace std {
+template<class T, size_t N> class tuple_size<gsh::StaticArr<T, N>> : integral_constant<size_t, N> {};
+template<size_t M, class T, size_t N> class tuple_element<M, gsh::StaticArr<T, N>> {
+    using type = T;
+};
+}  // namespace std
+
+namespace gsh {
+template<size_t M, class T, size_t N> const T& get(const gsh::StaticArr<T, N>& a) {
+    return a[M];
+}
+template<size_t M, class T, size_t N> T& get(gsh::StaticArr<T, N>& a) {
+    return a[M];
+}
+template<size_t M, class T, size_t N> T&& get(gsh::StaticArr<T, N>&& a) {
+    return std::move(a[M]);
+}
 }  // namespace gsh

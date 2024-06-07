@@ -291,7 +291,6 @@ public:
         len = n;
     }
     constexpr void assign(const size_type n, const value_type& t) {
-        const size_type n = std::distance(first, last);
         if (n > cap) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
                 for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
@@ -402,6 +401,6 @@ public:
     friend constexpr auto operator<=>(const Vec& x, const Vec& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Vec& x, Vec& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<class InputIter, class Allocator = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Allocator = Allocator()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Allocator>;
+template<std::input_iterator InputIter, class Allocator = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Allocator = Allocator()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Allocator>;
 
 }  // namespace gsh

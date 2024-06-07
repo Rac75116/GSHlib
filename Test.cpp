@@ -4,6 +4,7 @@
 #include <gsh/TypeDef.hpp>
 #include <gsh/Algorithm.hpp>
 #include <gsh/Vec.hpp>
+#include <gsh/Arr.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
 #include <gsh/Numeric.hpp>
@@ -20,8 +21,7 @@ int main() {
     try {
         gsh::ClockTimer t;
         [[maybe_unused]] gsh::Rand64 engine;
-        gsh::Vec<u32> v{ 5, 5, 5 };
-        std::cout << v.count(5) << std::endl;
+        gsh::StaticArr v{ gsh::AutoArrInit, 2, 3, 4 };
         t.print();
     } catch (gsh::Exception& e) {
         std::cerr << e.what() << std::endl;

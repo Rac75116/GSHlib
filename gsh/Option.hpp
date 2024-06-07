@@ -1,5 +1,5 @@
 #pragma once
-#include <type_traits>        // std::is_trivially_*
+#include <type_traits>        // std::is_trivially_(***), std::integral_constant
 #include <utility>            // std::move, std::forward
 #include <initializer_list>   // std::initializer_list
 #include <compare>            // std::three_way_comparable, std::compare_three_way_result
@@ -185,6 +185,12 @@ template<class T> struct tuple_element<1, gsh::Option<T>> {
 
 namespace gsh {
 template<std::size_t N, class T> auto get(const Option<T>& x) {
+    if constexpr (N == 0) {
+        if (x.has_value()) return *x;
+        else return T();
+    } else return x.has_value();
+}
+template<std::size_t N, class T> auto get(Option<T>& x) {
     if constexpr (N == 0) {
         if (x.has_value()) return *x;
         else return T();

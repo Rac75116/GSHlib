@@ -24,6 +24,14 @@ int main() {
             using namespace gsh;
             using namespace itype;
             using namespace ftype;
+            Vec<int> r{ 2, 3, 4, 5 };
+            for (auto& x : r.slice(1, 3)) {
+                x = 100;
+            }
+            for (auto& x : r) {
+                cout << x << ' ';
+            }
+            cout << endl;
         }
         //t.print();
     } catch (gsh::Exception& e) {

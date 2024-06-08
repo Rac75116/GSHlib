@@ -2,9 +2,28 @@
 #include <type_traits>      // std::is_class_v, std::remove_cv_t
 #include <concepts>         // std::same_as, std::predicate
 #include <utility>          // std::move
+#include <iterator>         // std::next, std::iter_value_t
+#include <ranges>           // std::ranges::iterator_t, std::sentinel_for
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
+
+template<class D, class V>
+    requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
+class ViewInterface;
+
+template<class Iter> class SlicedRange : public ViewInterface<SlicedRange<Iter>, std::iter_value_t<Iter>> {
+public:
+    using iterator = Iter;
+    using value_type = std::iter_value_t<Iter>;
+    static_assert(std::sentinel_for<iterator, iterator>, "gsh::SlicedRange / The iterator cannot behave as sentinel.");
+private:
+    iterator first, last;
+public:
+    constexpr SlicedRange(iterator beg, iterator end) : first(beg), last(end) {}
+    constexpr iterator begin() const { return first; }
+    constexpr iterator end() const { return last; }
+};
 
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
@@ -12,14 +31,19 @@ class ViewInterface {
     constexpr D& get_ref() { return *reinterpret_cast<D*>(this); }
     constexpr const D& get_ref() const { return *reinterpret_cast<const D*>(this); }
     constexpr auto get_begin() { return get_ref().begin(); }
-    constexpr auto get_begin() const { return get_ref().begin(); }
+    constexpr auto get_begin() const { return get_ref().cbegin(); }
     constexpr auto get_end() { return get_ref().end(); }
-    constexpr auto get_end() const { return get_ref().end(); }
+    constexpr auto get_end() const { return get_ref().cend(); }
 public:
     using derived_type = D;
     using value_type = V;
     constexpr derived_type copy() const& { return get_ref(); }
     constexpr derived_type copy() && { return std::move(get_ref()); }
+    constexpr auto slice(itype::u32 a, itype::u32 b) {
+        auto beg = std::next(get_begin(), a);
+        auto end = std::next(beg, b - a);
+        return SlicedRange{ beg, end };
+    }
     template<std::predicate<value_type> Pred> constexpr bool all_of(Pred f) const {
         for (const auto& el : get_ref())
             if (!f(el)) return false;

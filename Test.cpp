@@ -21,7 +21,8 @@ int main() {
     try {
         gsh::ClockTimer t;
         [[maybe_unused]] gsh::Rand64 engine;
-        gsh::StaticArr v{ gsh::ArrInit<u32>, 2, 5, 4, 3 };
+        u32 arr[] = { 2, 3, 4, 5 };
+        const gsh::StaticArr v{ std::move(arr) };
         auto [a, b, c, d] = v;
         std::cout << a << ' ' << b << ' ' << c << ' ' << d << '\n';
         t.print();

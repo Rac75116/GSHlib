@@ -101,6 +101,34 @@ template<class URBG> constexpr itype::u64 Uniform64(URBG& g, itype::u64 min, ity
     return static_cast<itype::u64>((static_cast<itype::u128>(g()) * (max - min)) >> 64) + min;
 }
 
+template<class URBG> constexpr itype::u32 UnbiasedUniform32(URBG& g, itype::u32 max) {
+    itype::u32 mask = ~0u;
+    --max;
+    mask >>= std::countl_zero(max | 1);
+    itype::u32 x;
+    do {
+        x = g() & mask;
+    } while (x > max);
+    return x;
+}
+template<class URBG> constexpr itype::u32 UnbiasedUniform32(URBG& g, itype::u32 min, itype::u32 max) {
+    return min + UnbiasedUniform32(g, max - min);
+}
+template<class URBG> constexpr itype::u64 UnbiasedUniform64(URBG& g, itype::u64 max) {
+    itype::u64 mask = ~0ull;
+    --max;
+    mask >>= std::countl_zero(max | 1);
+    itype::u64 x;
+    do {
+        x = g() & mask;
+    } while (x > max);
+    return x;
+}
+template<class URBG> constexpr itype::u32 UnbiasedUniform64(URBG& g, itype::u64 min, itype::u64 max) {
+    return min + UnbiasedUniform64(g, max - min);
+}
+
+
 //https://speakerdeck.com/hole/rand01?slide=31
 template<class URBG> constexpr ftype::f32 Canocicaled32(URBG& g) {
     return std::bit_cast<ftype::f32>((127u << 23) | (static_cast<itype::u32>(g()) & 0x7fffff)) - 1.0f;

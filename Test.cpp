@@ -24,18 +24,6 @@ int main() {
             using namespace gsh;
             using namespace itype;
             using namespace ftype;
-            DisjointSet uf(10);
-            uf.merge(0, 2);
-            uf.merge(1, 2);
-            uf.merge(3, 8);
-            uf.merge(0, 8);
-            uf.merge(5, 9);
-            for (auto& x : uf.groups()) {
-                for (auto& y : x) {
-                    std::cout << y << ' ';
-                }
-                std::cout << '\n';
-            }
         }
         //t.print();
     } catch (gsh::Exception& e) {

@@ -1,6 +1,6 @@
 #pragma once
-#include <type_traits>        // std::is_trivially_(***), std::integral_constant
-#include <utility>            // std::move, std::forward
+#include <type_traits>        // std::is_trivially_(***), std::integral_constant, std::is_convertible_v
+#include <utility>            // std::move, std::forward, std::declval
 #include <initializer_list>   // std::initializer_list
 #include <compare>            // std::three_way_comparable, std::compare_three_way_result
 #include <tuple>              // std::tuple_size, std::tuple_element
@@ -24,10 +24,10 @@ private:
     }
     constexpr value_type& ref() { return *reinterpret_cast<value_type*>(buffer); }
     constexpr const value_type& ref() const { return *reinterpret_cast<const value_type*>(buffer); }
-    template<class U> constexpr static bool is_explicit = requires(U&& rhs) { construct(std::forward<U>(rhs)); };
+    template<class U> constexpr static bool is_explicit = !std::is_convertible_v<U, T>;
     constexpr static bool noexcept_swapable = []() {
         using std::swap;
-        return noexcept(swap(ref(), ref()));
+        return noexcept(swap(std::declval<value_type&>(), std::declval<value_type&>()));
     }();
 public:
     constexpr Option() noexcept {}

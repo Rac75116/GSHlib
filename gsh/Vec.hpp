@@ -63,10 +63,11 @@ public:
     }
     constexpr Vec(const Vec& x) : Vec(x, traits::select_on_container_copy_construction(x.alloc)) {}
     constexpr Vec(Vec&& x) noexcept : alloc(std::move(x.alloc)), ptr(x.ptr), len(x.len), cap(x.cap) { x.ptr = nullptr, x.len = 0, x.cap = 0; }
-    constexpr Vec(const Vec& x, const allocator_type& a) : alloc(a), ptr(x.len == 0 ? nullptr : traits::allocate(a, x.len)), len(x.len), cap(x.len) {
+    constexpr Vec(const Vec& x, const allocator_type& a) : alloc(a), len(x.len), cap(x.len) {
         if (len == 0) [[unlikely]]
             return;
-        if constexpr (std::is_trivially_copy_constructible_v<value_type> && !std::is_constant_evaluated()) {
+        ptr = traits::allocate(alloc, cap);
+        if (std::is_trivially_copy_constructible_v<value_type> && !std::is_constant_evaluated()) {
             std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
         } else {
             for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
@@ -262,6 +263,8 @@ public:
             throw gsh::Exception("gsh::Vec::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
+    constexpr reference at_unchecked(const size_type n) { return *(ptr + n); }
+    constexpr const_reference at_unchecked(const size_type n) const { return *(ptr + n); }
     constexpr pointer data() noexcept { return ptr; }
     constexpr const_pointer data() const noexcept { return ptr; }
     constexpr reference front() { return *ptr; }

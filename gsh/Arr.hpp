@@ -65,10 +65,11 @@ public:
     }
     constexpr Arr(const Arr& x) : Arr(x, traits::select_on_container_copy_construction(x.alloc)) {}
     constexpr Arr(Arr&& x) noexcept : alloc(std::move(x.alloc)), ptr(x.ptr), len(x.len) { x.ptr = nullptr, x.len = 0; }
-    constexpr Arr(const Arr& x, const allocator_type& a) : alloc(a), ptr(x.len == 0 ? nullptr : traits::allocate(a, x.len)), len(x.len) {
+    constexpr Arr(const Arr& x, const allocator_type& a) : alloc(a), len(x.len) {
         if (len == 0) [[unlikely]]
             return;
-        if constexpr (std::is_trivially_copy_constructible_v<value_type> && !std::is_constant_evaluated()) {
+        ptr = traits::allocate(alloc, len);
+        if (std::is_trivially_copy_constructible_v<value_type> && !std::is_constant_evaluated()) {
             std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
         } else {
             for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
@@ -191,7 +192,7 @@ public:
             traits::deallocate(alloc, ptr, len);
         }
         ptr = new_ptr;
-        for (size_type i = len; i < sz; ++i) traits::construct(alloc, *(ptr + i), c);
+        for (size_type i = len; i < sz; ++i) traits::construct(alloc, ptr + i, c);
         len = sz;
     }
     [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
@@ -219,6 +220,8 @@ public:
             throw gsh::Exception("gsh::Arr::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
+    constexpr reference at_unchecked(const size_type n) { return *(ptr + n); }
+    constexpr const_reference at_unchecked(const size_type n) const { return *(ptr + n); }
     constexpr pointer data() noexcept { return ptr; }
     constexpr const_pointer data() const noexcept { return ptr; }
     constexpr reference front() { return *ptr; }
@@ -291,6 +294,8 @@ template<class T>
     requires std::same_as<T, std::remove_cv_t<T>>
 class ArrInitTag {};
 template<class T = void> constexpr ArrInitTag<T> ArrInit;
+class ArrNoInitTag {};
+constexpr ArrNoInitTag ArrNoInit;
 
 template<class T, itype::u32 N>
     requires std::same_as<T, std::remove_cv_t<T>>
@@ -311,6 +316,7 @@ public:
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     constexpr StaticArr() noexcept(noexcept(value_type{})) : elems{} {}
+    constexpr StaticArr(ArrNoInitTag) noexcept {}
     template<class U, class... Args> constexpr StaticArr(ArrInitTag<U>, Args&&... args) : elems{ static_cast<U>(std::forward<Args>(args))... } {
         static_assert(std::is_same_v<T, U>, "gsh::StaticArr::StaticArr / The type specified in gsh::ArrInitTag is different from value_type.");
         static_assert(sizeof...(Args) <= N, "gsh::StaticArr::StaticArr / The number of arguments is greater than the length of the array.");
@@ -395,6 +401,8 @@ public:
             throw gsh::Exception("gsh::StaticArr::at / The index is out of range. ( n=", n, ", size=", N, " )");
         return elems[n];
     }
+    constexpr reference at_unchecked(const size_type n) { return elems[n]; }
+    constexpr const_reference at_unchecked(const size_type n) const { return elems[n]; }
     constexpr pointer data() noexcept { return elems; }
     constexpr const_pointer data() const noexcept { return elems; }
     constexpr reference front() { return elems[0]; }

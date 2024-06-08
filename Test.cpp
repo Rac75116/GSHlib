@@ -1,3 +1,4 @@
+#define NDEBUG
 #pragma GCC optimize("Ofast")
 #pragma GCC optimize("unroll-loops")
 //#include <cmath>
@@ -10,22 +11,33 @@
 #include <gsh/Numeric.hpp>
 #include <gsh/Macro.hpp>
 #include <gsh/Util.hpp>
+#include <gsh/DisjointSet.hpp>
 #include <iostream>
 #include <cassert>
-#include <set>
-
-using namespace gsh::itype;
-using namespace gsh::ftype;
 
 int main() {
     try {
         gsh::ClockTimer t;
         [[maybe_unused]] gsh::Rand64 engine;
-        u32 arr[] = { 2, 3, 4, 5 };
-        const gsh::StaticArr v{ std::move(arr) };
-        auto [a, b, c, d] = v;
-        std::cout << a << ' ' << b << ' ' << c << ' ' << d << '\n';
-        t.print();
+        {
+            using namespace std;
+            using namespace gsh;
+            using namespace itype;
+            using namespace ftype;
+            DisjointSet uf(10);
+            uf.merge(0, 2);
+            uf.merge(1, 2);
+            uf.merge(3, 8);
+            uf.merge(0, 8);
+            uf.merge(5, 9);
+            for (auto& x : uf.groups()) {
+                for (auto& y : x) {
+                    std::cout << y << ' ';
+                }
+                std::cout << '\n';
+            }
+        }
+        //t.print();
     } catch (gsh::Exception& e) {
         std::cerr << e.what() << std::endl;
     }

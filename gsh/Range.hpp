@@ -23,6 +23,8 @@ public:
     constexpr SlicedRange(iterator beg, iterator end) : first(beg), last(end) {}
     constexpr iterator begin() const { return first; }
     constexpr iterator end() const { return last; }
+    constexpr auto rbegin() const { return std::reverse_iterator{ last }; }
+    constexpr auto rend() const { return std::reverse_iterator{ first }; }
 };
 
 template<class D, class V>

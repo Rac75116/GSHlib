@@ -24,11 +24,8 @@ int main() {
             using namespace gsh;
             using namespace itype;
             using namespace ftype;
-            Vec<int> r{ 2, 3, 4, 5 };
-            for (auto& x : r.slice(1, 3)) {
-                x = 100;
-            }
-            for (auto& x : r) {
+            auto v = Vec<i32>{ 1, 2, 6, 7, 4, 2, 4, 7, 5, 2, 7, 9, 6, 4, 2 };
+            for (auto x : v.slice(2, 7).reversed()) {
                 cout << x << ' ';
             }
             cout << endl;

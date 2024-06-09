@@ -3,7 +3,7 @@
 #include <concepts>         // std::same_as, std::predicate
 #include <utility>          // std::move
 #include <iterator>         // std::next, std::iter_value_t
-#include <ranges>           // std::ranges::iterator_t, std::sentinel_for
+#include <ranges>           // std::ranges::iterator_t, std::sentinel_for, std::ranges::reverse
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
@@ -34,16 +34,34 @@ class ViewInterface {
     constexpr auto get_begin() const { return get_ref().cbegin(); }
     constexpr auto get_end() { return get_ref().end(); }
     constexpr auto get_end() const { return get_ref().cend(); }
+    constexpr auto get_rbegin() { return get_ref().rbegin(); }
+    constexpr auto get_rbegin() const { return get_ref().crbegin(); }
+    constexpr auto get_rend() { return get_ref().rend(); }
+    constexpr auto get_rend() const { return get_ref().crend(); }
 public:
     using derived_type = D;
     using value_type = V;
     constexpr derived_type copy() const& { return get_ref(); }
+    constexpr derived_type copy() & { return get_ref(); }
     constexpr derived_type copy() && { return std::move(get_ref()); }
     constexpr auto slice(itype::u32 a, itype::u32 b) {
         auto beg = std::next(get_begin(), a);
         auto end = std::next(beg, b - a);
         return SlicedRange{ beg, end };
     }
+    constexpr auto slice(itype::u32 a, itype::u32 b) const {
+        auto beg = std::next(get_begin(), a);
+        auto end = std::next(beg, b - a);
+        return SlicedRange{ beg, end };
+    }
+    constexpr auto slice(itype::u32 a) { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
+    constexpr auto slice(itype::u32 a) const { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
+    constexpr derived_type& reverse() {
+        std::ranges::reverse(get_ref());
+        return get_ref();
+    }
+    constexpr auto reversed() { return SlicedRange{ get_rbegin(), get_rend() }; }
+    constexpr auto reversed() const { return SlicedRange{ get_rbegin(), get_rend() }; }
     template<std::predicate<value_type> Pred> constexpr bool all_of(Pred f) const {
         for (const auto& el : get_ref())
             if (!f(el)) return false;

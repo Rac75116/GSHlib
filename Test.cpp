@@ -25,10 +25,11 @@ int main() {
             using namespace gsh;
             using namespace itype;
             using namespace ftype;
+            /*
             ostringstream oss;
             u64 cor = 0;
             REP(i, 100000000) {
-                u32 tmp = engine();
+                u32 tmp = engine() / 150000;
                 cor += tmp;
                 oss << tmp << ' ';
             }
@@ -39,10 +40,15 @@ int main() {
             ClockTimer t;
             u64 res = 0;
             REP(i, 100000000) {
-                res += Parser<u32>{}(r);
+                res += Parser<i16>{}(r);
             }
             t.print();
             cout << res << endl;
+            */
+            Rand32 engine;
+            //for (u32 i = 0; i != 1000000000; ++i) engine();
+            engine.discard(1000000000);
+            std::cout << engine() << std::endl;
         }
     } catch (gsh::Exception& e) {
         std::cerr << e.what() << std::endl;

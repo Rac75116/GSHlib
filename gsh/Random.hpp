@@ -31,8 +31,8 @@ public:
         s1 = std::rotr(t1, 28);
         return res;
     };
-    constexpr void discard(unsigned long long z) {
-        for (unsigned long long i = 0; i < z; ++i) operator()();
+    constexpr void discard(itype::u64 z) {
+        for (itype::u64 i = 0; i < z; ++i) operator()();
     }
     static constexpr result_type max() { return 18446744073709551615u; }
     static constexpr result_type min() { return 0; }
@@ -56,8 +56,13 @@ public:
         x ^= x >> 22;
         return x >> (22 + count);
     };
-    constexpr void discard(unsigned long long z) {
-        for (unsigned long long i = 0; i < z; ++i) val *= 0xcafef00dd15ea5e5;
+    constexpr void discard(itype::u64 z) {
+        itype::u64 pow = 0xcafef00dd15ea5e5;
+        while (z != 0) {
+            if (z & 1) val *= pow;
+            z >>= 1;
+            pow *= pow;
+        }
     }
     static constexpr result_type max() { return 4294967295u; }
     static constexpr result_type min() { return 0; }

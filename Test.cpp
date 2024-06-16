@@ -11,19 +11,22 @@
 #include <cassert>
 #include <sstream>
 
+gsh::BasicReader r;
+gsh::BasicWriter w;
 int main() {
     try {
-        //[[maybe_unused]] gsh::Rand64 engine;
+        [[maybe_unused]] gsh::Rand32 engine;
         {
             using namespace std;
             using namespace gsh;
-            using namespace itype;
-            using namespace ftype;
-            BasicReader r;
+            using namespace gsh::itype;
+            using namespace gsh::ftype;
+            using namespace gsh::ctype;
             u32 N = Parser<u32>{}(r);
             for (u32 i = 0; i != N; ++i) {
                 u64 A = Parser<u64>{}(r), B = Parser<u64>{}(r);
-                printf("%llu\n", A + B);
+                Formatter<u64>{}(w, A + B);
+                Formatter<c8>{}(w, '\n');
             }
         }
     } catch (gsh::Exception& e) {

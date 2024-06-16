@@ -1,8 +1,8 @@
 #pragma once
-#include <bit>        // std::countr_zero
-#include <exception>  // std::terminate
-#include <cstring>    // std::memset, std::memcpy, std::memmove
-#include <unistd.h>   // read
+#include <bit>       // std::countr_zero
+#include <cstdlib>   // std::exit
+#include <cstring>   // std::memset, std::memcpy, std::memmove
+#include <unistd.h>  // read, write
 #ifndef _WIN32
 #include <sys/mman.h>  // mmap
 #include <sys/stat.h>  // stat, fstat
@@ -182,24 +182,119 @@ public:
 
 template<class T> class Formatter;
 
+namespace internal {
+    template<int> constexpr auto InttoStr = [] {
+        struct {
+            ctype::c8 table[40000];
+        } res;
+        for (itype::u32 i = 0; i != 10000; ++i) {
+            res.table[4 * i + 0] = (i / 1000 + '0');
+            res.table[4 * i + 1] = (i / 100 % 10 + '0');
+            res.table[4 * i + 2] = (i / 10 % 10 + '0');
+            res.table[4 * i + 3] = (i % 10 + '0');
+        }
+        return res;
+    }();
+    template<class Stream> constexpr void Formatu32(Stream& stream, itype::u32 n) {
+        auto copy1 = [&](itype::u32 x) {
+            itype::u32 off = 1 + (x >= 10) + (x >= 100) + (x >= 1000);
+            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + (4 - off)), off);
+            stream.skip(off);
+        };
+        auto copy2 = [&](itype::u32 x) {
+            std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
+            stream.skip(4);
+        };
+        if (n < 100000000) {
+            if (n < 10000) copy1(n);
+            else {
+                copy1(n / 10000);
+                copy2(n % 10000);
+            }
+        } else {
+            copy1(n / 100000000);
+            copy2(n / 10000 % 10000);
+            copy2(n % 10000);
+        }
+    }
+    template<class Stream> constexpr void Formatu64(Stream& stream, itype::u64 n) {
+        auto copy1 = [&](itype::u64 x) {
+            itype::u32 off = 1 + (x >= 10) + (x >= 100) + (x >= 1000);
+            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + (4 - off)), off);
+            stream.skip(off);
+        };
+        auto copy2 = [&](itype::u64 x) {
+            std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
+            stream.skip(4);
+        };
+        if (n < 10000000000000000) {
+            if (n < 1000000000000) {
+                if (n < 100000000) {
+                    if (n < 10000) copy1(n);
+                    else {
+                        copy1(n / 10000);
+                        copy2(n % 10000);
+                    }
+                } else {
+                    copy1(n / 100000000);
+                    copy2(n / 10000 % 10000);
+                    copy2(n % 10000);
+                }
+            } else {
+                copy1(n / 1000000000000);
+                copy2(n / 100000000 % 10000);
+                copy2(n / 10000 % 10000);
+                copy2(n % 10000);
+            }
+        } else {
+            copy1(n / 10000000000000000);
+            copy2(n / 1000000000000 % 10000);
+            copy2(n / 100000000 % 10000);
+            copy2(n / 10000 % 10000);
+            copy2(n % 10000);
+        }
+    }
+}  // namespace internal
+
 template<> class Formatter<itype::u32> {
-    template<class Stream> constexpr itype::u32 operator()(Stream& stream) const { stream.flush(16); }
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::u32 n) const {
+        stream.reload(16);
+        internal::Formatu32(stream, n);
+    }
+};
+template<> class Formatter<itype::u64> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::u64 n) const {
+        stream.reload(32);
+        internal::Formatu64(stream, n);
+    }
+};
+template<> class Formatter<ctype::c8> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, ctype::c8 c) const {
+        stream.reload(1);
+        *stream.current() = c;
+        stream.skip(1);
+    }
 };
 
 class BasicReader {
     constexpr static itype::u32 Bufsize = 1 << 18;
-    const itype::i32 fh = 0;
+    itype::i32 fd = 0;
     ctype::c8 buf[Bufsize + 1];
     ctype::c8 *cur = buf, *eof = buf;
 public:
     BasicReader() {}
-    BasicReader(itype::i32 filehandle) : fh(filehandle) {}
+    BasicReader(itype::i32 filehandle) : fd(filehandle) {}
     BasicReader(const BasicReader& rhs) {
+        fd = rhs.fd;
         std::memcpy(buf, rhs.buf, rhs.eof - rhs.cur);
         cur = buf + (rhs.cur - rhs.buf);
         eof = buf + (rhs.cur - rhs.eof);
     }
     BasicReader& operator=(const BasicReader& rhs) {
+        fd = rhs.fd;
         std::memcpy(buf, rhs.buf, rhs.eof - rhs.cur);
         cur = buf + (rhs.cur - rhs.buf);
         eof = buf + (rhs.cur - rhs.eof);
@@ -209,10 +304,10 @@ public:
         if (eof == buf + Bufsize) [[likely]] {
             itype::u32 rem = eof - cur;
             std::memmove(buf, cur, rem);
-            *(eof = buf + rem + read(fh, buf + rem, Bufsize - rem)) = '\0';
+            *(eof = buf + rem + read(fd, buf + rem, Bufsize - rem)) = '\0';
             cur = buf;
         } else if (eof == cur) {
-            *(eof = buf + read(fh, buf, Bufsize)) = '\0';
+            *(eof = buf + read(fd, buf, Bufsize)) = '\0';
             cur = buf;
         }
     }
@@ -232,7 +327,7 @@ public:
     MmapReader() : fh(0) {
 #ifdef _WIN32
         write(1, "gsh::MmapReader / gsh::MmapReader is not available for Windows.\n", 64);
-        std::terminate();
+        std::exit(1);
 #else
         struct stat st;
         fstat(0, &st);
@@ -245,6 +340,39 @@ public:
     void reload(itype::u32) const {}
     itype::u32 avail() const { return eof - cur; }
     const ctype::c8* current() const { return cur; }
+    void skip(itype::u32 n) { cur += n; }
+};
+
+class BasicWriter {
+    constexpr static itype::u32 Bufsize = 1 << 18;
+    itype::i32 fd = 0;
+    ctype::c8 buf[Bufsize];
+    ctype::c8 *cur = buf, *eof = buf + Bufsize;
+public:
+    BasicWriter() {}
+    BasicWriter(itype::i32 filehandle) : fd(filehandle) {}
+    BasicWriter(const BasicWriter& rhs) {
+        fd = rhs.fd;
+        std::memcpy(buf, rhs.buf, rhs.cur - rhs.buf);
+        cur = buf + (rhs.cur - rhs.buf);
+    }
+    ~BasicWriter() { reload(); }
+    BasicWriter& operator=(const BasicWriter& rhs) {
+        fd = rhs.fd;
+        std::memcpy(buf, rhs.buf, rhs.cur - rhs.buf);
+        cur = buf + (rhs.cur - rhs.buf);
+        return *this;
+    }
+    void reload() {
+        [[maybe_unused]] itype::i32 tmp = write(1, buf, cur - buf);
+        cur = buf;
+    }
+    void reload(itype::u32 len) {
+        if (eof - cur < len) [[unlikely]]
+            reload();
+    }
+    itype::u32 avail() const { return eof - cur; }
+    ctype::c8* current() { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
 

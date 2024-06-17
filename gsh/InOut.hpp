@@ -1,5 +1,5 @@
 #pragma once
-#include <bit>       // std::countr_zero
+#include <bit>       // std::countr_zero, std::bit_cast, std::countr_one
 #include <cstdlib>   // std::exit
 #include <cstring>   // std::memset, std::memcpy, std::memmove
 #include <unistd.h>  // read, write
@@ -8,6 +8,8 @@
 #include <sys/stat.h>  // stat, fstat
 #endif
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ctype
+#include <gsh/Simd.hpp>     // gsh::simd
+#include <iostream>
 
 namespace gsh {
 
@@ -218,10 +220,23 @@ namespace internal {
         }
     }
     template<class Stream> constexpr void Formatu64(Stream& stream, itype::u64 n) {
+        stream.reload(32);
+        const itype::u32 tmp = n / 100000000;
+        const itype::u32 c = n / 10000000000000000;
+        const itype::u32 a = static_cast<itype::u32>(n) - tmp * 100000000;
+        const itype::u32 b = tmp - c * 100000000;
+        simd::u64x4 v{ 0, c, b, a };
+        simd::u64x4 t = (v * 28147497672) >> 48;
+        __m256i d = std::bit_cast<__m256i>(t | (v - t * 10000) << 32);
+        simd::u8x32 s = std::bit_cast<simd::u8x32>(_mm256_i32gather_epi32(reinterpret_cast<const int*>(InttoStr<0>.table), d, 4));
+        itype::i32 off = std::countr_one<itype::u32>(_mm256_movemask_epi8(std::bit_cast<__m256i>((s ^ 0x30) == 0x00)));
+        std::memcpy(stream.current(), reinterpret_cast<ctype::c8*>(&s) + off, 32 - off);
+        stream.skip(32 - off);
+        /*
         auto copy1 = [&](itype::u64 x) {
-            itype::u32 off = 1 + (x >= 10) + (x >= 100) + (x >= 1000);
-            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + (4 - off)), off);
-            stream.skip(off);
+            itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4 - off);
+            stream.skip(4 - off);
         };
         auto copy2 = [&](itype::u64 x) {
             std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
@@ -253,6 +268,7 @@ namespace internal {
             copy2(n / 10000 % 10000);
             copy2(n % 10000);
         }
+        */
     }
 }  // namespace internal
 
@@ -342,6 +358,17 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
+class StaticStrReader {
+    const ctype::c8* cur;
+public:
+    constexpr StaticStrReader() {}
+    constexpr StaticStrReader(const ctype::c8* c) : cur(c) {}
+    constexpr void reload() const {}
+    constexpr void reload(itype::u32) const {}
+    constexpr itype::u32 avail() const { return static_cast<itype::u32>(-1); }
+    constexpr const ctype::c8* current() { return cur; }
+    constexpr void skip(itype::u32 n) { cur += n; }
+};
 
 class BasicWriter {
     constexpr static itype::u32 Bufsize = 1 << 18;
@@ -374,6 +401,17 @@ public:
     itype::u32 avail() const { return eof - cur; }
     ctype::c8* current() { return cur; }
     void skip(itype::u32 n) { cur += n; }
+};
+class StaticStrWriter {
+    ctype::c8* cur;
+public:
+    constexpr StaticStrWriter() {}
+    constexpr StaticStrWriter(ctype::c8* c) : cur(c) {}
+    constexpr void reload() const {}
+    constexpr void reload(itype::u32) const {}
+    constexpr itype::u32 avail() const { return static_cast<itype::u32>(-1); }
+    constexpr ctype::c8* current() { return cur; }
+    constexpr void skip(itype::u32 n) { cur += n; }
 };
 
 }  // namespace gsh

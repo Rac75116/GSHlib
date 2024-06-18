@@ -293,6 +293,15 @@ public:
         internal::Formatu16(stream, n);
     }
 };
+template<> class Formatter<itype::i16> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::i16 n) const {
+        stream.reload(8);
+        *stream.current() = '-';
+        stream.skip(n < 0);
+        internal::Formatu16(stream, n < 0 ? -n : n);
+    }
+};
 template<> class Formatter<itype::u32> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, itype::u32 n) const {
@@ -300,11 +309,29 @@ public:
         internal::Formatu32(stream, n);
     }
 };
+template<> class Formatter<itype::i32> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::i32 n) const {
+        stream.reload(16);
+        *stream.current() = '-';
+        stream.skip(n < 0);
+        internal::Formatu32(stream, n < 0 ? -n : n);
+    }
+};
 template<> class Formatter<itype::u64> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, itype::u64 n) const {
         stream.reload(32);
         internal::Formatu64(stream, n);
+    }
+};
+template<> class Formatter<itype::i64> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::i64 n) const {
+        stream.reload(32);
+        *stream.current() = '-';
+        stream.skip(n < 0);
+        internal::Formatu64(stream, n < 0 ? -n : n);
     }
 };
 template<> class Formatter<ctype::c8> {

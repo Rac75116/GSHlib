@@ -23,7 +23,6 @@ int main() {
             using namespace gsh::itype;
             using namespace gsh::ftype;
             using namespace gsh::ctype;
-            /*
             u32 N = Parser<u32>{}(r);
             for (u32 i = 0; i != N; ++i) {
                 u64 A = Parser<u64>{}(r), B = Parser<u64>{}(r);
@@ -31,7 +30,7 @@ int main() {
                 *w.current() = '\n';
                 w.skip(1);
             }
-            */
+            /*
             constexpr u32 n = 100000000;
             Vec<u64> rnd(n);
             u64 sum = 0;
@@ -46,6 +45,7 @@ int main() {
             REP(i, n) {
                 Formatter<u64>{}(w, rnd[i]);
                 *w.current() = '\n';
+                w.skip(1);
                 //Formatter<c8>{}(w, '\n');
             }
             t.print();
@@ -57,6 +57,7 @@ int main() {
             }
             t.print();
             cout << res << endl;
+            */
         }
     } catch (gsh::Exception& e) {
         puts(e.what());

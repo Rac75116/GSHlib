@@ -9,7 +9,6 @@
 #endif
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ctype
 #include <gsh/Simd.hpp>     // gsh::simd
-#include <iostream>
 
 namespace gsh {
 
@@ -187,7 +186,7 @@ template<class T> class Formatter;
 namespace internal {
     template<int> constexpr auto InttoStr = [] {
         struct {
-            ctype::c8 table[40000];
+            ctype::c8 table[40004];
         } res;
         for (itype::u32 i = 0; i != 10000; ++i) {
             res.table[4 * i + 0] = (i / 1000 + '0');
@@ -197,11 +196,27 @@ namespace internal {
         }
         return res;
     }();
+    template<class Stream> constexpr void Formatu16(Stream& stream, itype::u16 n) {
+        auto copy1 = [&](itype::u32 x) {
+            itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
+            stream.skip(4 - off);
+        };
+        auto copy2 = [&](itype::u32 x) {
+            std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
+            stream.skip(4);
+        };
+        if (n < 10000) copy1(n);
+        else {
+            copy1(n / 10000);
+            copy2(n % 10000);
+        }
+    }
     template<class Stream> constexpr void Formatu32(Stream& stream, itype::u32 n) {
         auto copy1 = [&](itype::u32 x) {
-            itype::u32 off = 1 + (x >= 10) + (x >= 100) + (x >= 1000);
-            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + (4 - off)), off);
-            stream.skip(off);
+            itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
+            stream.skip(4 - off);
         };
         auto copy2 = [&](itype::u32 x) {
             std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
@@ -220,7 +235,7 @@ namespace internal {
         }
     }
     template<class Stream> constexpr void Formatu64(Stream& stream, itype::u64 n) {
-        stream.reload(32);
+        /*
         const itype::u32 tmp = n / 100000000;
         const itype::u32 c = n / 10000000000000000;
         const itype::u32 a = static_cast<itype::u32>(n) - tmp * 100000000;
@@ -232,10 +247,10 @@ namespace internal {
         itype::i32 off = std::countr_one<itype::u32>(_mm256_movemask_epi8(std::bit_cast<__m256i>((s ^ 0x30) == 0x00)));
         std::memcpy(stream.current(), reinterpret_cast<ctype::c8*>(&s) + off, 32 - off);
         stream.skip(32 - off);
-        /*
+        */
         auto copy1 = [&](itype::u64 x) {
             itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
-            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4 - off);
+            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
             stream.skip(4 - off);
         };
         auto copy2 = [&](itype::u64 x) {
@@ -268,10 +283,16 @@ namespace internal {
             copy2(n / 10000 % 10000);
             copy2(n % 10000);
         }
-        */
     }
 }  // namespace internal
 
+template<> class Formatter<itype::u16> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::u16 n) const {
+        stream.reload(8);
+        internal::Formatu16(stream, n);
+    }
+};
 template<> class Formatter<itype::u32> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, itype::u32 n) const {

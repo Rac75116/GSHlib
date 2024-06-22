@@ -8,7 +8,6 @@
 #include <sys/stat.h>  // stat, fstat
 #endif
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ctype
-#include <gsh/Simd.hpp>     // gsh::simd
 
 namespace gsh {
 
@@ -180,6 +179,16 @@ public:
         return tmp;
     }
 };
+template<> class Parser<ctype::c8> {
+public:
+    template<class Stream> constexpr ctype::c8 operator()(Stream& stream) const {
+        stream.reload(2);
+        ctype::c8 tmp = *stream.current();
+        stream.skip(2);
+        return tmp;
+    }
+};
+
 
 template<class T> class Formatter;
 

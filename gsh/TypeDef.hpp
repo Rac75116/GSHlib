@@ -32,6 +32,36 @@ namespace ctype {
     using utf32 = char32_t;
 }  // namespace ctype
 
+namespace simd {
+
+    using i8x32 = __attribute__((vector_size(32))) itype::i8;
+    using u8x32 = __attribute__((vector_size(32))) itype::u8;
+    using i16x16 = __attribute__((vector_size(32))) itype::i16;
+    using u16x16 = __attribute__((vector_size(32))) itype::u16;
+    using i32x8 = __attribute__((vector_size(32))) itype::i32;
+    using u32x8 = __attribute__((vector_size(32))) itype::u32;
+    using i64x4 = __attribute__((vector_size(32))) itype::i64;
+    using u64x4 = __attribute__((vector_size(32))) itype::u64;
+    using f32x8 = __attribute__((vector_size(32))) ftype::f32;
+    using f64x4 = __attribute__((vector_size(32))) ftype::f64;
+
+    using i8x64 = __attribute__((vector_size(64))) itype::i8;
+    using u8x64 = __attribute__((vector_size(64))) itype::u8;
+    using i16x32 = __attribute__((vector_size(64))) itype::i16;
+    using u16x32 = __attribute__((vector_size(64))) itype::u16;
+    using i32x16 = __attribute__((vector_size(64))) itype::i32;
+    using u32x16 = __attribute__((vector_size(64))) itype::u32;
+    using i64x8 = __attribute__((vector_size(64))) itype::i64;
+    using u64x8 = __attribute__((vector_size(64))) itype::u64;
+    using f32x16 = __attribute__((vector_size(64))) ftype::f32;
+    using f64x8 = __attribute__((vector_size(64))) ftype::f64;
+
+}  // namespace simd
+
+template<class T, class U> constexpr T SimdCast(U x) {
+    return __builtin_convertvector(x, T);
+}
+
 class Byte {
     itype::u8 b = 0;
 public:

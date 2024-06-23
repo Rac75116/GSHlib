@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>             // std::allocator, std::allocator_traits, std::construct_at
 #include <iterator>           // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
 #include <algorithm>          // std::lexicographical_compare_three_way
 #include <initializer_list>   // std::initializer_list
@@ -11,13 +10,14 @@
 #include <gsh/TypeDef.hpp>    // gsh::itype
 #include <gsh/Exception.hpp>  // gsh::Exception
 #include <gsh/Range.hpp>      // gsh::ViewInterface
+#include <gsh/Memory.hpp>     // gsh::Allocator, gsh::AllocatorTraits, gsh::DestroyAt
 
 namespace gsh {
 
-template<class T, class Allocator = std::allocator<T>>
-    requires std::same_as<T, typename std::allocator_traits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
+template<class T, class Allocator = Allocator<T>>
+    requires std::same_as<T, typename AllocatorTraits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
 class Arr : public ViewInterface<Arr<T, Allocator>, T> {
-    using traits = std::allocator_traits<Allocator>;
+    using traits = AllocatorTraits<Allocator>;
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -288,7 +288,7 @@ public:
     friend constexpr auto operator<=>(const Arr& x, const Arr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Arr& x, Arr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<std::input_iterator InputIter, class Allocator = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Allocator = Allocator()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Allocator>;
+template<std::input_iterator InputIter, class Allocator = Allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Allocator = Allocator()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Allocator>;
 
 template<class T>
     requires std::same_as<T, std::remove_cv_t<T>>
@@ -323,32 +323,32 @@ public:
     }
     template<class... Args> constexpr StaticArr(ArrInitTag<void>, Args&&... args) : elems{ static_cast<T>(std::forward<Args>(args))... } { static_assert(sizeof...(Args) <= N, "gsh::StaticArr::StaticArr / The number of arguments is greater than the length of the array."); }
     constexpr explicit StaticArr(const value_type& value) {
-        for (itype::u32 i = 0; i != N; ++i) new (elems + i) value_type(value);
+        for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, value);
     }
     template<std::input_iterator InputIter> constexpr explicit StaticArr(InputIter first) {
-        for (itype::u32 i = 0; i != N; ++first, ++i) new (elems + i) value_type(*first);
+        for (itype::u32 i = 0; i != N; ++first, ++i) ConstructAt(elems + i, *first);
     }
     template<std::input_iterator InputIter> constexpr StaticArr(InputIter first, const InputIter last) {
         const itype::u32 n = std::distance(first, last);
         if (n != N) throw gsh::Exception("gsh::StaticArr::StaticArr / The size of the given range differs from the size of the array.");
-        for (itype::u32 i = 0; i != N; ++first, ++i) new (elems + i) value_type(*first);
+        for (itype::u32 i = 0; i != N; ++first, ++i) ConstructAt(elems + i, *first);
     }
     constexpr StaticArr(const value_type (&a)[N]) {
-        for (itype::u32 i = 0; i != N; ++i) new (elems + i) value_type(a[i]);
+        for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, a[i]);
     }
     constexpr StaticArr(value_type (&&a)[N]) {
-        for (itype::u32 i = 0; i != N; ++i) new (elems + i) value_type(std::move(a[i]));
+        for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, std::move(a[i]));
     }
     constexpr StaticArr(const StaticArr& x) {
-        for (itype::u32 i = 0; i != N; ++i) new (elems + i) value_type(x.elems[i]);
+        for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, x.elems[i]);
     }
     constexpr StaticArr(StaticArr&& y) {
-        for (itype::u32 i = 0; i != N; ++i) new (elems + i) value_type(std::move(y.elems[i]));
+        for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, std::move(y.elems[i]));
     }
     //constexpr StaticArr(std::initializer_list<value_type> il) : StaticArr(il.begin(), il.end()) {}
     constexpr ~StaticArr() noexcept {
         if constexpr (!std::is_trivially_destructible_v<value_type>)
-            for (itype::u32 i = 0; i != N; ++i) (elems + i)->~value_type();
+            for (itype::u32 i = 0; i != N; ++i) DestroyAt(elems + i);
     }
     constexpr StaticArr& operator=(const StaticArr& x) {
         for (itype::u32 i = 0; i != N; ++i) elems[i] = x.elems[i];

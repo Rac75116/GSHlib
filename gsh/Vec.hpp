@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>             // std::allocator, std::allocator_traits
 #include <iterator>           // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
 #include <algorithm>          // std::lexicographical_compare_three_way
 #include <initializer_list>   // std::initializer_list
@@ -9,13 +8,14 @@
 #include <gsh/TypeDef.hpp>    // gsh::itype
 #include <gsh/Exception.hpp>  // gsh::Exception
 #include <gsh/Range.hpp>      // gsh::ViewInterface
+#include <gsh/Memory.hpp>     // gsh::Allocator, gsh::AllocatorTraits
 
 namespace gsh {
 
-template<class T, class Allocator = std::allocator<T>>
-    requires std::is_same_v<T, typename std::allocator_traits<Allocator>::value_type> && (!std::is_const_v<T>)
+template<class T, class Allocator = Allocator<T>>
+    requires std::is_same_v<T, typename AllocatorTraits<Allocator>::value_type> && (!std::is_const_v<T>)
 class Vec : public ViewInterface<Vec<T, Allocator>, T> {
-    using traits = std::allocator_traits<Allocator>;
+    using traits = AllocatorTraits<Allocator>;
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -404,6 +404,6 @@ public:
     friend constexpr auto operator<=>(const Vec& x, const Vec& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Vec& x, Vec& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<std::input_iterator InputIter, class Allocator = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Allocator = Allocator()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Allocator>;
+template<std::input_iterator InputIter, class Allocator = Allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Allocator = Allocator()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Allocator>;
 
 }  // namespace gsh

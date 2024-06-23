@@ -8,6 +8,8 @@
 #include <gsh/Timer.hpp>
 #include <gsh/Macro.hpp>
 #include <gsh/Vec.hpp>
+#include <gsh/Memory.hpp>
+#include <gsh/Arr.hpp>
 
 gsh::BasicReader r;
 gsh::BasicWriter w;

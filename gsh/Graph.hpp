@@ -48,23 +48,20 @@ template<std::size_t M, class W> auto get(const Edge<W>& e) {
     else return e.weight();
 }
 
-// gsh::graph_format::(DOK, LIL, COO, CSR, Matrix, Grid, Generative, Functional)
+// gsh::graph_format::(DOK, LIL, COO, CRS, Matrix, Grid, Generative, Functional)
 namespace graph_format {
-    template<class W> class CSR {
+    template<class W> class CRS {
         Vec<std::pair<Edge<W>, itype::u32>> storage;
         Arr<itype::u32> tail;
     protected:
-        constexpr CSR() {}
-        constexpr CSR(itype::u32 n) : tail(n, 0xffffffffu) {}
+        constexpr CRS() {}
+        constexpr CRS(itype::u32 n) : tail(n, 0xffffffffu) {}
     public:
+        using graph_format = void;
         constexpr void reserve(itype::u32 m) { storage.reserve(m); }
         constexpr itype::u32 vertex_count() const noexcept { return tail.size(); }
         constexpr itype::u32 edge_count() const noexcept { return storage.size(); }
     };
 }  // namespace graph_format
-
-namespace internal {
-    template<class Format> class GraphBase : public Format {};
-}  // namespace internal
 
 }  // namespace gsh

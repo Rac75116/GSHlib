@@ -206,7 +206,6 @@ public:
     template<class U> friend constexpr bool operator==(const Allocator&, const Allocator<U>&) noexcept { return true; }
 };
 
-template<class T> class PoolAllocator;
 template<itype::u32 Size> class MemoryPool {
     template<class T> friend class PoolAllocator;
     itype::u32 cnt = 0;

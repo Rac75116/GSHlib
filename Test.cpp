@@ -50,5 +50,7 @@ int main() {
         t.print();
         cout << res << endl;
         */
+        MemoryPool<100> p;
+        PoolAllocator<int> a(p);
     }
 }

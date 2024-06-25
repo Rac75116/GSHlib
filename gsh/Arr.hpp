@@ -10,7 +10,7 @@
 #include <gsh/TypeDef.hpp>    // gsh::itype
 #include <gsh/Exception.hpp>  // gsh::Exception
 #include <gsh/Range.hpp>      // gsh::ViewInterface
-#include <gsh/Memory.hpp>     // gsh::Allocator, gsh::AllocatorTraits, gsh::DestroyAt
+#include <gsh/Memory.hpp>     // gsh::Allocator, gsh::AllocatorTraits, gsh::ConstructAt, gsh::DestroyAt
 
 namespace gsh {
 
@@ -104,9 +104,9 @@ public:
     constexpr Arr& operator=(const Arr& x) {
         if constexpr (!std::is_trivially_destructible_v<value_type>)
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
-        if (traits::propagate_on_container_copy_assignment || len != x.len) {
+        if (traits::propagate_on_container_copy_assignment::value || len != x.len) {
             if (len != 0) traits::deallocate(alloc, ptr, len);
-            if constexpr (traits::propagate_on_container_copy_assignment) alloc = x.alloc;
+            if constexpr (traits::propagate_on_container_copy_assignment::value) alloc = x.alloc;
             ptr = traits::allocate(alloc, x.len);
         }
         len = x.len;
@@ -123,7 +123,7 @@ public:
                 for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
         }
-        if constexpr (traits::propagate_on_container_move_assignment) alloc = std::move(x.alloc);
+        if constexpr (traits::propagate_on_container_move_assignment::value) alloc = std::move(x.alloc);
         ptr = x.ptr, len = x.len;
         x.ptr = nullptr, x.len = 0;
         return *this;

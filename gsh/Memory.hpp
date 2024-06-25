@@ -203,9 +203,53 @@ public:
     constexpr void deallocate(T* p, size_type) { std::free(p); }
     [[nodiscard]] constexpr T* reallocate(T* p, size_type, size_type n) { return reinterpret_cast<T*>(std::realloc(p, sizeof(T) * n)); }
     constexpr Allocator& operator=(const Allocator&) = default;
+    template<class U> friend constexpr bool operator==(const Allocator&, const Allocator<U>&) noexcept { return true; }
 };
-template<class T, class U> constexpr bool operator==(const Allocator<T>&, const Allocator<U>&) noexcept {
-    return true;
-}
+
+template<class T> class PoolAllocator;
+template<itype::u32 Size> class MemoryPool {
+    template<class T> friend class PoolAllocator;
+    itype::u32 cnt = 0;
+    itype::u32 ref = 0;
+    itype::u8 buf[Size];
+public:
+    constexpr ~MemoryPool() noexcept(false) {
+        if (ref != 0) throw Exception("gsh::MemoryPool::~MemoryPool / There are some gsh::PoolAllocator tied to this object have not yet been destroyed.");
+    }
+};
+template<class T> class PoolAllocator {
+    template<class U> friend class PoolAllocator;
+    itype::u32* cnt;
+    itype::u32* ref;
+    itype::u8* buf;
+public:
+    using value_type = T;
+    using propagate_on_container_copy_assignmant = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+    using size_type = itype::u32;
+    using difference_type = itype::i32;
+    using is_always_equal = std::false_type;
+    constexpr PoolAllocator() noexcept : cnt(nullptr), ref(nullptr), buf(nullptr) {}
+    constexpr PoolAllocator(const PoolAllocator& a) : cnt(a.cnt), ref(a.ref), buf(a.buf) { ++*ref; }
+    template<class U> constexpr PoolAllocator(const PoolAllocator<U>& a) : cnt(a.cnt), ref(a.ref), buf(a.buf) { ++*ref; }
+    template<itype::u32 Size> constexpr PoolAllocator(MemoryPool<Size>& p) noexcept : cnt(&p.cnt), ref(&p.ref), buf(p.buf) { ++*ref; }
+    constexpr ~PoolAllocator() noexcept {
+        if (ref != nullptr) --*ref;
+    }
+    constexpr T* allocate(size_type n) {
+        auto res = reinterpret_cast<T*>(buf + *cnt);
+        *cnt += sizeof(T) * n;
+        return res;
+    }
+    constexpr void deallocate(T*, size_type) {}
+    constexpr PoolAllocator& operator=(const PoolAllocator& a) {
+        if (ref != nullptr) --*ref;
+        cnt = a.cnt, ref = a.ref, buf = a.buf;
+        ++*ref;
+        return *this;
+    }
+    template<class U> friend constexpr bool operator==(const PoolAllocator& a, const PoolAllocator<U>& b) { return a.cnt == b.cnt && a.ref == b.ref && a.buf == b.buf; }
+};
 
 }  // namespace gsh

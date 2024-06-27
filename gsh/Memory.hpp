@@ -3,16 +3,15 @@
 #include <limits>       // std::numeric_limits
 #include <utility>      // std::forward
 #include <iterator>     // std::begin, std::end
-#include <cstdlib>      // std::malloc, std::free, std::realloc
+#include <cstdlib>      // std::malloc, std::free, std::realloc, std::aligned_alloc
+#include <new>          // ::operator new, std::launder
 
 namespace gsh {
 
 template<class T, class... Args> constexpr T* ConstructAt(T* location, Args&&... args) {
-    return ::new (const_cast<void*>(static_cast<const volatile void*>(location))) T(std::forward<Args>(args)...);
-}
-template<class T> constexpr T* ConstructAt(T* location) {
-    if constexpr (std::is_trivially_default_constructible_v<T>) return location;
-    else return ::new (const_cast<void*>(static_cast<const volatile void*>(location))) T();
+    auto ptr = ::new (const_cast<void*>(static_cast<const volatile void*>(location))) T(std::forward<Args>(args)...);
+    if constexpr (std::is_array_v<T>) return std::launder(location);
+    else ptr;
 }
 template<class T> constexpr void DestroyAt(T* location) {
     if constexpr (!std::is_trivially_destructible_v<T>) {
@@ -158,9 +157,14 @@ public:
     template<class U> using rebind_alloc = typename internal::RebindAlloc<Alloc, U>::type;
     template<class U> using rebind_traits = AllocatorTraits<typename internal::RebindAlloc<Alloc, U>::type>;
     [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n) { return a.allocate(n); }
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type align, size_type n) { return a.allocate(align, n); }
     [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, const_void_pointer hint) {
         if constexpr (requires { a.allocate(n, hint); }) return a.allocate(n, hint);
         else return a.allocate(n);
+    }
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type align, size_type n, const_void_pointer hint) {
+        if constexpr (requires { a.allocate(align, n, hint); }) return a.allocate(align, n, hint);
+        else return a.allocate(align, n);
     }
     static constexpr void deallocate(Alloc& a, pointer p, size_type n) { a.deallocate(p, n); }
     [[nodiscard]] static constexpr pointer reallocate(Alloc& a, pointer p, size_type prev_size, size_type new_size) {
@@ -200,6 +204,7 @@ public:
     template<class U> constexpr Allocator(const Allocator<U>&) noexcept {}
     constexpr ~Allocator() = default;
     [[nodiscard]] constexpr T* allocate(size_type n) { return reinterpret_cast<T*>(std::malloc(sizeof(T) * n)); }
+    //[[nodiscard]] constexpr T* allocate(size_type align, size_type n) { return reinterpret_cast<T*>(std::aligned_alloc(align, n)); }
     constexpr void deallocate(T* p, size_type) { std::free(p); }
     [[nodiscard]] constexpr T* reallocate(T* p, size_type, size_type n) { return reinterpret_cast<T*>(std::realloc(p, sizeof(T) * n)); }
     constexpr Allocator& operator=(const Allocator&) = default;

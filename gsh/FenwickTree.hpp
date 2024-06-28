@@ -1,12 +1,12 @@
 #pragma once
-#include <type_traits>              // std::is_unsigned_v
-#include <bit>                      // std::bit_floor, std::bit_width, std::countr_zero
-#include <iterator>                 // std::iterator_traits
-#include <initializer_list>         // std::initializer_list
-#include <gsh/internal/Pragma.hpp>  // GSH_INTERNAL_UNROLL
-#include <gsh/Memory.hpp>           // gsh::Allocator, gsh::AllocatorTraits
-#include <gsh/Arr.hpp>              // gsh::Arr
-#include <gsh/TypeDef.hpp>          // gsh::itype
+#include <type_traits>                 // std::is_unsigned_v
+#include <bit>                         // std::bit_floor, std::bit_width, std::countr_zero
+#include <iterator>                    // std::iterator_traits
+#include <initializer_list>            // std::initializer_list
+#include <gsh/internal/UtilMacro.hpp>  // GSH_INTERNAL_UNROLL
+#include <gsh/Memory.hpp>              // gsh::Allocator, gsh::AllocatorTraits
+#include <gsh/Arr.hpp>                 // gsh::Arr
+#include <gsh/TypeDef.hpp>             // gsh::itype
 
 namespace gsh {
 
@@ -102,12 +102,12 @@ public:
     }
     constexpr value_type sum(size_type l, size_type r) const {
         size_type n = l & ~((std::bit_floor(l ^ r) << 1) - 1);
-        value_type res = {};
+        value_type res1 = {}, res2 = {};
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = r; i != n; i &= i - 1) res += bit[i - 1];
+        for (size_type i = r; i != n; i &= i - 1) res1 += bit[i - 1];
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = l; i != n; i &= i - 1) res -= bit[i - 1];
-        return res;
+        for (size_type i = l; i != n; i &= i - 1) res2 += bit[i - 1];
+        return res1 - res2;
     }
     constexpr size_type lower_bound(value_type x) const {
         static_assert(std::is_unsigned_v<value_type>, "gsh::RangeSumQuery::lower_bound / value_type must be unsigned.");

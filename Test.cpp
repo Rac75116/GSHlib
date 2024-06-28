@@ -12,7 +12,11 @@
 #include <gsh/Arr.hpp>
 #include <gsh/FenwickTree.hpp>
 
+#ifdef EVAL
+gsh::MmapReader r;
+#else
 gsh::BasicReader r;
+#endif
 gsh::BasicWriter w;
 int main() {
     [[maybe_unused]] gsh::Rand64 engine;
@@ -32,7 +36,7 @@ int main() {
                 fw.add(p, x);
             } else {
                 const u32 L = Parser<u8dig>{}(r).val, R = Parser<u8dig>{}(r).val;
-                Formatter<u64>{}(w, fw.sum(L, R));
+                Formatter<u16dig>{}(w, u16dig{ fw.sum(L, R) });
                 Formatter<c8>{}(w, '\n');
             }
         }

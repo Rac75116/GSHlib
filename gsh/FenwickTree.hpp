@@ -1,16 +1,17 @@
 #pragma once
-#include <type_traits>       // std::is_unsigned_v
-#include <bit>               // std::bit_floor, std::bit_width, std::countr_zero
-#include <iterator>          // std::iterator_traits
-#include <initializer_list>  // std::initializer_list
-#include <gsh/Memory.hpp>    // gsh::Allocator, gsh::AllocatorTraits
-#include <gsh/Vec.hpp>       // gsh::Vec
-#include <gsh/TypeDef.hpp>   // gsh::itype
+#include <type_traits>              // std::is_unsigned_v
+#include <bit>                      // std::bit_floor, std::bit_width, std::countr_zero
+#include <iterator>                 // std::iterator_traits
+#include <initializer_list>         // std::initializer_list
+#include <gsh/internal/Pragma.hpp>  // GSH_INTERNAL_UNROLL
+#include <gsh/Memory.hpp>           // gsh::Allocator, gsh::AllocatorTraits
+#include <gsh/Arr.hpp>              // gsh::Arr
+#include <gsh/TypeDef.hpp>          // gsh::itype
 
 namespace gsh {
 
 template<class T, class Alloc = Allocator<T>> class RangeSumQuery {
-    Vec<T, Alloc> bit;
+    Arr<T, Alloc> bit;
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -78,26 +79,33 @@ public:
     constexpr void clear() { bit.clear(); }
     constexpr allocator_type get_allocator() const noexcept { return bit.get_allocator(); }
     constexpr void add(size_type n, const value_type& x) {
+        GSH_INTERNAL_UNROLL(32)
         for (size_type i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] += x;
     }
     constexpr void minus(size_type n, const value_type& x) {
+        GSH_INTERNAL_UNROLL(32)
         for (size_type i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] -= x;
     }
     constexpr void increme(size_type n) {
+        GSH_INTERNAL_UNROLL(32)
         for (size_type i = n + 1, sz = size(); i <= sz; i += (i & (-i))) ++bit[i - 1];
     }
     constexpr void decreme(size_type n) {
+        GSH_INTERNAL_UNROLL(32)
         for (size_type i = n + 1, sz = size(); i <= sz; i += (i & (-i))) --bit[i - 1];
     }
     constexpr value_type sum(size_type n) const {
         value_type res = {};
+        GSH_INTERNAL_UNROLL(32)
         for (size_type i = n; i != 0; i &= i - 1) res += bit[i - 1];
         return res;
     }
     constexpr value_type sum(size_type l, size_type r) const {
         size_type n = l & ~((std::bit_floor(l ^ r) << 1) - 1);
         value_type res = {};
+        GSH_INTERNAL_UNROLL(32)
         for (size_type i = r; i != n; i &= i - 1) res += bit[i - 1];
+        GSH_INTERNAL_UNROLL(32)
         for (size_type i = l; i != n; i &= i - 1) res -= bit[i - 1];
         return res;
     }

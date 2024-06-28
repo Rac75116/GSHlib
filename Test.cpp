@@ -10,6 +10,7 @@
 #include <gsh/Vec.hpp>
 #include <gsh/Memory.hpp>
 #include <gsh/Arr.hpp>
+#include <gsh/FenwickTree.hpp>
 
 gsh::BasicReader r;
 gsh::BasicWriter w;
@@ -21,6 +22,20 @@ int main() {
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
+        const u32 N = Parser<u8dig>{}(r).val, Q = Parser<u8dig>{}(r).val;
+        static u32 a[500000];
+        for (u32 i = 0; i != N; ++i) a[i] = Parser<u32>{}(r);
+        RangeSumQuery<u64> fw(a, a + N);
+        for (u32 i = 0; i != Q; ++i) {
+            if (Parser<c8>{}(r) == '0') {
+                const u32 p = Parser<u8dig>{}(r).val, x = Parser<u32>{}(r);
+                fw.add(p, x);
+            } else {
+                const u32 L = Parser<u8dig>{}(r).val, R = Parser<u8dig>{}(r).val;
+                Formatter<u64>{}(w, fw.sum(L, R));
+                Formatter<c8>{}(w, '\n');
+            }
+        }
         /*
         using T = u16;
         constexpr u32 n = 100000000;

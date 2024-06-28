@@ -11,7 +11,7 @@ namespace gsh {
 template<class T, class... Args> constexpr T* ConstructAt(T* location, Args&&... args) {
     auto ptr = ::new (const_cast<void*>(static_cast<const volatile void*>(location))) T(std::forward<Args>(args)...);
     if constexpr (std::is_array_v<T>) return std::launder(location);
-    else ptr;
+    else return ptr;
 }
 template<class T> constexpr void DestroyAt(T* location) {
     if constexpr (!std::is_trivially_destructible_v<T>) {

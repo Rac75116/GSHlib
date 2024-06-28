@@ -17,6 +17,30 @@ namespace itype {
     using u128 = __uint128_t;
     using isize = i32;
     using usize = u32;
+    struct i4dig {
+        i16 val;
+        constexpr bool check() const noexcept { return val < 10000 && -val < 10000; }
+    };
+    struct u4dig {
+        u16 val;
+        constexpr bool check() const noexcept { return val < 10000; }
+    };
+    struct i8dig {
+        i32 val;
+        constexpr bool check() const noexcept { return val < 100000000 && -val < 100000000; }
+    };
+    struct u8dig {
+        u32 val;
+        constexpr bool check() const noexcept { return val < 100000000; }
+    };
+    struct i16dig {
+        i64 val;
+        constexpr bool check() const noexcept { return val < 10000000000000000 && -val < 10000000000000000; }
+    };
+    struct u16dig {
+        u64 val;
+        constexpr bool check() const noexcept { return val < 10000000000000000; }
+    };
 }  // namespace itype
 
 namespace ftype {

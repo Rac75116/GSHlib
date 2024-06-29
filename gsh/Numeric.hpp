@@ -260,4 +260,46 @@ constexpr Vec<itype::u32> EnumeratePrimes(const itype::u32 max_n) {
     return primes;
 }
 
+constexpr itype::u64 LinearFloorSum(itype::u32 n, itype::u32 m, itype::u32 a, itype::u32 b) {
+    itype::u64 res = 0;
+    while (true) {
+        const itype::u32 p = a / m, q = b / m;
+        a %= m;
+        b %= m;
+        res += (itype::u64) n * (n - 1) / 2 * p + (itype::u64) n * q;
+        const itype::u64 last = a * (itype::u64) n + b;
+        if (last < m) return res;
+        n = last / m;
+        b = last % m;
+        itype::u32 tmp = a;
+        a = m, m = tmp;
+    }
+}
+
+constexpr itype::u32 LinearModMin(itype::u32 n, itype::u32 m, itype::u32 a, itype::u32 b) {
+    itype::u32 res = 0;
+    bool z = true;
+    itype::u32 p = 1, q = 1;
+    while (a != 0) {
+        const itype::u32 e = (z ? a : m) - 1;
+        const itype::u32 d = m / a, r = m % a;
+        const itype::u32 g = d * p + q;
+        if ((z ? b + 1 : m - b) > a) {
+            const itype::u32 t = (m - b + (z ? a : 0) - 1) / a;
+            const itype::u32 c = (t - z) * p + (z ? q : 0);
+            if (n <= c) {
+                const itype::u32 h = z ? 0 : a * ((n - 1) / p);
+                res += (z ? h : -h);
+                break;
+            }
+            n -= c, b += a * t - (z ? m : 0);
+        }
+        q = g, p = g - p;
+        res += z ? e : -e;
+        m = a, a = r, b = e - b, z = !z;
+    }
+    res += (z ? b : -b);
+    return res;
+}
+
 }  // namespace gsh

@@ -11,6 +11,8 @@
 #include <gsh/Memory.hpp>
 #include <gsh/Arr.hpp>
 #include <gsh/FenwickTree.hpp>
+#include <gsh/Numeric.hpp>
+#include <iostream>
 
 #ifdef EVAL
 gsh::MmapReader r;
@@ -19,26 +21,18 @@ gsh::BasicReader r;
 #endif
 gsh::BasicWriter w;
 int main() {
-    [[maybe_unused]] gsh::Rand64 engine;
+    [[maybe_unused]] gsh::Rand32 engine;
     {
         using namespace std;
         using namespace gsh;
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
-        const u32 N = Parser<u8dig>{}(r).val, Q = Parser<u8dig>{}(r).val;
-        static u32 a[500000];
-        for (u32 i = 0; i != N; ++i) a[i] = Parser<u32>{}(r);
-        RangeSumQuery<u64> fw(a, a + N);
-        for (u32 i = 0; i != Q; ++i) {
-            if (Parser<c8>{}(r) == '0') {
-                const u32 p = Parser<u8dig>{}(r).val, x = Parser<u32>{}(r);
-                fw.add(p, x);
-            } else {
-                const u32 L = Parser<u8dig>{}(r).val, R = Parser<u8dig>{}(r).val;
-                Formatter<u16dig>{}(w, u16dig{ fw.sum(L, R) });
-                Formatter<c8>{}(w, '\n');
-            }
+        u32 T = Parser<u32>{}(r);
+        while (T--) {
+            u32 N = Parser<u32>{}(r), M = Parser<u32>{}(r), A = Parser<u32>{}(r), B = Parser<u32>{}(r);
+            Formatter<u32>{}(w, LinearModMin(N, M, A, B));
+            Formatter<c8>{}(w, '\n');
         }
         /*
         using T = u16;

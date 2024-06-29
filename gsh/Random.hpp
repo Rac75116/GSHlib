@@ -6,7 +6,7 @@
 namespace gsh {
 
 namespace internal {
-    constexpr itype::u64 splitmix(itype::u64 x) {
+    constexpr itype::u64 Splitmix(itype::u64 x) {
         itype::u64 z = (x + 0x9e3779b97f4a7c15);
         z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
         z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
@@ -22,7 +22,7 @@ public:
     static constexpr itype::usize word_size = sizeof(result_type) * 8;
     static constexpr result_type default_seed = 0xcafef00dd15ea5e5;
     constexpr Rand64() : Rand64(default_seed) {}
-    constexpr explicit Rand64(result_type value) : s0(value), s1(internal::splitmix(value)) {}
+    constexpr explicit Rand64(result_type value) : s0(value), s1(internal::Splitmix(value)) {}
     constexpr result_type operator()() {
         itype::u64 t0 = s0, t1 = s1;
         const itype::u64 res = t0 + t1;
@@ -36,7 +36,7 @@ public:
     }
     static constexpr result_type max() { return 18446744073709551615u; }
     static constexpr result_type min() { return 0; }
-    constexpr void seed(result_type value = default_seed) { s0 = value, s1 = internal::splitmix(value); }
+    constexpr void seed(result_type value = default_seed) { s0 = value, s1 = internal::Splitmix(value); }
     friend constexpr bool operator==(Rand64 x, Rand64 y) { return x.s0 == y.s0 && x.s1 == y.s1; }
 };
 
@@ -48,7 +48,7 @@ public:
     static constexpr itype::usize word_size = sizeof(result_type) * 8;
     static constexpr result_type default_seed = 0xcafef00d;
     constexpr Rand32() : Rand32(default_seed) {}
-    constexpr explicit Rand32(result_type value) : val(internal::splitmix((itype::u64) value << 32 | value)) {}
+    constexpr explicit Rand32(result_type value) : val(internal::Splitmix((itype::u64) value << 32 | value)) {}
     constexpr result_type operator()() {
         itype::u64 x = val;
         const itype::i32 count = x >> 61;
@@ -66,7 +66,7 @@ public:
     }
     static constexpr result_type max() { return 4294967295u; }
     static constexpr result_type min() { return 0; }
-    constexpr void seed(result_type value = default_seed) { val = internal::splitmix((itype::u64) value << 32 | value); }
+    constexpr void seed(result_type value = default_seed) { val = internal::Splitmix((itype::u64) value << 32 | value); }
     friend constexpr bool operator==(Rand32 x, Rand32 y) { return x.val == y.val; }
 };
 
@@ -83,8 +83,8 @@ public:
     static constexpr result_type max() { return 4294967295u; }
     static constexpr result_type min() { return 0; }
     result_type operator()() {
-        itype::u64 a = internal::splitmix(static_cast<itype::u64>(std::time(nullptr)));
-        itype::u64 b = internal::splitmix(static_cast<itype::u64>(std::clock()));
+        itype::u64 a = internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)));
+        itype::u64 b = internal::Splitmix(static_cast<itype::u64>(std::clock()));
         return static_cast<result_type>(engine() ^ a ^ b);
     }
 };

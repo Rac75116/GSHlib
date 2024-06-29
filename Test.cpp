@@ -7,6 +7,8 @@
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
 #include <gsh/Numeric.hpp>
+#include <gsh/Vec.hpp>
+#include <ranges>
 
 #ifdef EVAL
 gsh::MmapReader r;
@@ -22,6 +24,8 @@ int main() {
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
+        Vec<int> v;
+        std::ranges::begin(v);
         /*
         using T = u16;
         constexpr u32 n = 100000000;

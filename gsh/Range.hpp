@@ -3,10 +3,13 @@
 #include <concepts>         // std::same_as, std::predicate
 #include <utility>          // std::move
 #include <iterator>         // std::next, std::iter_value_t
-#include <ranges>           // std::ranges::iterator_t, std::sentinel_for, std::ranges::reverse
+#include <ranges>           // std::ranges::iterator_t, std::sentinel_for, std::ranges::reverse, std::ranges::range, std::ranges::range_value_t
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
+
+template<class R> concept Range = std::ranges::range<R>;
+template<class R, class T> concept Rangeof = Range<R> && std::same_as<T, std::ranges::range_value_t<R>>;
 
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>

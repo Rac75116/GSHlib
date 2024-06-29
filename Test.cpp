@@ -6,13 +6,7 @@
 #include <gsh/TypeDef.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
-#include <gsh/Macro.hpp>
-#include <gsh/Vec.hpp>
-#include <gsh/Memory.hpp>
-#include <gsh/Arr.hpp>
-#include <gsh/FenwickTree.hpp>
 #include <gsh/Numeric.hpp>
-#include <iostream>
 
 #ifdef EVAL
 gsh::MmapReader r;
@@ -28,12 +22,6 @@ int main() {
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
-        u32 T = Parser<u32>{}(r);
-        while (T--) {
-            u32 N = Parser<u32>{}(r), M = Parser<u32>{}(r), A = Parser<u32>{}(r), B = Parser<u32>{}(r);
-            Formatter<u32>{}(w, LinearModMin(N, M, A, B));
-            Formatter<c8>{}(w, '\n');
-        }
         /*
         using T = u16;
         constexpr u32 n = 100000000;

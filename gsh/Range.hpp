@@ -10,6 +10,7 @@ namespace gsh {
 
 template<class R> concept Range = std::ranges::range<R>;
 template<class R, class T> concept Rangeof = Range<R> && std::same_as<T, std::ranges::range_value_t<R>>;
+constexpr auto Size = std::ranges::size;
 
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
@@ -62,7 +63,7 @@ public:
     constexpr auto slice(itype::u32 a) { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
     constexpr auto slice(itype::u32 a) const { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
     constexpr derived_type& reverse() {
-        std::ranges::reverse(get_ref());
+        std::views::reverse(get_ref());
         return get_ref();
     }
     constexpr auto reversed() { return SlicedRange{ get_rbegin(), get_rend() }; }

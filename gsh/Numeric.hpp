@@ -128,4 +128,18 @@ constexpr itype::u32 LinearModMin(itype::u32 n, itype::u32 m, itype::u32 a, ityp
     return res;
 }
 
+class QuotientsList {
+    const itype::u64 x;
+    const itype::u32 sq;
+    itype::u32 m;
+public:
+    using value_type = itype::u32;
+    constexpr QuotientsList(itype::u64 n) : x(n), sq(IntSqrt(n)) { m = (itype::u64(sq) * sq + sq <= n ? sq : sq - 1); }
+    constexpr itype::u32 size() const noexcept { return sq + m; }
+    constexpr itype::u32 iota_limit() const noexcept { return sq; }
+    constexpr itype::u32 div_limit() const noexcept { return m; }
+    constexpr itype::u64 val() const noexcept { return x; }
+    constexpr itype::u64 operator[](itype::u32 n) { return n < m ? n + 1 : x / (sq - (n - m)); }
+};
+
 }  // namespace gsh

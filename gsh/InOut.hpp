@@ -310,6 +310,23 @@ namespace internal {
             copy2(n % 10000);
         }
     }
+    template<class Stream> constexpr void Formatu8dig(Stream& stream, itype::u8dig x) {
+        const itype::u64 n = x.val;
+        auto copy1 = [&](itype::u64 x) {
+            itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+            std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
+            stream.skip(4 - off);
+        };
+        auto copy2 = [&](itype::u64 x) {
+            std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
+            stream.skip(4);
+        };
+        if (n < 10000) copy1(n);
+        else {
+            copy1(n / 10000);
+            copy2(n % 10000);
+        }
+    }
     template<class Stream> constexpr void Formatu16dig(Stream& stream, itype::u16dig x) {
         const itype::u64 n = x.val;
         auto copy1 = [&](itype::u64 x) {
@@ -390,6 +407,22 @@ public:
         internal::Formatu64(stream, n < 0 ? -n : n);
     }
 };
+template<> class Formatter<itype::u8dig> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::u8dig n) const {
+        stream.reload(8);
+        internal::Formatu8dig(stream, n);
+    }
+};
+template<> class Formatter<itype::i8dig> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::i8dig n) const {
+        stream.reload(9);
+        *stream.current() = '-';
+        stream.skip(n.val < 0);
+        internal::Formatu8dig(stream, itype::u8dig{ n.val < 0 ? -n.val : n.val });
+    }
+};
 template<> class Formatter<itype::u16dig> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, itype::u16dig n) const {
@@ -400,7 +433,7 @@ public:
 template<> class Formatter<itype::i16dig> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, itype::i16dig n) const {
-        stream.reload(16);
+        stream.reload(17);
         *stream.current() = '-';
         stream.skip(n.val < 0);
         internal::Formatu16dig(stream, itype::u16dig{ n.val < 0 ? -n.val : n.val });

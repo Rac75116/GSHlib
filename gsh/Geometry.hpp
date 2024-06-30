@@ -28,10 +28,17 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&&
     for (itype::u32 i = 0; auto p : r) {
         auto [x, y] = p;
         itype::u64 ord = 0;
-        if (y == 0) ord = (x >= 0 ? (1ull << 63) : 0xffffffffffffffffull);
-        else {
-            const itype::i64 tmp = ((x * (1ll << 32)) / y);
-            ord = (std::bit_cast<itype::u64>(-tmp) >> 1) | (static_cast<itype::u64>(y > 0) << 63);
+        if (x >= y) {
+            if (x == 0) {
+            } else {
+                itype::i64 tmp = static_cast<itype::u128>(y) * (1ull << 61) / x;
+            }
+        } else {
+            if (y == 0) {
+                ord = 0xffffffffffffffff;
+            } else {
+                itype::i64 tmp = -static_cast<itype::u128>(x) * (1ull << 61) / y;
+            }
         }
         v[i++] = static_cast<itype::u128>(std::bit_cast<itype::u64>(p)) << 64 | ord;
     }

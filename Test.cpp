@@ -6,8 +6,7 @@
 #include <gsh/TypeDef.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
-#include <gsh/Geometry.hpp>
-#include <assert.h>
+#include <gsh/Numeric.hpp>
 
 #ifdef EVAL
 gsh::MmapReader r;
@@ -24,11 +23,6 @@ int main() {
         using namespace gsh::ftype;
         using namespace gsh::ctype;
         /*
-        for (u32 i = 0; i != 1000000000; ++i) {
-            u32 a = engine() / 4, b = engine() / 4, c = engine() / 4, d = engine() / 4;
-            assert(((u64) c * b < (u64) a * d) == ((u64(b) << 32) / a < (u64(d) << 32) / c));
-        }
-        */
         u32 N = Parser<u32>{}(r);
         Arr<Point2<itype::i32>> p(N);
         for (u32 i = 0; i != N; ++i) {
@@ -42,6 +36,7 @@ int main() {
             Formatter<i32>{}(w, y);
             Formatter<c8>{}(w, '\n');
         }
+        */
         /*
         using T = u16;
         constexpr u32 n = 100000000;

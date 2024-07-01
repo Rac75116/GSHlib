@@ -1,4 +1,6 @@
-//#define NDEBUG
+#if defined(EVAL) || defined(ONLINE_JUDGE)
+#define NDEBUG
+#endif
 #pragma GCC optimize("Ofast")
 #pragma GCC optimize("unroll-loops")
 //#include <cmath>
@@ -6,7 +8,7 @@
 #include <gsh/TypeDef.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
-#include <gsh/Numeric.hpp>
+#include <gsh/Geometry.hpp>
 
 #ifdef EVAL
 gsh::MmapReader r;
@@ -16,13 +18,12 @@ gsh::BasicReader r;
 gsh::BasicWriter w;
 int main() {
     [[maybe_unused]] gsh::Rand32 engine;
-    {
+    try {
         using namespace std;
         using namespace gsh;
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
-        /*
         u32 N = Parser<u32>{}(r);
         Arr<Point2<itype::i32>> p(N);
         for (u32 i = 0; i != N; ++i) {
@@ -36,7 +37,6 @@ int main() {
             Formatter<i32>{}(w, y);
             Formatter<c8>{}(w, '\n');
         }
-        */
         /*
         using T = u16;
         constexpr u32 n = 100000000;
@@ -66,5 +66,8 @@ int main() {
         t.print();
         cout << res << endl;
         */
+    } catch (gsh::Exception& e) {
+        printf("gsh::Exception was throwed: ");
+        puts(e.what());
     }
 }

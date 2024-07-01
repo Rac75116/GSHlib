@@ -243,7 +243,7 @@ public:
     }
 };
 
-class OfflinePersistentUnionfindQuery {
+class OfflinePersistentUnionfind {
     itype::u32 n = 0;
     struct query {
         bool t;
@@ -251,8 +251,8 @@ class OfflinePersistentUnionfindQuery {
     };
     Vec<query> g;
 public:
-    constexpr OfflinePersistentUnionfindQuery() {}
-    constexpr OfflinePersistentUnionfindQuery(itype::u32 m) : n(m) {}
+    constexpr OfflinePersistentUnionfind() {}
+    constexpr OfflinePersistentUnionfind(itype::u32 m) : n(m) {}
     constexpr itype::u32 size() const noexcept { return n; }
     constexpr void same(itype::i32 k, itype::u32 u, itype::u32 v) { g.emplace_back(true, k + 1, u, v); }
     constexpr void merge(itype::i32 k, itype::u32 u, itype::u32 v) { g.emplace_back(false, k + 1, u, v); }

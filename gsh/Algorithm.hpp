@@ -2,7 +2,10 @@
 #include <type_traits>      // std::common_type
 #include <cstring>          // std::memset
 #include <cstdlib>          // std::malloc, std::free
+#include <algorithm>        // std::lower_bound
 #include <gsh/TypeDef.hpp>  // gsh::itype
+#include <gsh/Arr.hpp>      // gsh::Arr
+#include <gsh/Range.hpp>    // gsh::Range
 
 namespace gsh {
 
@@ -92,5 +95,42 @@ namespace internal {
         std::free(tmp);
     }
 }  // namespace internal
+
+struct Identity {
+    template<class T> constexpr T&& operator()(T&& t) const noexcept { return std::forward<T>(t); }
+    using is_transparent = void;
+};
+
+
+template<std::ranges::forward_range R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = std::ranges::less> constexpr std::ranges::borrowed_iterator_t<R> LowerBound(R&& r, const T& value, Comp comp = {}, Proj proj = {}) {
+    using traits = RangeTraits<R>;
+    auto first = traits::begin(r);
+    auto len = traits::size(r) + 1;
+    while (len > 1) {
+        auto half = len / 2;
+        len -= half;
+        first = static_cast<bool>(comp(proj(*std::next(first, half - 1)), value)) ? std::next(first, half) : first;
+    }
+    return first;
+}
+
+template<Range R> constexpr Arr<itype::u32> LongestIncreasingSubsequenceIndex(R&& r) {
+    using T = typename RangeTraits<R>::value_type;
+    Arr<T> dp(RangeTraits<R>::size(r));
+    Arr<itype::u32> idx(dp.size());
+    itype::u32 i = 0;
+    T *begin = dp.data(), *last = dp.data();
+    for (const T& x : r) {
+        T* loc = std::lower_bound(begin, last, x);
+        idx[i++] = loc - begin;
+        last += (loc == last);
+        *loc = x;
+    }
+    itype::u32 cnt = last - begin - 1;
+    Arr<itype::u32> res(last - begin);
+    for (itype::u32 i = dp.size(); i != 0;)
+        if (idx[--i] == cnt) res[cnt--] = i;
+    return res;
+}
 
 }  // namespace gsh

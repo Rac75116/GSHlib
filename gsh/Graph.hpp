@@ -48,6 +48,7 @@ template<std::size_t M, class W> auto get(const Edge<W>& e) {
     else return e.weight();
 }
 
+/*
 // gsh::graph_format::(DOK, LIL, COO, CRS, Matrix, Grid, Generative, Functional)
 namespace graph_format {
     template<class W> class CRS {
@@ -63,5 +64,6 @@ namespace graph_format {
         constexpr itype::u32 edge_count() const noexcept { return storage.size(); }
     };
 }  // namespace graph_format
+*/
 
 }  // namespace gsh

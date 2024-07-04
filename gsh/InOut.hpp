@@ -14,6 +14,17 @@ namespace gsh {
 template<class T> class Parser;
 
 namespace internal {
+    template<class Stream> constexpr itype::u8 Parseu8(Stream& stream) {
+        itype::u32 v;
+        std::memcpy(&v, stream.current(), 4);
+        v ^= 0x30303030;
+        itype::i32 tmp = std::countr_zero(v & 0xf0f0f0f0) >> 3;
+        v <<= (32 - (tmp << 3));
+        stream.skip(tmp + 1);
+        v = (v * 10 + (v >> 8)) & 0x00ff00ff;
+        v = (v * 100 + (v >> 16)) & 0x0000ffff;
+        return v;
+    }
     template<class Stream> constexpr itype::u16 Parseu16(Stream& stream) {
         itype::u64 v;
         std::memcpy(&v, stream.current(), 8);
@@ -137,6 +148,24 @@ namespace internal {
     }
 }  // namespace internal
 
+template<> class Parser<itype::u8> {
+public:
+    template<class Stream> constexpr itype::u8 operator()(Stream& stream) const {
+        stream.reload(4);
+        return internal::Parseu8(stream);
+    }
+};
+template<> class Parser<itype::i8> {
+public:
+    template<class Stream> constexpr itype::i8 operator()(Stream& stream) const {
+        stream.reload(4);
+        bool neg = *stream.current() == '-';
+        if (neg) stream.skip(1);
+        itype::i8 tmp = internal::Parseu8(stream);
+        if (neg) tmp = -tmp;
+        return tmp;
+    }
+};
 template<> class Parser<itype::u16> {
 public:
     template<class Stream> constexpr itype::u16 operator()(Stream& stream) const {

@@ -25,7 +25,7 @@ public:
 
 template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
     Arr<itype::u128> v(Size(r));
-    for (itype::u32 i = 0; auto& p : r) {
+    for (itype::u32 i = 0; auto&& p : r) {
         auto [x, y] = p;
         itype::u64 ord = 0;
         const bool xs = (x >= 0), ys = (y >= 0);
@@ -46,5 +46,27 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&&
     for (itype::u32 i = 0, j = v.size(); i != j; ++i) res[i] = std::bit_cast<Point2<itype::i32>>(static_cast<itype::u64>(v[i] >> 64));
     return res;
 }
+
+template<Rangeof<Point2<itype::i32>> R> constexpr auto ManhattanMST(R&& r) {
+    using traits = RangeTraits<R>;
+    /*
+    Arr<itype::u64> p(traits::size(r));
+    for (itype::u32 i = 0; auto [x, y] : r) {
+        itype::u32 xu = (x < 0 ? ((1u << 31) - 1) + x : x);
+        itype::u32 yu = (y < 0 ? ((1u << 31) - 1) + y : y);
+        p[i++] = { xu, xu + yu };
+    }
+    auto calc = [&]() {
+    };
+    calc();
+    for (itype::u32 i = 0; i != p.size(); ++i) {
+        itype::u32 x = static_cast<itype::u32>(p[i] >> 32);
+        itype::u32 y = static_cast<itype::u32>(p[i]) - x;
+        p[i] = ((1u << 31) - 1) - x;
+    }
+    calc();
+    */
+}
+
 
 }  // namespace gsh

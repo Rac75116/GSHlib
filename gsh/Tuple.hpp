@@ -1,7 +1,7 @@
 #pragma once
 #include <type_traits>
 #include <tuple>
-#include <utility>          // std::forward
+#include <utility>          // std::forward, std::make_integer
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
@@ -25,6 +25,7 @@ namespace internal {
         constexpr T& el() noexcept { return name; } \
         constexpr const T& el() const noexcept { return name; } \
     };
+
 GSH_INTERNAL_DEF_TUPLEEL(0, first)
 GSH_INTERNAL_DEF_TUPLEEL(1, second)
 GSH_INTERNAL_DEF_TUPLEEL(2, third)
@@ -62,6 +63,12 @@ GSH_INTERNAL_DEF_TUPLEEL(19, twentieth)
 }  // namespace internal
 
 template<class... Types> class Tuple : public internal::TupleImpl<0, Types...> {
+    template<class Tup, itype::u32... I, class... UTypes> constexpr bool enable_construction(Tup&& u, std::integer_sequence<itype::u32, I...>, Tuple<UTypes...>) {
+        if (sizeof...(Types) != sizeof(UTypes)) return false;
+        else if constexpr (!std::is_constructible_v<Types, decltype(get<I>(static_cast<decltype(u)>(u)))> && ...) return false;
+        else if constexpr (sizeof...(Types) != 1) return true;
+        else return (!std::is_convertible_v<decltype(u), Types...> && !std::is_constructible_v<Types..., decltype(u)> && !std::is_same_v<Types..., UTypes...>);
+    }
 public:
     explicit(see below) constexpr Tuple()
         requires std::conjunction_v<std::is_default_constructible<Types>...>
@@ -77,11 +84,15 @@ public:
     constexpr Tuple(Tuple&&)
         requires std::conjunction_v<std::is_move_constructible<Types>...>
     = default;
-    template<class... UTypes> explicit(see below) constexpr Tuple(Tuple<UTypes...>&);
-    template<class... UTypes> explicit(see below) constexpr Tuple(const Tuple<UTypes...>&);
-    template<class... UTypes> explicit(see below) constexpr Tuple(Tuple<UTypes...>&&);
-    template<class... UTypes> explicit(see below) constexpr Tuple(const Tuple<UTypes...>&&);
-    template<tuple - like UTuple> explicit(see below) constexpr Tuple(UTuple&&);
+    template<class... UTypes> explicit(see below) constexpr Tuple(Tuple<UTypes...>& u)
+        requires(enable_construction(u, std::make_integer_sequence<itype::u32, sizeof...(Types)>{}, u));
+    template<class... UTypes> explicit(see below) constexpr Tuple(const Tuple<UTypes...>&)
+        requires(enable_construction(u, std::make_integer_sequence<itype::u32, sizeof...(Types)>{}, u));
+    template<class... UTypes> explicit(see below) constexpr Tuple(Tuple<UTypes...>&&)
+        requires(enable_construction(u, std::make_integer_sequence<itype::u32, sizeof...(Types)>{}, u));
+    template<class... UTypes> explicit(see below) constexpr Tuple(const Tuple<UTypes...>&&)
+        requires(enable_construction(u, std::make_integer_sequence<itype::u32, sizeof...(Types)>{}, u));
+    //template<tuple - like UTuple> explicit(see below) constexpr Tuple(UTuple&&);
     /*
     template<class Alloc> explicit(see below) constexpr Tuple(allocator_arg_t, const Alloc& a);
     template<class Alloc> explicit(see below) constexpr Tuple(allocator_arg_t, const Alloc& a, const Types&...);

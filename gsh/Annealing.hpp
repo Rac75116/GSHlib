@@ -1,6 +1,15 @@
 #pragma once
-#include <type_traits>      // std::invoke_result_t, std::decay_t, std::is_same_v
-#include <ctime>            // std::clock_t, std::clock
+#include <chrono>
 #include <gsh/TypeDef.hpp>  // gsh::itype
+#include <gsh/Random.hpp>
 
-namespace gsh {}  // namespace gsh
+namespace gsh {
+
+enum class OptimizeType { Minimize, Maximize };
+template<OptimizeType Type = OptimizeType::Minimize> class Annealing {
+    ftype::f32 itemp, iscore, ugap;
+public:
+    Annealing(ftype::f32 init_temp, ftype::f32 init_score, itype::u32 update_gap = 16) : itemp(init_temp), iscore(init_score), ugap(update_gap) {}
+};
+
+}  // namespace gsh

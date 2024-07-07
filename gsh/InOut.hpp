@@ -247,6 +247,20 @@ public:
         return tmp;
     }
 };
+/*
+template<> class Parser<ctype::c8*> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, ctype::c8* s) const {
+        while (true) {
+            while (*stream.current() > ' ' && stream.avail() != 0) *(s++) = *stream.current(), stream.skip(1);
+            if (stream.avail() == 0) stream.reload();
+            else break;
+        }
+        stream.skip(1);
+        *s = '\0';
+    }
+};
+*/
 
 
 template<class T> class Formatter;

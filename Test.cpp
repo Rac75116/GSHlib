@@ -3,12 +3,9 @@
 #endif
 #pragma GCC optimize("Ofast")
 #pragma GCC optimize("unroll-loops")
-//#include <cmath>
 #include <gsh/InOut.hpp>
-#include <gsh/TypeDef.hpp>
-#include <gsh/Random.hpp>
-#include <gsh/Timer.hpp>
-#include <gsh/Algorithm.hpp>
+#include <gsh/Exception.hpp>
+#include <cstdio>
 
 #ifdef EVAL
 gsh::MmapReader r;
@@ -17,7 +14,6 @@ gsh::BasicReader r;
 #endif
 gsh::BasicWriter w;
 int main() {
-    [[maybe_unused]] gsh::Rand32 engine;
     try {
         using namespace std;
         using namespace gsh;

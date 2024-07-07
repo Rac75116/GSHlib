@@ -89,6 +89,22 @@ public:
     }
 };
 
+template<itype::u32 Size, class URBG> class RandBuffer : public URBG {
+    typename URBG::result_type buf[Size];
+    itype::u32 x, cnt;
+public:
+    constexpr RandBuffer() { init(); }
+    constexpr explicit RandBuffer(URBG::result_type value) : URBG(value) { init(); }
+    constexpr void reload() { x = URBG::operator()(), cnt = 0; }
+    constexpr void init() {
+        for (itype::u32 i = 0; i != Size; ++i) buf[i] = URBG::operator()();
+        x = URBG::operator()(), cnt = 0;
+    }
+    constexpr URBG::result_type operator()() { return x ^ buf[cnt++]; }
+};
+template<itype::u32 Size> using RandBuffer32 = RandBuffer<Size, Rand32>;
+template<itype::u32 Size> using RandBuffer64 = RandBuffer<Size, Rand64>;
+
 // @brief Generate 32bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr itype::u32 Uniform32(URBG& g, itype::u32 max) {
     return (static_cast<itype::u64>(g() & 4294967295u) * max) >> 32;

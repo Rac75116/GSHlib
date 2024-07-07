@@ -49,23 +49,15 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&&
 
 template<Rangeof<Point2<itype::i32>> R> constexpr auto ManhattanMST(R&& r) {
     using traits = RangeTraits<R>;
-    /*
     Arr<itype::u64> p(traits::size(r));
     for (itype::u32 i = 0; auto [x, y] : r) {
-        itype::u32 xu = (x < 0 ? ((1u << 31) - 1) + x : x);
-        itype::u32 yu = (y < 0 ? ((1u << 31) - 1) + y : y);
-        p[i++] = { xu, xu + yu };
+        itype::u32 xu = (x < 0 ? ((1u << 30) - 1) + x : x);
+        itype::u32 yu = (y < 0 ? ((1u << 30) - 1) + y : y);
+        p[i++] = { xu, yu };
     }
-    auto calc = [&]() {
-    };
-    calc();
-    for (itype::u32 i = 0; i != p.size(); ++i) {
-        itype::u32 x = static_cast<itype::u32>(p[i] >> 32);
-        itype::u32 y = static_cast<itype::u32>(p[i]) - x;
-        p[i] = ((1u << 31) - 1) - x;
-    }
-    calc();
-    */
+    Arr<itype::u64> ord(p.size());
+    for (itype::u32 i = 0; i != ord.size(); ++i) ord[i] = (itype::u64(i) << 32) | (itype::u32(p[i]) + itype::u32(p[i] >> 32));
+    internal::SortUnsigned32(ord.data(), ord.size());
 }
 
 

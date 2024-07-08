@@ -170,7 +170,7 @@ public:
         }
         ptr = new_ptr;
         if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-            for (size_type i = len; i < sz; ++i) traits::construct(alloc, *(ptr + i));
+            for (size_type i = len; i < sz; ++i) traits::construct(alloc, ptr + i);
         else if (len < sz) std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
         len = sz;
     }

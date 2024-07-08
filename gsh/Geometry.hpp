@@ -23,7 +23,15 @@ public:
         x -= p.x, y -= p.y;
         return *this;
     }
+    friend constexpr bool operator==(const Point2& a, const Point2& b) { return a.x == b.x && a.y == b.y; }
 };
+template<class T> constexpr T Dot(const Point2<T>& a, const Point2<T>& b) {
+    return a.x * b.x + a.y * b.y;
+}
+template<class T> constexpr T Cross(const Point2<T>& a, const Point2<T>& b) {
+    return a.x * b.y - a.y * b.x;
+}
+
 template<class T>
     requires std::is_arithmetic_v<T>
 class Point3 : public internal::ArithmeticInterface<Point3<T>> {
@@ -38,7 +46,14 @@ public:
         x -= p.x, y -= p.y, z -= p.z;
         return *this;
     }
+    friend constexpr bool operator==(const Point3& a, const Point3& b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
 };
+template<class T> constexpr T Dot(const Point3<T>& a, const Point3<T>& b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+template<class T> constexpr Point3<T> Cross(const Point3<T>& a, const Point3<T>& b) {
+    return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+}
 
 template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
     Arr<itype::u128> v(RangeTraits<T>::size(r));
@@ -64,27 +79,36 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&&
     return res;
 }
 
-template<Rangeof<Point2<itype::i32>> T> auto ConvexHull(T&& r) {
+template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ConvexHull(T&& r) {
     const itype::u32 n = RangeTraits<T>::size(r);
-    Arr<itype::u64> sorted(n);
-    for (itype::u32 i = 0; auto [x, y] : r) {
-        const itype::u32 xu = std::bit_cast<itype::u32>(x), yu = std::bit_cast<itype::u32>(y);
-        const itype::u32 tmpx = (x < 0 ? 0xffffffffu - xu : xu | (1u << 31)), tmpy = (y < 0 ? 0xffffffffu - yu : yu | (1u << 31));
-        sorted[i++] = static_cast<itype::u64>(tmpx) << 32 | tmpy;
+    if (n <= 1) return r;
+    itype::u32 m = 1;
+    Arr<Point2<itype::i32>> p(n);
+    {
+        Arr<itype::u64> sorted(n);
+        for (itype::u32 i = 0; auto e : r) sorted[i++] = std::bit_cast<itype::u64>(e) ^ 0x8000000080000000;
+        if (n < 5000) std::sort(sorted.begin(), sorted.end());
+        else internal::SortUnsigned64(sorted.data(), n);
+        p[0] = std::bit_cast<Point2<itype::i32>>(sorted[0] ^ 0x8000000080000000);
+        for (itype::u32 i = 1; i != n; ++i) {
+            p[m] = std::bit_cast<Point2<itype::i32>>(sorted[i] ^ 0x8000000080000000);
+            m += sorted[i] != sorted[i - 1];
+        }
     }
-    internal::SortUnsigned64(sorted.data(), sorted.size());
-    class result_type {
-        Arr<Point2<itype::i32>> arr;
-    } res;
-    res.arr.resize(n);
-    for (itype::u32 i = 0; i != n; ++i) {
-        const itype::u32 x = sorted[i] >> 32, y = sorted[i];
-        const itype::i32 tmpx = std::bit_cast<itype::i32>(x < (1u << 31) ? 0xffffffffu - x : x ^ (1u << 31));
-        const itype::i32 tmpy = std::bit_cast<itype::i32>(y < (1u << 31) ? 0xffffffffu - y : y ^ (1u << 31));
-        res.arr[i] = { tmpx, tmpy };
+    if (m <= 2) {
+        p.resize(m);
+        return p;
     }
-    // TODO
-    return res;
+    Arr<Point2<itype::i32>> ch(2 * m);
+    itype::u32 k = 0;
+    for (itype::u32 i = 0; i < m; ch[k++] = p[i++]) {
+        while (k >= 2 && Cross(ch[k - 1] - ch[k - 2], p[i] - ch[k - 2]) <= 0) --k;
+    }
+    for (itype::u32 i = m - 1, t = k + 1; i > 0; ch[k++] = p[--i]) {
+        while (k >= t && Cross(ch[k - 1] - ch[k - 2], p[i - 1] - ch[k - 2]) <= 0) --k;
+    }
+    ch.resize(k - 1);
+    return ch;
 }
 
 }  // namespace gsh

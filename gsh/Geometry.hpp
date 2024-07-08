@@ -1,30 +1,47 @@
 #pragma once
-#include <type_traits>        // std::is_arithmetic_v
-#include <bit>                // std::bit_cast
-#include <gsh/Range.hpp>      // gsh::Rangeof
-#include <gsh/Arr.hpp>        // gsh::Arr
-#include <gsh/TypeDef.hpp>    // gsh::itype
-#include <gsh/Algorithm.hpp>  // gsh::internal::SortUnsigned64
+#include <type_traits>                 // std::is_arithmetic_v
+#include <bit>                         // std::bit_cast
+#include <gsh/Range.hpp>               // gsh::Rangeof
+#include <gsh/Arr.hpp>                 // gsh::Arr
+#include <gsh/TypeDef.hpp>             // gsh::itype
+#include <gsh/Algorithm.hpp>           // gsh::internal::SortUnsigned64
+#include <gsh/internal/Operation.hpp>  // gsh::internal::ArithmeticInterface
 
 namespace gsh {
 
 template<class T>
     requires std::is_arithmetic_v<T>
-class Point2 {
+class Point2 : public internal::ArithmeticInterface<Point2<T>> {
 public:
-    T x, y;
+    T x{}, y{};
     using value_type = T;
+    constexpr Point2& operator+=(const Point2& p) {
+        x += p.x, y += p.y;
+        return *this;
+    }
+    constexpr Point2& operator-=(const Point2& p) {
+        x -= p.x, y -= p.y;
+        return *this;
+    }
 };
 template<class T>
     requires std::is_arithmetic_v<T>
-class Point3 {
+class Point3 : public internal::ArithmeticInterface<Point3<T>> {
 public:
-    T x, y, z;
+    T x{}, y{}, z{};
     using value_type = T;
+    constexpr Point3& operator+=(const Point3& p) {
+        x += p.x, y += p.y, z += p.z;
+        return *this;
+    }
+    constexpr Point3& operator-=(const Point3& p) {
+        x -= p.x, y -= p.y, z -= p.z;
+        return *this;
+    }
 };
 
 template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
-    Arr<itype::u128> v(Size(r));
+    Arr<itype::u128> v(RangeTraits<T>::size(r));
     for (itype::u32 i = 0; auto&& p : r) {
         auto [x, y] = p;
         itype::u64 ord = 0;
@@ -47,18 +64,27 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&&
     return res;
 }
 
-template<Rangeof<Point2<itype::i32>> R> constexpr auto ManhattanMST(R&& r) {
-    using traits = RangeTraits<R>;
-    Arr<itype::u64> p(traits::size(r));
+template<Rangeof<Point2<itype::i32>> T> auto ConvexHull(T&& r) {
+    const itype::u32 n = RangeTraits<T>::size(r);
+    Arr<itype::u64> sorted(n);
     for (itype::u32 i = 0; auto [x, y] : r) {
-        itype::u32 xu = (x < 0 ? ((1u << 30) - 1) + x : x);
-        itype::u32 yu = (y < 0 ? ((1u << 30) - 1) + y : y);
-        p[i++] = { xu, yu };
+        const itype::u32 xu = std::bit_cast<itype::u32>(x), yu = std::bit_cast<itype::u32>(y);
+        const itype::u32 tmpx = (x < 0 ? 0xffffffffu - xu : xu | (1u << 31)), tmpy = (y < 0 ? 0xffffffffu - yu : yu | (1u << 31));
+        sorted[i++] = static_cast<itype::u64>(tmpx) << 32 | tmpy;
     }
-    Arr<itype::u64> ord(p.size());
-    for (itype::u32 i = 0; i != ord.size(); ++i) ord[i] = (itype::u64(i) << 32) | (itype::u32(p[i]) + itype::u32(p[i] >> 32));
-    internal::SortUnsigned32(ord.data(), ord.size());
+    internal::SortUnsigned64(sorted.data(), sorted.size());
+    class result_type {
+        Arr<Point2<itype::i32>> arr;
+    } res;
+    res.arr.resize(n);
+    for (itype::u32 i = 0; i != n; ++i) {
+        const itype::u32 x = sorted[i] >> 32, y = sorted[i];
+        const itype::i32 tmpx = std::bit_cast<itype::i32>(x < (1u << 31) ? 0xffffffffu - x : x ^ (1u << 31));
+        const itype::i32 tmpy = std::bit_cast<itype::i32>(y < (1u << 31) ? 0xffffffffu - y : y ^ (1u << 31));
+        res.arr[i] = { tmpx, tmpy };
+    }
+    // TODO
+    return res;
 }
-
 
 }  // namespace gsh

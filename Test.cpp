@@ -5,6 +5,7 @@
 #pragma GCC optimize("unroll-loops")
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
+#include <gsh/Geometry.hpp>
 #include <cstdio>
 
 #ifdef EVAL
@@ -20,6 +21,8 @@ int main() {
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
+        Point2<int> a, b;
+        a - b;
     } catch (gsh::Exception& e) {
         printf("gsh::Exception was throwed: ");
         puts(e.what());

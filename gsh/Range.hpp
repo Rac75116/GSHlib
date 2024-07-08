@@ -95,12 +95,6 @@ public:
     }
     constexpr auto slice(itype::u32 a) { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
     constexpr auto slice(itype::u32 a) const { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
-    constexpr derived_type& reverse() {
-        std::ranges::reverse(get_ref());
-        return get_ref();
-    }
-    constexpr auto reversed() { return SlicedRange{ get_rbegin(), get_rend() }; }
-    constexpr auto reversed() const { return SlicedRange{ get_rbegin(), get_rend() }; }
     template<std::predicate<value_type> Pred> constexpr bool all_of(Pred f) const {
         for (const auto& el : get_ref())
             if (!f(el)) return false;

@@ -92,6 +92,7 @@ public:
         }
     }
     constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Vec(il.begin(), il.end(), a) {}
+    template<Rangeof<value_type> T> constexpr Vec(T&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<T>::begin(r), RangeTraits<T>::end(r), a) {}
     constexpr ~Vec() {
         if (cap != 0) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
@@ -404,6 +405,8 @@ public:
     friend constexpr auto operator<=>(const Vec& x, const Vec& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Vec& x, Vec& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<std::input_iterator InputIter, class Allocator = Allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Allocator = Allocator()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Allocator>;
+template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Alloc = Alloc()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Alloc>;
+template<Range R, class Alloc = Allocator<typename RangeTraits<R>::value_type>> Vec(R, Alloc = Alloc()) -> Vec<typename RangeTraits<R>::value_type, Alloc>;
+
 
 }  // namespace gsh

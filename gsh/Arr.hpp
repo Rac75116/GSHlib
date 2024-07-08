@@ -94,6 +94,7 @@ public:
         }
     }
     constexpr Arr(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Arr(il.begin(), il.end(), a) {}
+    template<Rangeof<value_type> R> constexpr Arr(R&& r, const allocator_type& a = Allocator()) : Arr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r), a) {}
     constexpr ~Arr() {
         if (len != 0) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
@@ -288,7 +289,8 @@ public:
     friend constexpr auto operator<=>(const Arr& x, const Arr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Arr& x, Arr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<std::input_iterator InputIter, class Allocator = Allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Allocator = Allocator()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Allocator>;
+template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
+template<Range R, class Alloc = Allocator<typename RangeTraits<R>::value_type>> Arr(R, Alloc = Alloc()) -> Arr<typename RangeTraits<R>::value_type, Alloc>;
 
 template<class T>
     requires std::same_as<T, std::remove_cv_t<T>>
@@ -333,6 +335,7 @@ public:
         if (n != N) throw gsh::Exception("gsh::StaticArr::StaticArr / The size of the given range differs from the size of the array.");
         for (itype::u32 i = 0; i != N; ++first, ++i) ConstructAt(elems + i, *first);
     }
+    template<Rangeof<value_type> R> constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r)) {}
     constexpr StaticArr(const value_type (&a)[N]) {
         for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, a[i]);
     }
@@ -345,7 +348,7 @@ public:
     constexpr StaticArr(StaticArr&& y) {
         for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, std::move(y.elems[i]));
     }
-    //constexpr StaticArr(std::initializer_list<value_type> il) : StaticArr(il.begin(), il.end()) {}
+    constexpr StaticArr(std::initializer_list<value_type> il) : StaticArr(il.begin(), il.end()) {}
     constexpr ~StaticArr() noexcept {
         if constexpr (!std::is_trivially_destructible_v<value_type>)
             for (itype::u32 i = 0; i != N; ++i) DestroyAt(elems + i);

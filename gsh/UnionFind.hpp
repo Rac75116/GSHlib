@@ -243,6 +243,7 @@ public:
     }
 };
 
+/*
 class OfflinePersistentUnionfind {
     itype::u32 n = 0;
     struct query {
@@ -302,5 +303,6 @@ public:
         return std::move(sl.res2);
     }
 };
+*/
 
 }  // namespace gsh

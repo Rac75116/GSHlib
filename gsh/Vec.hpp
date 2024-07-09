@@ -92,7 +92,7 @@ public:
         }
     }
     constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Vec(il.begin(), il.end(), a) {}
-    template<Rangeof<value_type> T> constexpr Vec(T&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<T>::begin(r), RangeTraits<T>::end(r), a) {}
+    template<Rangeof<value_type> T> constexpr Vec(T&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<T>::fbegin(r), RangeTraits<T>::fend(r), a) {}
     constexpr ~Vec() {
         if (cap != 0) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)

@@ -4,6 +4,7 @@
 #include <gsh/Range.hpp>               // gsh::Rangeof
 #include <gsh/Arr.hpp>                 // gsh::Arr
 #include <gsh/TypeDef.hpp>             // gsh::itype
+#include <gsh/Range.hpp>               // gsh::Rangeof, gsh::RangeTraits
 #include <gsh/Algorithm.hpp>           // gsh::internal::SortUnsigned64
 #include <gsh/internal/Operation.hpp>  // gsh::internal::ArithmeticInterface
 
@@ -23,13 +24,25 @@ public:
         x -= p.x, y -= p.y;
         return *this;
     }
+    /*
+    template<class U> constexpr Point2& operator*=(const U& m) {
+        x *= m, y *= m;
+        return *this;
+    }
+    */
     friend constexpr bool operator==(const Point2& a, const Point2& b) { return a.x == b.x && a.y == b.y; }
 };
 template<class T> constexpr T Dot(const Point2<T>& a, const Point2<T>& b) {
     return a.x * b.x + a.y * b.y;
 }
 template<class T> constexpr T Cross(const Point2<T>& a, const Point2<T>& b) {
-    return a.x * b.y - a.y * b.x;
+    return a.x * b.y + a.y * b.x;
+}
+template<class T, class U> constexpr T Dot(const Point2<U>& a, const Point2<U>& b) {
+    return static_cast<T>(a.x) * static_cast<T>(b.x) + static_cast<T>(a.y) * static_cast<T>(b.y);
+}
+template<class T, class U> constexpr T Cross(const Point2<U>& a, const Point2<U>& b) {
+    return static_cast<T>(a.x) * static_cast<T>(b.y) - static_cast<T>(a.y) * static_cast<T>(b.x);
 }
 
 template<class T>
@@ -54,6 +67,13 @@ template<class T> constexpr T Dot(const Point3<T>& a, const Point3<T>& b) {
 template<class T> constexpr Point3<T> Cross(const Point3<T>& a, const Point3<T>& b) {
     return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
 }
+template<class T, class U> constexpr T Dot(const Point3<U>& a, const Point3<U>& b) {
+    return static_cast<T>(a.x) * static_cast<T>(b.x) + static_cast<T>(a.y) * static_cast<T>(b.y) + static_cast<T>(a.z) * static_cast<T>(b.z);
+}
+template<class T, class U> constexpr Point3<T> Cross(const Point3<U>& a, const Point3<U>& b) {
+    return { static_cast<T>(a.y) * static_cast<T>(b.z) - static_cast<T>(a.z) * static_cast<T>(b.y), static_cast<T>(a.z) * static_cast<T>(b.x) - static_cast<T>(a.x) * static_cast<T>(b.z), static_cast<T>(a.x) * static_cast<T>(b.y) - static_cast<T>(a.y) * static_cast<T>(b.x) };
+}
+
 
 template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
     Arr<itype::u128> v(RangeTraits<T>::size(r));
@@ -102,10 +122,10 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ConvexHull(T&& r
     Arr<Point2<itype::i32>> ch(2 * m);
     itype::u32 k = 0;
     for (itype::u32 i = 0; i < m; ch[k++] = p[i++]) {
-        while (k >= 2 && Cross(ch[k - 1] - ch[k - 2], p[i] - ch[k - 2]) <= 0) --k;
+        while (k >= 2 && Cross<itype::i64>(ch[k - 1] - ch[k - 2], p[i] - ch[k - 2]) <= 0) --k;
     }
     for (itype::u32 i = m - 1, t = k + 1; i > 0; ch[k++] = p[--i]) {
-        while (k >= t && Cross(ch[k - 1] - ch[k - 2], p[i - 1] - ch[k - 2]) <= 0) --k;
+        while (k >= t && Cross<itype::i64>(ch[k - 1] - ch[k - 2], p[i - 1] - ch[k - 2]) <= 0) --k;
     }
     ch.resize(k - 1);
     return ch;

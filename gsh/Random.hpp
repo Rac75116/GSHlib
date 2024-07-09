@@ -72,14 +72,14 @@ public:
 
 // @brief Generate random numbers from std::time and std::clock
 class RandomDevice {
-    Rand64 engine{ static_cast<itype::u64>(std::time(nullptr)) };
+    Rand64 engine{ internal::Splitmix(static_cast<itype::u64>(std::time(nullptr))) };
 public:
     using result_type = itype::u32;
     RandomDevice() {}
     RandomDevice(const RandomDevice&) = delete;
     ~RandomDevice() = default;
     void operator=(const RandomDevice&) = delete;
-    ftype::f64 entropy() const noexcept { return 0.0; }
+    constexpr ftype::f64 entropy() const noexcept { return 0.0; }
     static constexpr result_type max() { return 4294967295u; }
     static constexpr result_type min() { return 0; }
     result_type operator()() {
@@ -148,7 +148,6 @@ template<class URBG> constexpr itype::u64 UnbiasedUniform64(URBG& g, itype::u64 
 template<class URBG> constexpr itype::u32 UnbiasedUniform64(URBG& g, itype::u64 min, itype::u64 max) {
     return min + UnbiasedUniform64(g, max - min);
 }
-
 
 //https://speakerdeck.com/hole/rand01?slide=31
 template<class URBG> constexpr ftype::f32 Canocicaled32(URBG& g) {

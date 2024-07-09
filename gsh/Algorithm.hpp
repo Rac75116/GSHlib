@@ -1,11 +1,12 @@
 #pragma once
-#include <type_traits>      // std::common_type
-#include <cstring>          // std::memset
-#include <cstdlib>          // std::malloc, std::free
-#include <algorithm>        // std::lower_bound
-#include <gsh/TypeDef.hpp>  // gsh::itype
-#include <gsh/Arr.hpp>      // gsh::Arr
-#include <gsh/Range.hpp>    // gsh::Range
+#include <type_traits>         // std::common_type
+#include <cstring>             // std::memset
+#include <cstdlib>             // std::malloc, std::free
+#include <algorithm>           // std::lower_bound
+#include <gsh/TypeDef.hpp>     // gsh::itype
+#include <gsh/Arr.hpp>         // gsh::Arr
+#include <gsh/Range.hpp>       // gsh::Range
+#include <gsh/Functional.hpp>  // gsh::Less, gsh::Greater
 
 namespace gsh {
 
@@ -21,16 +22,21 @@ template<class T, class U> constexpr std::common_type_t<T, U> Max(const T& a, co
 template<class T, class... Args> constexpr auto Max(const T& x, const Args&... args) {
     return Max(x, Max(args...));
 }
-
 template<class T, class U> constexpr bool Chmin(T& a, const U& b) {
     const bool f = b < a;
     a = f ? b : a;
     return f;
 }
+template<class T, class... Args> constexpr bool Chmin(T& a, const Args&... b) {
+    return Chmin(a, Min(b...));
+}
 template<class T, class U> constexpr bool Chmax(T& a, const U& b) {
     const bool f = a < b;
     a = f ? b : a;
     return f;
+}
+template<class T, class... Args> constexpr bool Chmax(T& a, const Args&... b) {
+    return Chmax(a, Max(b...));
 }
 
 namespace internal {
@@ -95,23 +101,17 @@ namespace internal {
         std::free(tmp);
     }
 }  // namespace internal
-
-struct Identity {
-    template<class T> constexpr T&& operator()(T&& t) const noexcept { return std::forward<T>(t); }
-    using is_transparent = void;
-};
-
-
-template<std::ranges::forward_range R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = std::ranges::less> constexpr std::ranges::borrowed_iterator_t<R> LowerBound(R&& r, const T& value, Comp comp = {}, Proj proj = {}) {
+template<Range R, class Comp = Less, class Proj = Identity>
+    requires std::sortable<std::ranges::iterator_t<R>, Comp, Proj>
+constexpr void Sort(R&& r, Comp comp = {}, Proj proj = {}) {
     using traits = RangeTraits<R>;
-    auto first = traits::begin(r);
-    auto len = traits::size(r) + 1;
-    while (len > 1) {
-        auto half = len / 2;
-        len -= half;
-        first = static_cast<bool>(comp(proj(*std::next(first, half - 1)), value)) ? std::next(first, half) : first;
+    const itype::u32 n = traits::size(r);
+    if constexpr (!traits::pointer_obtainable) {
+        Arr tmp(std::move(r));
+        Sort(tmp, comp, proj);
+        for (itype::u32 i = 0; auto&& x : r) x = std::move(tmp[i]);
+        return;
     }
-    return first;
 }
 
 template<Range R> constexpr Arr<itype::u32> LongestIncreasingSubsequenceIndex(R&& r) {

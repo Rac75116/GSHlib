@@ -94,7 +94,7 @@ public:
         }
     }
     constexpr Arr(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Arr(il.begin(), il.end(), a) {}
-    template<Rangeof<value_type> R> constexpr Arr(R&& r, const allocator_type& a = Allocator()) : Arr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r), a) {}
+    template<Rangeof<value_type> R> constexpr Arr(R&& r, const allocator_type& a = Allocator()) : Arr(RangeTraits<R>::fbegin(r), RangeTraits<R>::fend(r), a) {}
     constexpr ~Arr() {
         if (len != 0) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
@@ -335,7 +335,7 @@ public:
         if (n != N) throw gsh::Exception("gsh::StaticArr::StaticArr / The size of the given range differs from the size of the array.");
         for (itype::u32 i = 0; i != N; ++first, ++i) ConstructAt(elems + i, *first);
     }
-    template<Rangeof<value_type> R> constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r)) {}
+    template<Rangeof<value_type> R> constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::fbegin(r), RangeTraits<R>::fend(r)) {}
     constexpr StaticArr(const value_type (&a)[N]) {
         for (itype::u32 i = 0; i != N; ++i) ConstructAt(elems + i, a[i]);
     }

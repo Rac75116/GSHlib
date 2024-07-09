@@ -1,5 +1,5 @@
 #pragma once
-#include <type_traits>      // std::is_class_v, std::remove_cv_t, std::common_reference_t
+#include <type_traits>      // std::is_class_v, std::remove_cv_t, std::common_reference_t, std::is_lvalue_reference
 #include <concepts>         // std::same_as, std::predicate, std::convertible_to
 #include <utility>          // std::move, std::declval
 #include <iterator>         // std::next, std::iter_value_t, std::iter_reference_t, std::input_iterator
@@ -11,6 +11,11 @@ namespace gsh {
 
 template<class R> concept Range = std::ranges::range<R>;
 template<class R, class T> concept Rangeof = Range<R> && std::same_as<T, std::ranges::range_value_t<R>>;
+template<class R> concept InputRange = std::ranges::input_range<R>;
+template<class R, class T> concept OutputRange = Range<R> && std::ranges::output_range<R, T>;
+template<class R> concept ForwardRange = std::ranges::forward_range<R>;
+template<class R> concept BidirectionalRange = std::ranges::bidirectional_range<R>;
+template<class R> concept RandomAccessRange = std::ranges::random_access_range<R>;
 enum class RangeKind { Sized, Unsized };
 
 namespace internal {
@@ -30,9 +35,11 @@ public:
     using rvalue_reference = std::ranges::range_rvalue_reference_t<R>;
     using range_type = std::remove_cvref_t<R>;
     constexpr static RangeKind range_kind = std::ranges::sized_range<R> ? RangeKind::Sized : RangeKind::Unsized;
+    constexpr static bool pointer_obtainable = requires(R r) { std::ranges::data(r); };
     static constexpr auto size(internal::same_ncvr<R> auto&& r) { return std::ranges::size(std::forward<R>(r)); }
     static constexpr auto ssize(internal::same_ncvr<R> auto&& r) { return std::ranges::ssize(std::forward<R>(r)); }
     static constexpr auto empty(internal::same_ncvr<R> auto&& r) { return std::ranges::empty(std::forward<R>(r)); }
+
     static constexpr auto begin(internal::same_ncvr<R> auto&& r) { return std::ranges::begin(std::forward<R>(r)); }
     static constexpr auto end(internal::same_ncvr<R> auto&& r) { return std::ranges::end(std::forward<R>(r)); }
     static constexpr auto cbegin(internal::same_ncvr<R> auto&& r) { return std::ranges::cbegin(std::forward<R>(r)); }
@@ -41,6 +48,49 @@ public:
     static constexpr auto rend(internal::same_ncvr<R> auto&& r) { return std::ranges::cend(std::forward<R>(r)); }
     static constexpr auto crbegin(internal::same_ncvr<R> auto&& r) { return std::ranges::crbegin(std::forward<R>(r)); }
     static constexpr auto crend(internal::same_ncvr<R> auto&& r) { return std::ranges::crend(std::forward<R>(r)); }
+
+    static constexpr auto mbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(begin(std::forward<R>(r))); }
+    static constexpr auto mend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(end(std::forward<R>(r))); }
+    static constexpr auto mcbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(cbegin(std::forward<R>(r))); }
+    static constexpr auto mcend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(cend(std::forward<R>(r))); }
+    static constexpr auto mrbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(rbegin(std::forward<R>(r))); }
+    static constexpr auto mrend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(rend(std::forward<R>(r))); }
+    static constexpr auto mcrbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(crbegin(std::forward<R>(r))); }
+    static constexpr auto mcrend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(crend(std::forward<R>(r))); }
+
+    static constexpr auto fbegin(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return begin(r);
+        else return mbegin(r);
+    }
+    static constexpr auto fend(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return end(r);
+        else return mend(r);
+    }
+    static constexpr auto fcbegin(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return cbegin(r);
+        else return mcbegin(r);
+    }
+    static constexpr auto fcend(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return cend(r);
+        else return mcend(r);
+    }
+    static constexpr auto frbegin(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return rbegin(r);
+        else return mrbegin(r);
+    }
+    static constexpr auto frend(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return rend(r);
+        else return mrend(r);
+    }
+    static constexpr auto fcrbegin(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return crbegin(r);
+        else return mcrbegin(r);
+    }
+    static constexpr auto fcrend(internal::same_ncvr<R> auto&& r) {
+        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return crend(r);
+        else return mcrend(r);
+    }
+
     static constexpr auto data(internal::same_ncvr<R> auto&& r) { return std::ranges::data(std::forward<R>(r)); }
     static constexpr auto cdata(internal::same_ncvr<R> auto&& r) { return std::ranges::cdata(std::forward<R>(r)); }
 };
@@ -199,6 +249,16 @@ public:
     }
     constexpr S end() const { return sent; }
     constexpr bool empty() const { return itr == sent; }
+    constexpr I data() const
+        requires(std::is_pointer_v<I> && std::copyable<I>)
+    {
+        return itr;
+    }
+    constexpr I data() const
+        requires(std::is_pointer_v<I> && !std::copyable<I>)
+    {
+        return std::move(itr);
+    }
     [[nodiscard]] constexpr Subrange next(std::iter_difference_t<I> n = 1) const&
         requires std::forward_iterator<I>
     {

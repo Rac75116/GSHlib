@@ -1,10 +1,11 @@
 #pragma once
-#include <type_traits>  // std::make_unsigned, std::is_empty, std::true_type, std::false_type, std::is_array_v, std::is_trivially_(***)
-#include <limits>       // std::numeric_limits
-#include <utility>      // std::forward
-#include <iterator>     // std::begin, std::end
-#include <cstdlib>      // std::malloc, std::free, std::realloc, std::aligned_alloc
-#include <new>          // ::operator new, std::launder
+#include <type_traits>      // std::make_unsigned, std::is_empty, std::true_type, std::false_type, std::is_array_v, std::is_trivially_(***)
+#include <limits>           // std::numeric_limits
+#include <utility>          // std::forward
+#include <iterator>         // std::begin, std::end
+#include <cstdlib>          // std::malloc, std::free, std::realloc, std::aligned_alloc
+#include <new>              // ::operator new, std::launder
+#include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
 
@@ -203,10 +204,16 @@ public:
     constexpr Allocator(const Allocator&) noexcept = default;
     template<class U> constexpr Allocator(const Allocator<U>&) noexcept {}
     constexpr ~Allocator() = default;
-    [[nodiscard]] constexpr T* allocate(size_type n) { return reinterpret_cast<T*>(std::malloc(sizeof(T) * n)); }
-    //[[nodiscard]] constexpr T* allocate(size_type align, size_type n) { return reinterpret_cast<T*>(std::aligned_alloc(align, n)); }
-    constexpr void deallocate(T* p, size_type) { std::free(p); }
-    [[nodiscard]] constexpr T* reallocate(T* p, size_type, size_type n) { return reinterpret_cast<T*>(std::realloc(p, sizeof(T) * n)); }
+    [[nodiscard]] constexpr T* allocate(size_type n) {
+        if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
+        else return static_cast<T*>(::operator new(sizeof(T) * n));
+    }
+    [[nodiscard]] constexpr T* allocate(size_type align, size_type n) { return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(align))); }
+    constexpr void deallocate(T* p, size_type n) {
+        if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
+        else ::operator delete(p, n);
+    }
+    //[[nodiscard]] constexpr T* reallocate(T* p, size_type, size_type n) { return reinterpret_cast<T*>(std::realloc(p, sizeof(T) * n)); }
     constexpr Allocator& operator=(const Allocator&) = default;
     template<class U> friend constexpr bool operator==(const Allocator&, const Allocator<U>&) noexcept { return true; }
 };

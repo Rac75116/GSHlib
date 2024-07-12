@@ -1,8 +1,9 @@
 #pragma once
-#include <bit>              // std::rotr, std::bit_cast
-#include <ctime>            // std::time, std::clock
-#include <source_location>  // std::source_location
-#include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ftype
+#include <bit>                 // std::rotr, std::bit_cast
+#include <ctime>               // std::time, std::clock
+#include <source_location>     // std::source_location
+#include <gsh/TypeDef.hpp>     // gsh::itype, gsh::ftype
+#include <gsh/Functional.hpp>  // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers
 
 namespace gsh {
 
@@ -71,30 +72,39 @@ public:
     friend constexpr bool operator==(Rand32 x, Rand32 y) { return x.val == y.val; }
 };
 
-// @brief Generate random numbers from std::time and std::clock
+// @brief Generate random numbers from std::time, std::clock, and std::source_location.
 class RandomDevice {
-    Rand64 engine{ internal::Splitmix(internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)))) };
+    Rand64 engine;
+    constexpr itype::u64 from_time() {
+        if (!std::is_constant_evaluated()) {
+            itype::u64 a = internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)));
+            itype::u64 b = Hash<itype::u64>{}(internal::Splitmix(static_cast<itype::u64>(std::clock())));
+            return internal::MixIntegers(a, b);
+        } else return 0x9e3779b97f4a7c15;
+    }
+    constexpr itype::u64 from_compile_time() {
+        itype::u64 a = internal::Splitmix(Hash<itype::u64>{}(internal::HashBytes(__DATE__)));
+        itype::u64 b = Hash<itype::u64>{}(internal::Splitmix(internal::HashBytes(__TIME__)));
+        itype::u64 c = internal::Splitmix(internal::Splitmix(internal::HashBytes(__TIMESTAMP__)));
+        return internal::MixIntegers(internal::Splitmix(internal::MixIntegers(a, c)), b);
+    }
+    constexpr itype::u64 from_location(const std::source_location& loc) {
+        itype::u64 a = Hash<itype::u64>{}(internal::Splitmix(loc.column()));
+        itype::u64 b = internal::Splitmix(loc.line());
+        itype::u64 c = Hash<itype::u64>{}(internal::HashBytes(loc.file_name()));
+        itype::u64 d = internal::HashBytes(loc.function_name());
+        return internal::MixIntegers(internal::MixIntegers(a, d), internal::Splitmix(internal::MixIntegers(b, c)));
+    }
+    constexpr itype::u64 get_val(const std::source_location& loc) { return internal::Splitmix(from_time()) ^ from_location(loc) ^ Hash<itype::u64>{}(from_compile_time()); }
 public:
     using result_type = itype::u64;
-    RandomDevice() {}
-    RandomDevice(const RandomDevice&) = delete;
-    void operator=(const RandomDevice&) = delete;
+    constexpr RandomDevice(const std::source_location& loc = std::source_location::current()) : engine(internal::Splitmix(get_val(loc))) {}
+    constexpr RandomDevice(const RandomDevice&) = default;
+    constexpr RandomDevice& operator=(const RandomDevice&) = default;
     constexpr ftype::f64 entropy() const noexcept { return 0.0; }
     static constexpr result_type max() { return 0xffffffffffffffff; }
     static constexpr result_type min() { return 0; }
-    result_type operator()() {
-        itype::u64 a = internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)));
-        itype::u64 b = internal::Splitmix(static_cast<itype::u64>(std::clock()));
-        return engine() ^ a ^ b;
-    }
-};
-
-class ConstexprRandomDevice {
-    Rand64 engine;
-public:
-    using result_type = itype::u64;
-    constexpr ConstexprRandomDevice() {}
-    constexpr ConstexprRandomDevice(const ConstexprRandomDevice&) = default;
+    constexpr result_type operator()(const std::source_location& loc = std::source_location::current()) { return engine() ^ get_val(loc); }
 };
 
 template<itype::u32 Size, class URBG> class RandBuffer : public URBG {

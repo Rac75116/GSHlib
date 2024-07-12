@@ -6,7 +6,7 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Functional.hpp>
+#include <gsh/Random.hpp>
 #include <cstdio>
 
 #ifdef EVAL

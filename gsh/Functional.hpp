@@ -60,15 +60,16 @@ namespace gsh {
 
 namespace internal {
     template<class T> concept Nocvref = std::same_as<T, std::remove_cv_t<T>> && !std::is_reference_v<T>;
-}
+    constexpr itype::u64 MixIntegers(itype::u64 a, itype::u64 b) {
+        itype::u128 tmp = static_cast<itype::u128>(a) * b;
+        return static_cast<itype::u64>(tmp) ^ static_cast<itype::u64>(tmp >> 64);
+    }
+}  // namespace internal
 template<class T> class Hash : public std::hash<T> {};
 // https://raw.githubusercontent.com/martinus/unordered_dense/v1.3.0/include/ankerl/unordered_dense.h
 template<> class Hash<itype::u64> {
 public:
-    constexpr itype::u64 operator()(itype::u64 x) const noexcept {
-        itype::u128 tmp = static_cast<itype::u128>(x) * 0x9e3779b97f4a7c15;
-        return static_cast<itype::u64>(tmp) ^ static_cast<itype::u64>(tmp >> 64);
-    }
+    constexpr itype::u64 operator()(itype::u64 x) const noexcept { return internal::MixIntegers(x, 0x9e3779b97f4a7c15); }
 };
 template<internal::Nocvref T>
     requires std::integral<T>
@@ -124,23 +125,22 @@ public:
         return Hash<val>{}(static_cast<val>(&x));
     }
 };
-template<class T, itype::u32 N> class Hash<T[N]> {
-public:
-    constexpr itype::u64 operator()(const T (&x)[N]) const noexcept { return 0; }
-};
+
 namespace internal {
-    constexpr itype::u64 HashBytes(void const* ptr, itype::u32 len) noexcept {
+    constexpr itype::u64 HashBytes(const ctype::c8* ptr, itype::u32 len) noexcept {
         constexpr itype::u64 m = 0xc6a4a7935bd1e995;
         constexpr itype::u64 seed = 0xe17a1465;
         constexpr itype::u32 r = 47;
-        const auto data64 = static_cast<const itype::u64*>(ptr);
         itype::u64 h = seed ^ (len * m);
         const itype::u32 n_blocks = len / 8;
         for (itype::u64 i = 0; i < n_blocks; ++i) {
             itype::u64 k;
-            {
-                const auto p = reinterpret_cast<const ctype::c8*>(data64 + i);
-                for (int j = 0; j != 8; ++j) *(reinterpret_cast<ctype::c8*>(&k) + i) = *(p + j);
+            const auto p = ptr + i * 8;
+            if (std::is_constant_evaluated()) {
+                k = 0;
+                for (itype::u32 j = 0; j != 8; ++j) k |= static_cast<itype::u64>(p[j]) << (8 * j);
+            } else {
+                for (int j = 0; j != 8; ++j) *(reinterpret_cast<ctype::c8*>(&k) + j) = *(p + j);
             }
             k *= m;
             k ^= k >> r;
@@ -148,35 +148,27 @@ namespace internal {
             h ^= k;
             h *= m;
         }
-        const auto data8 = reinterpret_cast<const itype::u8*>(data64 + n_blocks);
+        const auto data8 = ptr + n_blocks * 8;
         switch (len & 7u) {
-        case 7 :
-            h ^= static_cast<itype::u64>(data8[6]) << 48U;
-        [[fallthrough]]
-        case 6 :
-            h ^= static_cast<itype::u64>(data8[5]) << 40U;
-        [[fallthrough]]
-        case 5 :
-            h ^= static_cast<itype::u64>(data8[4]) << 32U;
-        [[fallthrough]]
-        case 4 :
-            h ^= static_cast<itype::u64>(data8[3]) << 24U;
-        [[fallthrough]]
-        case 3 :
-            h ^= static_cast<itype::u64>(data8[2]) << 16U;
-        [[fallthrough]]
-        case 2 :
-            h ^= static_cast<itype::u64>(data8[1]) << 8U;
-        [[fallthrough]]
+        case 7 : h ^= static_cast<itype::u64>(data8[6]) << 48U; [[fallthrough]];
+        case 6 : h ^= static_cast<itype::u64>(data8[5]) << 40U; [[fallthrough]];
+        case 5 : h ^= static_cast<itype::u64>(data8[4]) << 32U; [[fallthrough]];
+        case 4 : h ^= static_cast<itype::u64>(data8[3]) << 24U; [[fallthrough]];
+        case 3 : h ^= static_cast<itype::u64>(data8[2]) << 16U; [[fallthrough]];
+        case 2 : h ^= static_cast<itype::u64>(data8[1]) << 8U; [[fallthrough]];
         case 1 :
             h ^= static_cast<itype::u64>(data8[0]);
             h *= m;
-        [[fallthrough]]
-        default :
-            break;
+            [[fallthrough]];
+        default : break;
         }
         h ^= h >> r;
         return h;
+    }
+    constexpr itype::u64 HashBytes(const ctype::c8* ptr) noexcept {
+        auto last = ptr;
+        while (*last != '\0') ++last;
+        return HashBytes(ptr, last - ptr);
     }
 }  // namespace internal
 

@@ -44,7 +44,7 @@ namespace itype {
 }  // namespace itype
 
 namespace ftype {
-    using f16 = _Float16;
+    //using f16 = _Float16;
     using f32 = float;
     using f64 = double;
     using f128 = __float128;
@@ -53,6 +53,7 @@ namespace ftype {
 
 namespace ctype {
     using c8 = char;
+    using wc = wchar_t;
     using utf8 = char8_t;
     using utf16 = char16_t;
     using utf32 = char32_t;
@@ -68,7 +69,7 @@ namespace simd {
     using u32x8 = __attribute__((vector_size(32))) itype::u32;
     using i64x4 = __attribute__((vector_size(32))) itype::i64;
     using u64x4 = __attribute__((vector_size(32))) itype::u64;
-    using f16x16 = __attribute__((vector_size(32))) ftype::f16;
+    //using f16x16 = __attribute__((vector_size(32))) ftype::f16;
     using f32x8 = __attribute__((vector_size(32))) ftype::f32;
     using f64x4 = __attribute__((vector_size(32))) ftype::f64;
 
@@ -80,7 +81,7 @@ namespace simd {
     using u32x16 = __attribute__((vector_size(64))) itype::u32;
     using i64x8 = __attribute__((vector_size(64))) itype::i64;
     using u64x8 = __attribute__((vector_size(64))) itype::u64;
-    using f16x32 = __attribute__((vector_size(64))) ftype::f16;
+    //using f16x32 = __attribute__((vector_size(64))) ftype::f16;
     using f32x16 = __attribute__((vector_size(64))) ftype::f32;
     using f64x8 = __attribute__((vector_size(64))) ftype::f64;
 

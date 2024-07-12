@@ -1,6 +1,8 @@
 #pragma once
-#include <concepts>         // std::totally_ordered_with
+#include <concepts>         // std::totally_ordered_with, std::same_as, std::integral, std::floating_point
+#include <type_traits>      // std::remove_cv_t, std::remove_cvref_t
 #include <utility>          // std::forward
+#include <cstddef>          // std::nullptr_t
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
@@ -47,5 +49,135 @@ public:
     }
     using is_transparent = void;
 };
+
+}  // namespace gsh
+
+namespace std {
+template<class T> class hash;
+}
+
+namespace gsh {
+
+namespace internal {
+    template<class T> concept Nocvref = std::same_as<T, std::remove_cv_t<T>> && !std::is_reference_v<T>;
+}
+template<class T> class Hash : public std::hash<T> {};
+// https://raw.githubusercontent.com/martinus/unordered_dense/v1.3.0/include/ankerl/unordered_dense.h
+template<> class Hash<itype::u64> {
+public:
+    constexpr itype::u64 operator()(itype::u64 x) const noexcept {
+        itype::u128 tmp = static_cast<itype::u128>(x) * 0x9e3779b97f4a7c15;
+        return static_cast<itype::u64>(tmp) ^ static_cast<itype::u64>(tmp >> 64);
+    }
+};
+template<internal::Nocvref T>
+    requires std::integral<T>
+class Hash<T> {
+public:
+    constexpr itype::u64 operator()(const T& x) const noexcept { return Hash<itype::u64>{}(static_cast<itype::u64>(x)); }
+};
+template<internal::Nocvref T>
+    requires std::floating_point<T>
+class Hash<T> {
+public:
+    constexpr itype::u64 operator()(const T& x) const noexcept {
+        if constexpr (sizeof(T) <= 8) {
+            union {
+                itype::u64 a = 0;
+                T b;
+            };
+            b = x;
+            return Hash<itype::u64>{}(a);
+        } else {
+            union {
+                itype::u128 a = 0;
+                T b;
+            };
+            b = x;
+            return Hash<itype::u128>{}(a);
+        }
+    }
+};
+template<class T> class Hash<T*> {
+public:
+    constexpr itype::u64 operator()(T* x) const noexcept {
+        static_assert(sizeof(x) == 4 || sizeof(x) == 8);
+        if constexpr (sizeof(x) == 8) return Hash<itype::u64>{}(reinterpret_cast<itype::u64>(x));
+        else return Hash<itype::u32>{}(reinterpret_cast<itype::u32>(x));
+    }
+};
+template<> class Hash<std::nullptr_t> {
+public:
+    constexpr itype::u64 operator()(const std::nullptr_t& x) const noexcept { return Hash<void*>{}(static_cast<void*>(x)); }
+};
+template<class T> class Hash<T&> {
+public:
+    constexpr itype::u64 operator()(const T& x) const {
+        using val = std::remove_cvref_t<decltype(&x)>;
+        return Hash<val>{}(static_cast<val>(&x));
+    }
+};
+template<class T> class Hash<T&&> {
+public:
+    constexpr itype::u64 operator()(const T&& x) const {
+        using val = std::remove_cvref_t<decltype(&x)>;
+        return Hash<val>{}(static_cast<val>(&x));
+    }
+};
+template<class T, itype::u32 N> class Hash<T[N]> {
+public:
+    constexpr itype::u64 operator()(const T (&x)[N]) const noexcept { return 0; }
+};
+namespace internal {
+    constexpr itype::u64 HashBytes(void const* ptr, itype::u32 len) noexcept {
+        constexpr itype::u64 m = 0xc6a4a7935bd1e995;
+        constexpr itype::u64 seed = 0xe17a1465;
+        constexpr itype::u32 r = 47;
+        const auto data64 = static_cast<const itype::u64*>(ptr);
+        itype::u64 h = seed ^ (len * m);
+        const itype::u32 n_blocks = len / 8;
+        for (itype::u64 i = 0; i < n_blocks; ++i) {
+            itype::u64 k;
+            {
+                const auto p = reinterpret_cast<const ctype::c8*>(data64 + i);
+                for (int j = 0; j != 8; ++j) *(reinterpret_cast<ctype::c8*>(&k) + i) = *(p + j);
+            }
+            k *= m;
+            k ^= k >> r;
+            k *= m;
+            h ^= k;
+            h *= m;
+        }
+        const auto data8 = reinterpret_cast<const itype::u8*>(data64 + n_blocks);
+        switch (len & 7u) {
+        case 7 :
+            h ^= static_cast<itype::u64>(data8[6]) << 48U;
+        [[fallthrough]]
+        case 6 :
+            h ^= static_cast<itype::u64>(data8[5]) << 40U;
+        [[fallthrough]]
+        case 5 :
+            h ^= static_cast<itype::u64>(data8[4]) << 32U;
+        [[fallthrough]]
+        case 4 :
+            h ^= static_cast<itype::u64>(data8[3]) << 24U;
+        [[fallthrough]]
+        case 3 :
+            h ^= static_cast<itype::u64>(data8[2]) << 16U;
+        [[fallthrough]]
+        case 2 :
+            h ^= static_cast<itype::u64>(data8[1]) << 8U;
+        [[fallthrough]]
+        case 1 :
+            h ^= static_cast<itype::u64>(data8[0]);
+            h *= m;
+        [[fallthrough]]
+        default :
+            break;
+        }
+        h ^= h >> r;
+        return h;
+    }
+}  // namespace internal
 
 }  // namespace gsh

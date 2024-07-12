@@ -1,6 +1,7 @@
 #pragma once
 #include <bit>              // std::rotr, std::bit_cast
 #include <ctime>            // std::time, std::clock
+#include <source_location>  // std::source_location
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ftype
 
 namespace gsh {
@@ -72,21 +73,28 @@ public:
 
 // @brief Generate random numbers from std::time and std::clock
 class RandomDevice {
-    Rand64 engine{ internal::Splitmix(static_cast<itype::u64>(std::time(nullptr))) };
+    Rand64 engine{ internal::Splitmix(internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)))) };
 public:
-    using result_type = itype::u32;
+    using result_type = itype::u64;
     RandomDevice() {}
     RandomDevice(const RandomDevice&) = delete;
-    ~RandomDevice() = default;
     void operator=(const RandomDevice&) = delete;
     constexpr ftype::f64 entropy() const noexcept { return 0.0; }
-    static constexpr result_type max() { return 4294967295u; }
+    static constexpr result_type max() { return 0xffffffffffffffff; }
     static constexpr result_type min() { return 0; }
     result_type operator()() {
         itype::u64 a = internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)));
         itype::u64 b = internal::Splitmix(static_cast<itype::u64>(std::clock()));
-        return static_cast<result_type>(engine() ^ a ^ b);
+        return engine() ^ a ^ b;
     }
+};
+
+class ConstexprRandomDevice {
+    Rand64 engine;
+public:
+    using result_type = itype::u64;
+    constexpr ConstexprRandomDevice() {}
+    constexpr ConstexprRandomDevice(const ConstexprRandomDevice&) = default;
 };
 
 template<itype::u32 Size, class URBG> class RandBuffer : public URBG {

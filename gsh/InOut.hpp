@@ -490,6 +490,10 @@ public:
         stream.skip(1);
     }
 };
+template<> class Formatter<const ctype::c8*> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, const ctype::c8* s) const {}
+};
 
 class BasicReader {
     constexpr static itype::u32 Bufsize = 1 << 18;

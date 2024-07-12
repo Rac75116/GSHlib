@@ -23,8 +23,8 @@ public:
     using const_pointer = typename AllocatorTraits<Alloc>::const_pointer;
     constexpr RangeSumQuery() noexcept(noexcept(Alloc())) : RangeSumQuery(Alloc()) {}
     constexpr explicit RangeSumQuery(const Alloc& alloc) noexcept : bit(alloc) {}
-    constexpr explicit RangeSumQuery(size_type n, const Alloc& alloc = Alloc()) : bit(n, alloc) {}
-    constexpr RangeSumQuery(size_type n, const T& value, const Alloc& alloc = Alloc()) : bit(alloc) { assign(n, value); }
+    constexpr explicit RangeSumQuery(itype::u32 n, const Alloc& alloc = Alloc()) : bit(n, alloc) {}
+    constexpr RangeSumQuery(itype::u32 n, const T& value, const Alloc& alloc = Alloc()) : bit(alloc) { assign(n, value); }
     template<class InputIter> constexpr RangeSumQuery(InputIter first, InputIter last, const Alloc& alloc = Alloc()) : bit(alloc) { assign(first, last); }
     constexpr RangeSumQuery(const RangeSumQuery&) = default;
     constexpr RangeSumQuery(RangeSumQuery&&) noexcept = default;
@@ -37,82 +37,84 @@ public:
         assign(il);
         return *this;
     }
-    constexpr size_type size() const noexcept { return bit.size(); }
-    constexpr void resize(size_type sz) { resize(sz, value_type{}); }
-    constexpr void resize(size_type sz, const value_type& c) {
-        size_type n = bit.size();
+    constexpr itype::u32 size() const noexcept { return bit.size(); }
+    constexpr void resize(itype::u32 sz) { resize(sz, value_type{}); }
+    constexpr void resize(itype::u32 sz, const value_type& c) {
+        itype::u32 n = bit.size();
         bit.resize(sz);
         if (n >= sz) return;
         // TODO
     }
     [[nodiscard]] constexpr bool empty() const noexcept { return bit.empty(); }
-    constexpr value_type operator[](size_type n) const {
+    constexpr value_type operator[](itype::u32 n) const {
         value_type res = bit[n];
         if (!(n & 1)) return res;
-        size_type tmp = n & (n + 1);
-        for (size_type i = n; i != tmp; i &= i - 1) res -= bit[i - 1];
+        itype::u32 tmp = n & (n + 1);
+        for (itype::u32 i = n; i != tmp; i &= i - 1) res -= bit[i - 1];
         return res;
     }
-    constexpr value_type at(size_type n) const {
+    constexpr value_type at(itype::u32 n) const {
         if (n >= size()) throw Exception("gsh::RangeSumQuery::at / Index is out of range.");
         return operator[](n);
     }
     template<class InputIterator> constexpr void assign(InputIterator first, InputIterator last) {
         bit.assign(first, last);
-        size_type n = bit.size();
-        for (size_type i = 1; i != n; ++i) {
-            const size_type a = i - 1;
-            const size_type b = i & -i;
-            bit[a + b] += (a + b < n ? bit[a] : value_type{});
-        }
-    }
-    constexpr void assign(size_type n, const T& u) {
+        itype::u32 n = bit.size();
         if (n == 0) return;
-        bit = Vec<value_type, Alloc>(n, get_allocator());
-        Vec<value_type, Alloc> mul(std::bit_width(n), get_allocator());
+        const auto tmp = bit[0];
+        for (itype::u32 i = 0; i != n - 1; ++i) {
+            const itype::u32 j = i + ((i + 1) & -(i + 1));
+            bit[j < n ? j : 0] += bit[i];
+        }
+        bit[0] = tmp;
+    }
+    constexpr void assign(itype::u32 n, const T& u) {
+        if (n == 0) return;
+        bit = Arr<value_type, Alloc>(n, get_allocator());
+        Arr<value_type, Alloc> mul(std::bit_width(n), get_allocator());
         mul[0] = u;
-        for (size_type i = 1, sz = mul.size(); i < sz; ++i) mul[i] = mul[i - 1], mul[i] += mul[i - 1];
-        for (size_type i = 1; i <= n; ++i) bit[i - 1] = mul[std::countr_zero(i)];
+        for (itype::u32 i = 1, sz = mul.size(); i < sz; ++i) mul[i] = mul[i - 1], mul[i] += mul[i - 1];
+        for (itype::u32 i = 0; i != n; ++i) bit[i] = mul[std::countr_zero(i + 1)];
     }
     constexpr void assign(std::initializer_list<T> il) { assign(il.begin(), il.end()); }
     constexpr void swap(RangeSumQuery& x) noexcept(AllocatorTraits<Alloc>::propagate_on_container_swap::value || AllocatorTraits<Alloc>::is_always_equal::value) { bit.swap(x.bit); };
     constexpr void clear() { bit.clear(); }
     constexpr allocator_type get_allocator() const noexcept { return bit.get_allocator(); }
-    constexpr void add(size_type n, const value_type& x) {
+    constexpr void add(itype::u32 n, const value_type& x) {
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] += x;
+        for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] += x;
     }
-    constexpr void minus(size_type n, const value_type& x) {
+    constexpr void minus(itype::u32 n, const value_type& x) {
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] -= x;
+        for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] -= x;
     }
-    constexpr void increme(size_type n) {
+    constexpr void increme(itype::u32 n) {
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = n + 1, sz = size(); i <= sz; i += (i & (-i))) ++bit[i - 1];
+        for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & (-i))) ++bit[i - 1];
     }
-    constexpr void decreme(size_type n) {
+    constexpr void decreme(itype::u32 n) {
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = n + 1, sz = size(); i <= sz; i += (i & (-i))) --bit[i - 1];
+        for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & (-i))) --bit[i - 1];
     }
-    constexpr value_type sum(size_type n) const {
+    constexpr value_type sum(itype::u32 n) const {
         value_type res = {};
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = n; i != 0; i &= i - 1) res += bit[i - 1];
+        for (itype::u32 i = n; i != 0; i &= i - 1) res += bit[i - 1];
         return res;
     }
-    constexpr value_type sum(size_type l, size_type r) const {
-        size_type n = l & ~((std::bit_floor(l ^ r) << 1) - 1);
+    constexpr value_type sum(itype::u32 l, itype::u32 r) const {
+        itype::u32 n = l & ~((std::bit_floor(l ^ r) << 1) - 1);
         value_type res1 = {}, res2 = {};
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = r; i != n; i &= i - 1) res1 += bit[i - 1];
+        for (itype::u32 i = r; i != n; i &= i - 1) res1 += bit[i - 1];
         GSH_INTERNAL_UNROLL(32)
-        for (size_type i = l; i != n; i &= i - 1) res2 += bit[i - 1];
+        for (itype::u32 i = l; i != n; i &= i - 1) res2 += bit[i - 1];
         return res1 - res2;
     }
-    constexpr size_type lower_bound(value_type x) const {
+    constexpr itype::u32 lower_bound(value_type x) const {
         static_assert(std::is_unsigned_v<value_type>, "gsh::RangeSumQuery::lower_bound / value_type must be unsigned.");
-        size_type res = 0, n = size();
-        for (size_type len = std::bit_floor(n); len != 0; len >>= 1) {
+        itype::u32 res = 0, n = size();
+        for (itype::u32 len = std::bit_floor(n); len != 0; len >>= 1) {
             if (res + len <= n && bit[res + len - 1] < x) {
                 x -= bit[res + len - 1];
                 res += len;
@@ -120,10 +122,10 @@ public:
         }
         return res;
     }
-    constexpr size_type upper_bound(value_type x) const {
+    constexpr itype::u32 upper_bound(value_type x) const {
         static_assert(std::is_unsigned_v<value_type>, "gsh::RangeSumQuery::upper_bound / value_type must be unsigned.");
-        size_type res = 0, n = size();
-        for (size_type len = std::bit_floor(n); len != 0; len >>= 1) {
+        itype::u32 res = 0, n = size();
+        for (itype::u32 len = std::bit_floor(n); len != 0; len >>= 1) {
             if (res + len <= n && !(x < bit[res + len - 1])) {
                 x -= bit[res + len - 1];
                 res += len;

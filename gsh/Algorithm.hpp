@@ -121,7 +121,7 @@ constexpr void Sort(R&& r, Comp comp = {}, Proj proj = {}) {
 }
 */
 
-template<Range R> constexpr Arr<itype::u32> LongestIncreasingSubsequenceIndex(R&& r) {
+template<Range R> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r) {
     using T = typename RangeTraits<R>::value_type;
     Arr<T> dp(RangeTraits<R>::size(r));
     Arr<itype::u32> idx(dp.size());
@@ -140,7 +140,7 @@ template<Range R> constexpr Arr<itype::u32> LongestIncreasingSubsequenceIndex(R&
     return res;
 }
 
-template<RandomAccessRange R> constexpr Arr<itype::u32> EnumerateLongestCommonPrefixLength(R&& r) {
+template<RandomAccessRange R> constexpr Arr<itype::u32> LongestCommonPrefix(R&& r) {
     using traits = RangeTraits<R>;
     const itype::u32 n = traits::size(r);
     Arr<itype::u32> res(n);

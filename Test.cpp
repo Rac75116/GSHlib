@@ -8,6 +8,7 @@
 #include <gsh/Exception.hpp>
 #include <gsh/Random.hpp>
 #include <cstdio>
+#include <ranges>
 
 #ifdef EVAL
 gsh::MmapReader r;
@@ -22,6 +23,7 @@ int main() {
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
+        std::ranges::begin;
     } catch (gsh::Exception& e) {
         printf("gsh::Exception was throwed: ");
         puts(e.what());

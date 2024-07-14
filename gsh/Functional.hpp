@@ -127,77 +127,86 @@ namespace internal {
     };
 }  // namespace internal
 
+// https://raw.githubusercontent.com/martinus/unordered_dense/v1.3.0/include/ankerl/unordered_dense.h
 class Hash {
-public:
-    template<class T> constexpr itype::u64 operator()(const T& x) const {
-        if constexpr (internal::std_hash_callable<T>) return static_cast<itype::u64>(std::hash<T>{}(x));
-        else if constexpr (internal::member_hash_callable<T>) return static_cast<itype::u64>(x.hash());
-        else if constexpr (internal::func_hash_callable<T>) return static_cast<itype::u64>(hash(x));
-        else static_assert(std::same_as<T, T>, "Cannot call std::hash<T> or x.hash() or hash(x).");
-    }
-    // https://raw.githubusercontent.com/martinus/unordered_dense/v1.3.0/include/ankerl/unordered_dense.h
-    constexpr itype::u64 operator()(itype::u64 x) const noexcept { return internal::MixIntegers(x, 0x9e3779b97f4a7c15); }
-    template<internal::Nocvref T>
-        requires std::integral<T>
-    constexpr itype::u64 operator()(const T& x) const noexcept {
-        return operator()(static_cast<itype::u64>(x));
-    }
-    template<internal::Nocvref T>
-        requires std::floating_point<T>
-    constexpr itype::u64 operator()(const T& x) const noexcept {
-        if constexpr (sizeof(T) <= 8) {
-            union {
-                itype::u64 a = 0;
-                T b;
-            };
-            b = x;
-            return operator()(a);
-        } else {
-            static_assert(sizeof(T) <= 16);
-            union {
-                itype::u128 a = 0;
-                T b;
-            };
-            b = x;
-            return operator()(a);
+    template<class T> constexpr itype::u64 calc_hash(const T& x) const {
+        if constexpr (std::same_as<T, std::nullptr_t>) return operator()(static_cast<void*>(x));
+        else if constexpr (std::is_pointer_v<T>) {
+            static_assert(sizeof(x) == 4 || sizeof(x) == 8);
+            if constexpr (sizeof(x) == 8) return operator()(reinterpret_cast<itype::u64>(x));
+            else return operator()(reinterpret_cast<itype::u32>(x));
+        } else if constexpr (std::same_as<T, itype::u64>) return internal::MixIntegers(x, 0x9e3779b97f4a7c15);
+        else if constexpr (std::same_as<T, itype::u128>) {
+            itype::u64 a = internal::MixIntegers(x, 0x9e3779b97f4a7c15);
+            itype::u64 b = internal::MixIntegers(x >> 64, 0x9e3779b97f4a7c15);
+            return ((12638153115695167455ull ^ a) * 1099511628211ull) ^ b;
+        } else if constexpr (std::integral<T>) {
+            if constexpr (sizeof(T) <= 8) return operator()(static_cast<itype::u64>(x));
+            else {
+                static_assert(sizeof(T) <= 16);
+                return operator()(static_cast<itype::u128>(x));
+            }
+        } else if constexpr (std::floating_point<T>) {
+            if constexpr (sizeof(T) <= 8) {
+                union {
+                    itype::u64 a = 0;
+                    T b;
+                };
+                b = x;
+                return operator()(a);
+            } else {
+                static_assert(sizeof(T) <= 16);
+                union {
+                    itype::u128 a = 0;
+                    T b;
+                };
+                b = x;
+                return operator()(a);
+            }
         }
     }
-    template<internal::Nocvref T>
-        requires std::is_pointer_v<T>
-    itype::u64 operator()(T x) const noexcept {
-        static_assert(sizeof(x) == 4 || sizeof(x) == 8);
-        if constexpr (sizeof(x) == 8) return operator()(reinterpret_cast<itype::u64>(x));
-        else return operator()(reinterpret_cast<itype::u32>(x));
-    }
-};
-
-template<class T> class Hash<T*> {
 public:
-    constexpr itype::u64 operator()(T* x) const noexcept {
-        static_assert(sizeof(x) == 4 || sizeof(x) == 8);
-        if constexpr (sizeof(x) == 8) return Hash<itype::u64>{}(reinterpret_cast<itype::u64>(x));
-        else return Hash<itype::u32>{}(reinterpret_cast<itype::u32>(x));
-    }
-};
-template<> class Hash<std::nullptr_t> {
-public:
-    constexpr itype::u64 operator()(const std::nullptr_t& x) const noexcept { return Hash<void*>{}(static_cast<void*>(x)); }
-};
-template<class T> class Hash<T&> {
-public:
+    template<class T>
+        requires(!std::is_volatile_v<T>)
     constexpr itype::u64 operator()(const T& x) const {
-        using val = std::remove_cvref_t<decltype(&x)>;
-        return Hash<val>{}(static_cast<val>(&x));
+        if constexpr (internal::member_hash_callable<T>) return static_cast<itype::u64>(x.hash());
+        else if constexpr (internal::func_hash_callable<T>) return static_cast<itype::u64>(hash(x));
+        else if constexpr (std::same_as<T, std::nullptr_t>) return operator()(static_cast<void*>(x));
+        else if constexpr (std::is_pointer_v<T>) {
+            static_assert(sizeof(x) == 4 || sizeof(x) == 8);
+            if constexpr (sizeof(x) == 8) return operator()(reinterpret_cast<itype::u64>(x));
+            else return operator()(reinterpret_cast<itype::u32>(x));
+        } else if constexpr (std::same_as<T, itype::u64>) return internal::MixIntegers(x, 0x9e3779b97f4a7c15);
+        else if constexpr (std::same_as<T, itype::u128>) {
+            itype::u64 a = internal::MixIntegers(static_cast<itype::u64>(x), 0x9e3779b97f4a7c15);
+            itype::u64 b = internal::MixIntegers(static_cast<itype::u64>(x >> 64), 12638153115695167455ull);
+            return a ^ b;
+        } else if constexpr (std::integral<T>) {
+            if constexpr (sizeof(T) <= 8) return operator()(static_cast<itype::u64>(x));
+            else {
+                static_assert(sizeof(T) <= 16);
+                return operator()(static_cast<itype::u128>(x));
+            }
+        } else if constexpr (std::floating_point<T>) {
+            if constexpr (sizeof(T) <= 8) {
+                union {
+                    itype::u64 a = 0;
+                    T b;
+                };
+                b = x;
+                return operator()(a);
+            } else {
+                static_assert(sizeof(T) <= 16);
+                union {
+                    itype::u128 a = 0;
+                    T b;
+                };
+                b = x;
+                return operator()(a);
+            }
+        } else if constexpr (internal::std_hash_callable<std::remove_cvref_t<T>>) return static_cast<itype::u64>(std::hash<std::remove_cvref_t<T>>{}(static_cast<std::remove_cvref_t<T>>(x)));
+        else static_assert(std::same_as<T, T>, "Cannot call std::hash<T>{}(x) or x.hash() or hash(x).");
     }
 };
-template<class T> class Hash<T&&> {
-public:
-    constexpr itype::u64 operator()(const T&& x) const {
-        using val = std::remove_cvref_t<decltype(&x)>;
-        return Hash<val>{}(static_cast<val>(&x));
-    }
-};
-
-namespace internal {}  // namespace internal
 
 }  // namespace gsh

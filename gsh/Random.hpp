@@ -78,24 +78,24 @@ class RandomDevice {
     constexpr itype::u64 from_time() {
         if (!std::is_constant_evaluated()) {
             itype::u64 a = internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)));
-            itype::u64 b = Hash<itype::u64>{}(internal::Splitmix(static_cast<itype::u64>(std::clock())));
-            return internal::MixIntegers(a, b);
+            itype::u64 b = Hash{}(internal::Splitmix(static_cast<itype::u64>(std::clock())));
+            return a ^ b;
         } else return 0x9e3779b97f4a7c15;
     }
     constexpr itype::u64 from_compile_time() {
-        itype::u64 a = internal::Splitmix(Hash<itype::u64>{}(internal::HashBytes(__DATE__)));
-        itype::u64 b = Hash<itype::u64>{}(internal::Splitmix(internal::HashBytes(__TIME__)));
+        itype::u64 a = internal::Splitmix(Hash{}(internal::HashBytes(__DATE__)));
+        itype::u64 b = Hash{}(internal::Splitmix(internal::HashBytes(__TIME__)));
         itype::u64 c = internal::Splitmix(internal::Splitmix(internal::HashBytes(__TIMESTAMP__)));
-        return internal::MixIntegers(internal::Splitmix(internal::MixIntegers(a, c)), b);
+        return internal::Splitmix(internal::MixIntegers(a, c)) ^ b;
     }
     constexpr itype::u64 from_location(const std::source_location& loc) {
-        itype::u64 a = Hash<itype::u64>{}(internal::Splitmix(loc.column()));
+        itype::u64 a = Hash{}(internal::Splitmix(loc.column()));
         itype::u64 b = internal::Splitmix(loc.line());
-        itype::u64 c = Hash<itype::u64>{}(internal::HashBytes(loc.file_name()));
+        itype::u64 c = Hash{}(internal::HashBytes(loc.file_name()));
         itype::u64 d = internal::HashBytes(loc.function_name());
-        return internal::MixIntegers(internal::MixIntegers(a, d), internal::Splitmix(internal::MixIntegers(b, c)));
+        return internal::MixIntegers(a, d) ^ internal::Splitmix(internal::MixIntegers(b, c));
     }
-    constexpr itype::u64 get_val(const std::source_location& loc) { return internal::Splitmix(from_time()) ^ from_location(loc) ^ Hash<itype::u64>{}(from_compile_time()); }
+    constexpr itype::u64 get_val(const std::source_location& loc) { return internal::Splitmix(from_time()) ^ from_location(loc) ^ (Hash{}(from_compile_time())); }
 public:
     using result_type = itype::u64;
     constexpr RandomDevice(const std::source_location& loc = std::source_location::current()) : engine(internal::Splitmix(get_val(loc))) {}

@@ -129,42 +129,6 @@ namespace internal {
 
 // https://raw.githubusercontent.com/martinus/unordered_dense/v1.3.0/include/ankerl/unordered_dense.h
 class Hash {
-    template<class T> constexpr itype::u64 calc_hash(const T& x) const {
-        if constexpr (std::same_as<T, std::nullptr_t>) return operator()(static_cast<void*>(x));
-        else if constexpr (std::is_pointer_v<T>) {
-            static_assert(sizeof(x) == 4 || sizeof(x) == 8);
-            if constexpr (sizeof(x) == 8) return operator()(reinterpret_cast<itype::u64>(x));
-            else return operator()(reinterpret_cast<itype::u32>(x));
-        } else if constexpr (std::same_as<T, itype::u64>) return internal::MixIntegers(x, 0x9e3779b97f4a7c15);
-        else if constexpr (std::same_as<T, itype::u128>) {
-            itype::u64 a = internal::MixIntegers(x, 0x9e3779b97f4a7c15);
-            itype::u64 b = internal::MixIntegers(x >> 64, 0x9e3779b97f4a7c15);
-            return ((12638153115695167455ull ^ a) * 1099511628211ull) ^ b;
-        } else if constexpr (std::integral<T>) {
-            if constexpr (sizeof(T) <= 8) return operator()(static_cast<itype::u64>(x));
-            else {
-                static_assert(sizeof(T) <= 16);
-                return operator()(static_cast<itype::u128>(x));
-            }
-        } else if constexpr (std::floating_point<T>) {
-            if constexpr (sizeof(T) <= 8) {
-                union {
-                    itype::u64 a = 0;
-                    T b;
-                };
-                b = x;
-                return operator()(a);
-            } else {
-                static_assert(sizeof(T) <= 16);
-                union {
-                    itype::u128 a = 0;
-                    T b;
-                };
-                b = x;
-                return operator()(a);
-            }
-        }
-    }
 public:
     template<class T>
         requires(!std::is_volatile_v<T>)

@@ -3,12 +3,13 @@
 #include <type_traits>      // std::remove_cv_t, std::remove_cvref_t
 #include <utility>          // std::forward
 #include <cstddef>          // std::nullptr_t
+#include <bit>              // std::bit_cast
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
 
 namespace internal {
-    template<typename T, typename U> concept less_builtin_ptr_cmp = requires(T&& t, U&& u) {
+    template<typename T, typename U> concept LessPtrCmp = requires(T&& t, U&& u) {
         { t < u } -> std::same_as<bool>;
     } && std::convertible_to<T, const volatile void*> && std::convertible_to<U, const volatile void*> && (!requires(T&& t, U&& u) { operator<(std::forward<T>(t), std::forward<U>(u)); } && !requires(T&& t, U&& u) { std::forward<T>(t).operator<(std::forward<U>(u)); });
 }  // namespace internal
@@ -17,7 +18,7 @@ public:
     template<class T, class U>
         requires std::totally_ordered_with<T, U>
     constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<T>() < std::declval<U>())) {
-        if constexpr (internal::less_builtin_ptr_cmp<T, U>) {
+        if constexpr (internal::LessPtrCmp<T, U>) {
             if (std::is_constant_evaluated()) return t < u;
             auto x = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<T>(t)));
             auto y = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<U>(u)));
@@ -31,7 +32,7 @@ public:
     template<class T, class U>
         requires std::totally_ordered_with<T, U>
     constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<U>() < std::declval<T>())) {
-        if constexpr (internal::less_builtin_ptr_cmp<U, T>) {
+        if constexpr (internal::LessPtrCmp<U, T>) {
             if (std::is_constant_evaluated()) return u < t;
             auto x = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<T>(t)));
             auto y = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<U>(u)));
@@ -66,6 +67,8 @@ template<class T> class hash;
 }
 
 namespace gsh {
+
+template<class T> class CustomizedHash;
 
 namespace internal {
     template<class T> concept Nocvref = std::same_as<T, std::remove_cv_t<T>> && !std::is_reference_v<T>;
@@ -116,14 +119,11 @@ namespace internal {
         while (*last != '\0') ++last;
         return HashBytes(ptr, last - ptr);
     }
-    template<class T> concept std_hash_callable = requires(T x) {
+    template<class T> concept StdHashCallable = requires(T x) {
         { std::hash<T>{}(x) } -> std::integral;
     };
-    template<class T> concept member_hash_callable = requires(T x) {
-        { x.hash() } -> std::integral;
-    };
-    template<class T> concept func_hash_callable = requires(T x) {
-        { hash(x) } -> std::integral;
+    template<class T> concept CustomizedHashCallable = requires(T x) {
+        { CustomizedHash<T>{}(x) } -> std::integral;
     };
 }  // namespace internal
 
@@ -131,46 +131,77 @@ namespace internal {
 class Hash {
 public:
     template<class T>
-        requires(!std::is_volatile_v<T>)
+        requires internal::CustomizedHashCallable<T>
     constexpr itype::u64 operator()(const T& x) const {
-        if constexpr (internal::member_hash_callable<T>) return static_cast<itype::u64>(x.hash());
-        else if constexpr (internal::func_hash_callable<T>) return static_cast<itype::u64>(hash(x));
-        else if constexpr (std::same_as<T, std::nullptr_t>) return operator()(static_cast<void*>(x));
+        return static_cast<itype::u64>(CustomizedHash<T>{}(x));
+    }
+    template<class T>
+        requires internal::CustomizedHashCallable<T>
+    constexpr itype::u64 operator()(const T& x, const CustomizedHash<T>& h) const {
+        return static_cast<itype::u64>(h(x));
+    }
+    template<class T>
+        requires(!internal::CustomizedHashCallable<T> && !std::is_volatile_v<T>)
+    constexpr itype::u64 operator()(const T& x) const {
+        if constexpr (std::same_as<T, std::nullptr_t>) return operator()(static_cast<void*>(x));
         else if constexpr (std::is_pointer_v<T>) {
             static_assert(sizeof(x) == 4 || sizeof(x) == 8);
-            if constexpr (sizeof(x) == 8) return operator()(reinterpret_cast<itype::u64>(x));
-            else return operator()(reinterpret_cast<itype::u32>(x));
+            if constexpr (sizeof(x) == 8) return operator()(std::bit_cast<itype::u64>(x));
+            else return operator()(std::bit_cast<itype::u32>(x));
+        } else if constexpr (simd::Is256BitVector<T>) {
+            struct chars {
+                ctype::c8 c[32];
+            };
+            auto y = std::bit_cast<chars>(x);
+            return internal::HashBytes(y.c, 32);
+        } else if constexpr (simd::Is512BitVector<T>) {
+            struct chars {
+                ctype::c8 c[64];
+            };
+            auto y = std::bit_cast<chars>(x);
+            return internal::HashBytes(y.c, 64);
         } else if constexpr (std::same_as<T, itype::u64>) return internal::MixIntegers(x, 0x9e3779b97f4a7c15);
         else if constexpr (std::same_as<T, itype::u128>) {
             itype::u64 a = internal::MixIntegers(static_cast<itype::u64>(x), 0x9e3779b97f4a7c15);
             itype::u64 b = internal::MixIntegers(static_cast<itype::u64>(x >> 64), 12638153115695167455ull);
             return a ^ b;
         } else if constexpr (std::integral<T>) {
+            static_assert(sizeof(T) <= 16);
             if constexpr (sizeof(T) <= 8) return operator()(static_cast<itype::u64>(x));
-            else {
-                static_assert(sizeof(T) <= 16);
-                return operator()(static_cast<itype::u128>(x));
-            }
+            else return operator()(static_cast<itype::u128>(x));
         } else if constexpr (std::floating_point<T>) {
-            if constexpr (sizeof(T) <= 8) {
-                union {
-                    itype::u64 a = 0;
-                    T b;
+            static_assert(sizeof(T) <= 16);
+            if constexpr (sizeof(T) == 2) return operator()(std::bit_cast<itype::u16>(x));
+            else if constexpr (sizeof(T) == 4) return operator()(std::bit_cast<itype::u32>(x));
+            else if constexpr (sizeof(T) == 8) return operator()(std::bit_cast<itype::u64>(x));
+            else if constexpr (sizeof(T) == 16) return operator()(std::bit_cast<itype::u128>(x));
+            else if constexpr (sizeof(T) < 8) {
+                struct a {
+                    ctype::c8 b[sizeof(T)];
                 };
-                b = x;
-                return operator()(a);
+                struct c {
+                    a d;
+                    ctype::c8 e[8 - sizeof(T)]{};
+                } f;
+                f.d = std::bit_cast<a>(x);
+                return operator()(std::bit_cast<itype::u64>(f));
             } else {
-                static_assert(sizeof(T) <= 16);
-                union {
-                    itype::u128 a = 0;
-                    T b;
-                };
-                b = x;
-                return operator()(a);
+                struct a {
+                    struct b {
+                        ctype::c8 c[sizeof(T)];
+                    } d;
+                    ctype::c8 e[16 - sizeof(T)]{};
+                } f;
+                f.d = std::bit_cast<a::b>(x);
+                return operator()(std::bit_cast<itype::u128>(f));
             }
-        } else if constexpr (internal::std_hash_callable<std::remove_cvref_t<T>>) return static_cast<itype::u64>(std::hash<std::remove_cvref_t<T>>{}(static_cast<std::remove_cvref_t<T>>(x)));
-        else static_assert(std::same_as<T, T>, "Cannot call std::hash<T>{}(x) or x.hash() or hash(x).");
+        } else if constexpr (internal::StdHashCallable<std::remove_cvref_t<T>>) return static_cast<itype::u64>(std::hash<std::remove_cvref_t<T>>{}(static_cast<std::remove_cvref_t<T>>(x)));
+        else {
+            static_assert(false, "Cannot find the appropriate hash function.");
+            return 0ull;
+        }
     }
+    using is_transparent = void;
 };
 
 }  // namespace gsh

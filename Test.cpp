@@ -22,6 +22,7 @@ int main() {
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
+        printf("%llu\n", Hash{}(123));
     } catch (gsh::Exception& e) {
         printf("gsh::Exception was throwed: ");
         puts(e.what());

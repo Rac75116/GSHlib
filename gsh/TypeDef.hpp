@@ -85,11 +85,24 @@ namespace simd {
     using f32x16 = __attribute__((vector_size(64))) ftype::f32;
     using f64x8 = __attribute__((vector_size(64))) ftype::f64;
 
+    template<class T, class U> constexpr T VectorCast(U x) {
+        return __builtin_convertvector(x, T);
+    }
+
 }  // namespace simd
 
-template<class T, class U> constexpr T SimdCast(U x) {
-    return __builtin_convertvector(x, T);
-}
+namespace internal {
+    template<class T, class U> constexpr bool IsSame = false;
+    template<class T> constexpr bool IsSame<T, T> = true;
+    template<class T, class U, class... V> constexpr bool IsSameAny = IsSame<T, U> || IsSameAny<T, V...>;
+    template<class T, class U> constexpr bool IsSameAny<T, U> = IsSame<T, U>;
+}  // namespace internal
+
+namespace simd {
+    template<class T> concept Is256BitVector = internal::IsSameAny<T, i8x32, i16x16, i32x8, i64x4, u8x32, u16x16, u32x8, u64x4, f32x8, f64x4>;
+    template<class T> concept Is512BitVector = internal::IsSameAny<T, i8x64, i16x32, i32x16, i64x8, u8x64, u16x32, u32x16, u64x8, f32x16, f64x8>;
+    template<class T> concept IsVector = Is256BitVector<T> || Is512BitVector<T>;
+}  // namespace simd
 
 class Byte {
     itype::u8 b = 0;
@@ -126,6 +139,6 @@ public:
         res.b = static_cast<itype::u8>(l);
         return res;
     }
-};
+};  // namespace class Byte
 
 }  // namespace gsh

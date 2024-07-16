@@ -166,4 +166,5 @@ template<RandomAccessRange R> constexpr Arr<itype::u32> LongestCommonPrefix(R&& 
     return res;
 }
 
+
 }  // namespace gsh

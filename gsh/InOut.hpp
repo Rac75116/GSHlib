@@ -151,14 +151,14 @@ namespace internal {
 template<> class Parser<itype::u8> {
 public:
     template<class Stream> constexpr itype::u8 operator()(Stream& stream) const {
-        stream.reload(4);
+        stream.reload(8);
         return internal::Parseu8(stream);
     }
 };
 template<> class Parser<itype::i8> {
 public:
     template<class Stream> constexpr itype::i8 operator()(Stream& stream) const {
-        stream.reload(4);
+        stream.reload(8);
         bool neg = *stream.current() == '-';
         if (neg) stream.skip(1);
         itype::i8 tmp = internal::Parseu8(stream);
@@ -176,7 +176,7 @@ public:
 template<> class Parser<itype::i16> {
 public:
     template<class Stream> constexpr itype::i16 operator()(Stream& stream) const {
-        stream.reload(9);
+        stream.reload(8);
         bool neg = *stream.current() == '-';
         if (neg) stream.skip(1);
         itype::i16 tmp = internal::Parseu16(stream);
@@ -223,14 +223,14 @@ public:
 template<> class Parser<itype::u8dig> {
 public:
     template<class Stream> constexpr itype::u8dig operator()(Stream& stream) const {
-        stream.reload(9);
+        stream.reload(16);
         return internal::Parseu8dig(stream);
     }
 };
 template<> class Parser<itype::i8dig> {
 public:
     template<class Stream> constexpr itype::i8dig operator()(Stream& stream) const {
-        stream.reload(9);
+        stream.reload(16);
         bool neg = *stream.current() == '-';
         if (neg) stream.skip(1);
         itype::i32 tmp = internal::Parseu8dig(stream).val;
@@ -517,13 +517,14 @@ public:
         return *this;
     }
     void reload() {
-        if (eof == buf + Bufsize) [[likely]] {
+        if (eof == buf + Bufsize || eof == cur || [&] {
+                auto p = cur;
+                while (*p >= '!') ++p;
+                return p;
+            }() == eof) [[likely]] {
             itype::u32 rem = eof - cur;
             std::memmove(buf, cur, rem);
             *(eof = buf + rem + read(fd, buf + rem, Bufsize - rem)) = '\0';
-            cur = buf;
-        } else if (eof == cur) {
-            *(eof = buf + read(fd, buf, Bufsize)) = '\0';
             cur = buf;
         }
     }
@@ -535,6 +536,7 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
+/*
 class MmapReader {
     const itype::i32 fh;
     ctype::c8* buf;
@@ -558,6 +560,7 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
+*/
 class StaticStrReader {
     const ctype::c8* cur;
 public:
@@ -572,7 +575,7 @@ public:
 
 class BasicWriter {
     constexpr static itype::u32 Bufsize = 1 << 18;
-    itype::i32 fd = 0;
+    itype::i32 fd = 1;
     ctype::c8 buf[Bufsize];
     ctype::c8 *cur = buf, *eof = buf + Bufsize;
 public:
@@ -591,7 +594,7 @@ public:
         return *this;
     }
     void reload() {
-        [[maybe_unused]] itype::i32 tmp = write(1, buf, cur - buf);
+        [[maybe_unused]] itype::i32 tmp = write(fd, buf, cur - buf);
         cur = buf;
     }
     void reload(itype::u32 len) {

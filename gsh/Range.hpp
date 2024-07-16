@@ -36,63 +36,64 @@ public:
     using range_type = std::remove_cvref_t<R>;
     constexpr static RangeKind range_kind = std::ranges::sized_range<R> ? RangeKind::Sized : RangeKind::Unsized;
     constexpr static bool pointer_obtainable = requires(R r) { std::ranges::data(r); };
-    static constexpr auto size(internal::same_ncvr<R> auto&& r) { return std::ranges::size(std::forward<R>(r)); }
-    static constexpr auto ssize(internal::same_ncvr<R> auto&& r) { return std::ranges::ssize(std::forward<R>(r)); }
-    static constexpr auto empty(internal::same_ncvr<R> auto&& r) { return std::ranges::empty(std::forward<R>(r)); }
 
-    static constexpr auto begin(internal::same_ncvr<R> auto&& r) { return std::ranges::begin(std::forward<R>(r)); }
-    static constexpr auto end(internal::same_ncvr<R> auto&& r) { return std::ranges::end(std::forward<R>(r)); }
-    static constexpr auto cbegin(internal::same_ncvr<R> auto&& r) { return std::ranges::cbegin(std::forward<R>(r)); }
-    static constexpr auto cend(internal::same_ncvr<R> auto&& r) { return std::ranges::cend(std::forward<R>(r)); }
-    static constexpr auto rbegin(internal::same_ncvr<R> auto&& r) { return std::ranges::cbegin(std::forward<R>(r)); }
-    static constexpr auto rend(internal::same_ncvr<R> auto&& r) { return std::ranges::cend(std::forward<R>(r)); }
-    static constexpr auto crbegin(internal::same_ncvr<R> auto&& r) { return std::ranges::crbegin(std::forward<R>(r)); }
-    static constexpr auto crend(internal::same_ncvr<R> auto&& r) { return std::ranges::crend(std::forward<R>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto size(T&& r) { return std::ranges::size(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto ssize(T&& r) { return std::ranges::ssize(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto empty(T&& r) { return std::ranges::empty(std::forward<T>(r)); }
 
-    static constexpr auto mbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(begin(std::forward<R>(r))); }
-    static constexpr auto mend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(end(std::forward<R>(r))); }
-    static constexpr auto mcbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(cbegin(std::forward<R>(r))); }
-    static constexpr auto mcend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(cend(std::forward<R>(r))); }
-    static constexpr auto mrbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(rbegin(std::forward<R>(r))); }
-    static constexpr auto mrend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(rend(std::forward<R>(r))); }
-    static constexpr auto mcrbegin(internal::same_ncvr<R> auto&& r) { return std::move_iterator(crbegin(std::forward<R>(r))); }
-    static constexpr auto mcrend(internal::same_ncvr<R> auto&& r) { return std::move_sentinel(crend(std::forward<R>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto begin(T&& r) { return std::ranges::begin(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto end(T&& r) { return std::ranges::end(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto cbegin(T&& r) { return std::ranges::cbegin(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto cend(T&& r) { return std::ranges::cend(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto rbegin(T&& r) { return std::ranges::rbegin(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto rend(T&& r) { return std::ranges::rend(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto crbegin(T&& r) { return std::ranges::crbegin(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto crend(T&& r) { return std::ranges::crend(std::forward<T>(r)); }
 
-    static constexpr auto fbegin(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return begin(r);
-        else return mbegin(r);
+    template<internal::same_ncvr<R> T> static constexpr auto mbegin(T&& r) { return std::move_iterator(begin(std::forward<T>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto mend(T&& r) { return std::move_sentinel(end(std::forward<T>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto mcbegin(T&& r) { return std::move_iterator(cbegin(std::forward<T>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto mcend(T&& r) { return std::move_sentinel(cend(std::forward<T>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto mrbegin(T&& r) { return std::move_iterator(rbegin(std::forward<T>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto mrend(T&& r) { return std::move_sentinel(rend(std::forward<T>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto mcrbegin(T&& r) { return std::move_iterator(crbegin(std::forward<T>(r))); }
+    template<internal::same_ncvr<R> T> static constexpr auto mcrend(T&& r) { return std::move_sentinel(crend(std::forward<T>(r))); }
+
+    template<internal::same_ncvr<R> T> static constexpr auto fbegin(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return begin(std::forward<T>(r));
+        else return mbegin(std::forward<T>(r));
     }
-    static constexpr auto fend(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return end(r);
-        else return mend(r);
+    template<internal::same_ncvr<R> T> static constexpr auto fend(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return end(std::forward<T>(r));
+        else return mend(std::forward<T>(r));
     }
-    static constexpr auto fcbegin(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return cbegin(r);
-        else return mcbegin(r);
+    template<internal::same_ncvr<R> T> static constexpr auto fcbegin(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return cbegin(std::forward<T>(r));
+        else return mcbegin(std::forward<T>(r));
     }
-    static constexpr auto fcend(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return cend(r);
-        else return mcend(r);
+    template<internal::same_ncvr<R> T> static constexpr auto fcend(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return cend(std::forward<T>(r));
+        else return mcend(std::forward<T>(r));
     }
-    static constexpr auto frbegin(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return rbegin(r);
-        else return mrbegin(r);
+    template<internal::same_ncvr<R> T> static constexpr auto frbegin(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return rbegin(std::forward<T>(r));
+        else return mrbegin(std::forward<T>(r));
     }
-    static constexpr auto frend(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return rend(r);
-        else return mrend(r);
+    template<internal::same_ncvr<R> T> static constexpr auto frend(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return rend(std::forward<T>(r));
+        else return mrend(std::forward<T>(r));
     }
-    static constexpr auto fcrbegin(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return crbegin(r);
-        else return mcrbegin(r);
+    template<internal::same_ncvr<R> T> static constexpr auto fcrbegin(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return crbegin(std::forward<T>(r));
+        else return mcrbegin(std::forward<T>(r));
     }
-    static constexpr auto fcrend(internal::same_ncvr<R> auto&& r) {
-        if constexpr (!std::ranges::borrowed_range<decltype(r)>) return crend(r);
-        else return mcrend(r);
+    template<internal::same_ncvr<R> T> static constexpr auto fcrend(T&& r) {
+        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return crend(std::forward<T>(r));
+        else return mcrend(std::forward<T>(r));
     }
 
-    static constexpr auto data(internal::same_ncvr<R> auto&& r) { return std::ranges::data(std::forward<R>(r)); }
-    static constexpr auto cdata(internal::same_ncvr<R> auto&& r) { return std::ranges::cdata(std::forward<R>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto data(T&& r) { return std::ranges::data(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr auto cdata(T&& r) { return std::ranges::cdata(std::forward<T>(r)); }
 };
 
 template<class D, class V>

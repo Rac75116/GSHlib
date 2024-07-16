@@ -6,15 +6,17 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Random.hpp>
+#include <gsh/Geometry.hpp>
 #include <cstdio>
 
-#ifdef EVAL
-gsh::MmapReader r;
+#if false
+#include <fcntl.h>
+gsh::BasicReader r(open("in.txt", O_RDONLY));
+gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
 #else
 gsh::BasicReader r;
-#endif
 gsh::BasicWriter w;
+#endif
 int main() {
     try {
         using namespace std;
@@ -22,7 +24,30 @@ int main() {
         using namespace gsh::itype;
         using namespace gsh::ftype;
         using namespace gsh::ctype;
-        printf("%llu\n", Hash{}(123));
+        u32 T = Parser<u32>{}(r);
+        for (u32 t = 0; t != T; ++t) {
+            u32 N = Parser<u32>{}(r);
+            Arr<Point2<i32>> p(N);
+            for (u32 i = 0; i != N; ++i) {
+                i32 A = Parser<i32>{}(r), B = Parser<i32>{}(r);
+                p[i] = { A, B };
+            }
+            auto res = FurthestPair(p);
+            for (u32 i = 0; i != N; ++i) {
+                if (p[i] == res.first()) {
+                    Formatter<u32>{}(w, i);
+                    break;
+                }
+            }
+            Formatter<c8>{}(w, ' ');
+            for (u32 i = N; i != 0; --i) {
+                if (p[i - 1] == res.second()) {
+                    Formatter<u32>{}(w, i - 1);
+                    break;
+                }
+            }
+            Formatter<c8>{}(w, '\n');
+        }
     } catch (gsh::Exception& e) {
         printf("gsh::Exception was throwed: ");
         puts(e.what());

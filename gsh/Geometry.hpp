@@ -1,6 +1,7 @@
 #pragma once
 #include <type_traits>                 // std::is_arithmetic_v
 #include <bit>                         // std::bit_cast
+#include <cmath>                       // std::hypot
 #include <gsh/Range.hpp>               // gsh::Rangeof
 #include <gsh/Arr.hpp>                 // gsh::Arr
 #include <gsh/TypeDef.hpp>             // gsh::itype
@@ -15,28 +16,33 @@ template<class T>
 class Point2 : public internal::ArithmeticInterface<Point2<T>> {
 public:
     T x{}, y{};
+    constexpr Point2() {}
+    constexpr Point2(const T& a, const T& b) : x(a), y(b) {}
     using value_type = T;
-    constexpr Point2& operator+=(const Point2& p) {
+    constexpr Point2& operator+=(const Point2& p) noexcept {
         x += p.x, y += p.y;
         return *this;
     }
-    constexpr Point2& operator-=(const Point2& p) {
+    constexpr Point2& operator-=(const Point2& p) noexcept {
         x -= p.x, y -= p.y;
         return *this;
     }
-    /*
-    template<class U> constexpr Point2& operator*=(const U& m) {
-        x *= m, y *= m;
-        return *this;
-    }
-    */
     friend constexpr bool operator==(const Point2& a, const Point2& b) { return a.x == b.x && a.y == b.y; }
 };
+template<class T = ftype::f64, class U> constexpr T Norm(const Point2<U>& a) {
+    return std::hypot(static_cast<T>(a.x), static_cast<T>(a.y));
+}
+template<class T> constexpr T NormSquare(const Point2<T>& a) {
+    return a.x * a.x + a.y * a.y;
+}
 template<class T> constexpr T Dot(const Point2<T>& a, const Point2<T>& b) {
     return a.x * b.x + a.y * b.y;
 }
 template<class T> constexpr T Cross(const Point2<T>& a, const Point2<T>& b) {
     return a.x * b.y + a.y * b.x;
+}
+template<class T, class U> constexpr T NormSquare(const Point2<U>& a) {
+    return static_cast<T>(a.x) * static_cast<T>(a.x) + static_cast<T>(a.y) * static_cast<T>(a.y);
 }
 template<class T, class U> constexpr T Dot(const Point2<U>& a, const Point2<U>& b) {
     return static_cast<T>(a.x) * static_cast<T>(b.x) + static_cast<T>(a.y) * static_cast<T>(b.y);
@@ -50,6 +56,8 @@ template<class T>
 class Point3 : public internal::ArithmeticInterface<Point3<T>> {
 public:
     T x{}, y{}, z{};
+    constexpr Point3() {}
+    constexpr Point3(const T& a, const T& b, const T& c) : x(a), y(b), z(c) {}
     using value_type = T;
     constexpr Point3& operator+=(const Point3& p) {
         x += p.x, y += p.y, z += p.z;
@@ -61,11 +69,20 @@ public:
     }
     friend constexpr bool operator==(const Point3& a, const Point3& b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
 };
+template<class T = ftype::f64, class U> constexpr T Norm(const Point3<U>& a) {
+    return std::hypot(static_cast<T>(a.x), static_cast<T>(a.y), static_cast<T>(a.z));
+}
+template<class T> constexpr T NormSquare(const Point3<T>& a) {
+    return a.x * a.x + a.y * a.y + a.z * a.z;
+}
 template<class T> constexpr T Dot(const Point3<T>& a, const Point3<T>& b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 template<class T> constexpr Point3<T> Cross(const Point3<T>& a, const Point3<T>& b) {
     return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+}
+template<class T, class U> constexpr T NormSquare(const Point3<U>& a) {
+    return static_cast<T>(a.x) * static_cast<T>(a.x) + static_cast<T>(a.y) * static_cast<T>(a.y) + static_cast<T>(a.z) * static_cast<T>(a.z);
 }
 template<class T, class U> constexpr T Dot(const Point3<U>& a, const Point3<U>& b) {
     return static_cast<T>(a.x) * static_cast<T>(b.x) + static_cast<T>(a.y) * static_cast<T>(b.y) + static_cast<T>(a.z) * static_cast<T>(b.z);
@@ -75,7 +92,7 @@ template<class T, class U> constexpr Point3<T> Cross(const Point3<U>& a, const P
 }
 
 
-template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
+template<Rangeof<Point2<itype::i32>> T> constexpr Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
     Arr<itype::u128> v(RangeTraits<T>::size(r));
     for (itype::u32 i = 0; auto&& p : r) {
         auto [x, y] = p;
@@ -99,7 +116,7 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ArgumentSort(T&&
     return res;
 }
 
-template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ConvexHull(T&& r) {
+template<Rangeof<Point2<itype::i32>> T> constexpr Arr<Point2<itype::i32>> ConvexHull(T&& r) {
     const itype::u32 n = RangeTraits<T>::size(r);
     if (n <= 1) return r;
     itype::u32 m = 1;
@@ -129,6 +146,49 @@ template<Rangeof<Point2<itype::i32>> T> Arr<Point2<itype::i32>> ConvexHull(T&& r
     }
     ch.resize(k - 1);
     return ch;
+}
+
+template<RandomAccessRange T>
+    requires Rangeof<T, Point2<itype::i32>>
+constexpr auto ConvexDiameter(T&& p) {
+    using traits = RangeTraits<T>;
+    struct result_type {
+        Point2<itype::i32> a, b;
+        constexpr auto distance() const noexcept { return Norm(a - b); }
+        constexpr const auto& first() const noexcept { return a; }
+        constexpr const auto& second() const noexcept { return b; }
+    };
+    const itype::u32 n = traits::size(p);
+    if (n == 0) throw Exception("gsh::ConvexDiameter / Input is empty.");
+    const auto bg = traits::begin(p);
+    if (n <= 2) {
+        if (n == 1) return result_type{ *bg, *bg };
+        else return result_type{ *bg, *std::next(bg) };
+    }
+    itype::u32 is = 0, js = 0;
+    for (itype::u32 i = 1; i != n; i++) {
+        auto a = std::next(bg, i)->y, b = std::next(bg, is)->y, c = std::next(bg, js)->y;
+        is = (a > b ? i : is);
+        js = (a < c ? i : js);
+    }
+    itype::i64 maxdis = NormSquare<itype::i64>(*std::next(bg, is) - *std::next(bg, js));
+    itype::u32 maxi = is, maxj = js, i = is, j = js;
+    do {
+        const itype::u32 in = (i + 1 == n ? 0 : i + 1), jn = (j + 1 == n ? 0 : j + 1);
+        const bool f = Cross<itype::i64>(*std::next(bg, in) - *std::next(bg, i), *std::next(bg, jn) - *std::next(bg, j)) > 0;
+        j = f ? jn : j;
+        i = f ? i : in;
+        const itype::i64 tmp = NormSquare<itype::i64>(*std::next(bg, i) - *std::next(bg, j));
+        const bool g = tmp > maxdis;
+        maxdis = g ? tmp : maxdis;
+        maxi = g ? i : maxi;
+        maxj = g ? j : maxj;
+    } while (i != is || j != js);
+    return result_type{ *std::next(bg, maxi), *std::next(bg, maxj) };
+}
+
+template<Rangeof<Point2<itype::i32>> T> auto FurthestPair(T&& r) {
+    return ConvexDiameter(ConvexHull(r));
 }
 
 }  // namespace gsh

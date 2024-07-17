@@ -101,6 +101,7 @@ public:
         }
     }
     constexpr Vec& operator=(const Vec& x) {
+        if (&x == this) return *this;
         if constexpr (!std::is_trivially_destructible_v<value_type>)
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         if (traits::propagate_on_container_copy_assignment::value || cap < x.len) {
@@ -118,6 +119,7 @@ public:
         return *this;
     }
     constexpr Vec& operator=(Vec&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
+        if (&x == this) return *this;
         if (cap != 0) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
                 for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);

@@ -103,6 +103,7 @@ public:
         }
     }
     constexpr Arr& operator=(const Arr& x) {
+        if (&x == this) return *this;
         if constexpr (!std::is_trivially_destructible_v<value_type>)
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         if (traits::propagate_on_container_copy_assignment::value || len != x.len) {
@@ -119,6 +120,7 @@ public:
         return *this;
     }
     constexpr Arr& operator=(Arr&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
+        if (&x == this) return *this;
         if (len != 0) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
                 for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);

@@ -197,10 +197,21 @@ public:
             }
         } else if constexpr (internal::StdHashCallable<std::remove_cvref_t<T>>) return static_cast<itype::u64>(std::hash<std::remove_cvref_t<T>>{}(static_cast<std::remove_cvref_t<T>>(x)));
         else {
-            static_assert(false, "Cannot find the appropriate hash function.");
+            static_assert((std::declval<T>(), false), "Cannot find the appropriate hash function.");
             return 0ull;
         }
     }
+    using is_transparent = void;
+};
+
+class Plus {
+public:
+    template<class T, class U> constexpr auto operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) + std::forward<U>(u))) -> decltype(std::forward<T>(t) + std::forward<U>(u)) { return std::forward<T>(t) + std::forward<U>(u); }
+    using is_transparent = void;
+};
+class Negate {
+public:
+    template<class T> constexpr auto operator()(T&& t) const noexcept(noexcept(-std::forward<T>(t))) -> decltype(-std::forward<T>(t)) { return -std::forward<T>(t); }
     using is_transparent = void;
 };
 

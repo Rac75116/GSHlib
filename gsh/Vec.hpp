@@ -92,7 +92,7 @@ public:
         }
     }
     constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Vec(il.begin(), il.end(), a) {}
-    template<Rangeof<value_type> T> constexpr Vec(T&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<T>::fbegin(r), RangeTraits<T>::fend(r), a) {}
+    template<Rangeof<value_type> R> constexpr Vec(R&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<R>::fbegin(r), RangeTraits<R>::fend(r), a) {}
     constexpr ~Vec() {
         if (cap != 0) {
             if constexpr (!std::is_trivially_destructible_v<value_type>)
@@ -166,12 +166,12 @@ public:
             }
             ptr = new_ptr;
             if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-                for (size_type i = len; i != sz; ++i) traits::construct(alloc, *(ptr + i));
+                for (size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
             else std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
             len = sz, cap = sz;
         } else if (len < sz) {
             if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-                for (size_type i = len; i != sz; ++i) traits::construct(alloc, *(ptr + i));
+                for (size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
             else std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
             len = sz;
         } else {
@@ -211,8 +211,8 @@ public:
         if (n > cap) {
             const pointer new_ptr = traits::allocate(alloc, n);
             if (cap != 0) {
-                if (std::is_trivially_move_constructible_v<value_type> && !std::is_constant_evaluated()) {
-                    std::memcpy(new_ptr, ptr, sizeof(value_type) * len);
+                if (false && std::is_trivially_move_constructible_v<value_type> && !std::is_constant_evaluated()) {
+                    //for (size_type i = 0; i != len; ++i) new_ptr[i] = ptr[i];
                 } else {
                     for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
                 }

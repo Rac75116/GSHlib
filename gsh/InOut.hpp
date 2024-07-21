@@ -536,7 +536,6 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
-/*
 class MmapReader {
     const itype::i32 fh;
     ctype::c8* buf;
@@ -560,7 +559,6 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
-*/
 class StaticStrReader {
     const ctype::c8* cur;
 public:

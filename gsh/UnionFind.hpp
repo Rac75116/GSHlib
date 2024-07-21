@@ -1,15 +1,15 @@
 #pragma once
-#include <gsh/TypeDef.hpp>    // gsh::itype
-#include <gsh/Arr.hpp>        // gsh::Arr
-#include <gsh/Vec.hpp>        // gsh::Vec
-#include <gsh/Exception.hpp>  // gsh::Exception
+#include <gsh/TypeDef.hpp>     // gsh::itype
+#include <gsh/Arr.hpp>         // gsh::Arr
+#include <gsh/Vec.hpp>         // gsh::Vec
+#include <gsh/Exception.hpp>   // gsh::Exception
+#include <gsh/Functional.hpp>  // gsh::Plus, gsh::Negate
 
 namespace gsh {
 
 class UnionFind {
     Arr<itype::i32> parent;
     itype::u32 cnt = 0;
-private:
     constexpr itype::i32 root(itype::i32 n) noexcept {
         if (parent[n] < 0) return n;
         return parent[n] = root(parent[n]);
@@ -60,18 +60,18 @@ public:
         --cnt;
         return tmp1;
     }
-    constexpr bool is_merged(const itype::u32 a, const itype::u32 b) {
+    constexpr bool merge_same(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::UnionFind::is_merged / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= size() || b >= size()) throw gsh::Exception("gsh::UnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
-        if (ar == br) return false;
+        if (ar == br) return true;
         const itype::i32 sa = parent[ar], sb = parent[br];
         const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
         --cnt;
-        return true;
+        return false;
     }
     constexpr itype::u32 size(itype::u32 n) {
 #ifndef NDEBUG
@@ -120,9 +120,9 @@ class RollbackUnionFind {
         itype::u32 a, b;
         itype::i32 c, d;
         bool merged;
+        constexpr change(itype::u32 A, itype::u32 B, itype::i32 C, itype::i32 D, bool M) : a(A), b(B), c(C), d(D), merged(M) {}
     };
     Vec<change> history;
-private:
     constexpr itype::i32 root(itype::i32 n) const noexcept {
         while (parent[n] >= 0) n = parent[n];
         return n;
@@ -176,19 +176,19 @@ public:
         --cnt;
         return tmp1;
     }
-    constexpr bool is_merged(const itype::u32 a, const itype::u32 b) {
+    constexpr bool merge_same(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::RollbackUnionFind::is_merged / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= size() || b >= size()) throw gsh::Exception("gsh::RollbackUnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
         const itype::i32 sa = parent[ar], sb = parent[br];
         history.emplace_back(ar, br, sa, sb, ar != br);
-        if (ar == br) return false;
+        if (ar == br) return true;
         const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
         --cnt;
-        return true;
+        return false;
     }
     constexpr itype::u32 size(itype::u32 n) const {
 #ifndef NDEBUG
@@ -240,6 +240,159 @@ public:
     constexpr itype::u32 get_state() const { return history.size(); }
     constexpr void rollback(itype::u32 s) {
         while (s < history.size()) undo();
+    }
+};
+
+template<class T = itype::i64, class F = Plus, class I = Negate> class PotentializedUnionFind {
+    Arr<itype::i32> parent;
+    Arr<T> diff;
+    itype::u32 cnt = 0;
+    [[no_unique_address]] F func{};
+    [[no_unique_address]] I inv{};
+    T el{};
+    constexpr itype::i32 root(itype::i32 n) noexcept {
+        if (parent[n] < 0) return n;
+        const itype::i32 r = root(parent[n]);
+        diff[n] = func(diff[parent[n]], diff[n]);
+        return parent[n] = r;
+    }
+public:
+    using size_type = itype::u32;
+    constexpr PotentializedUnionFind() {}
+    constexpr PotentializedUnionFind(F f, I i = I(), const T& e = T()) : el(e), func(f), inv(i) {}
+    constexpr explicit PotentializedUnionFind(itype::u32 n, F f = F(), I i = I(), const T& e = T()) : parent(n, -1), diff(n, e), cnt(n), func(f), inv(i), el(e) {}
+    constexpr void reset() {
+        cnt = size();
+        for (itype::u32 i = 0; i != size(); ++i) parent[i] = -1;
+        diff = Arr<T>(size(), el);
+    }
+    constexpr itype::u32 size() const noexcept { return parent.size(); }
+    [[nodiscard]] constexpr bool empty() const noexcept { return parent.empty(); }
+    constexpr void resize(itype::u32 n) {
+        if (n < size()) throw gsh::Exception("gsh::PotentializedUnionFind::resize / It cannot be smaller than it is now.");
+        cnt += n - size();
+        parent.resize(n, -1);
+        diff.resize(n, el);
+    }
+    constexpr itype::u32 leader(itype::u32 n) {
+#ifndef NDEBUG
+        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::leader / The index is out of range. ( n=", n, ", size=", size(), " )");
+#endif
+        return root(n);
+    }
+    constexpr bool is_leader(itype::u32 n) const {
+#ifndef NDEBUG
+        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::is_leader / The index is out of range. ( n=", n, ", size=", size(), " )");
+#endif
+        return parent[n] < 0;
+    }
+    constexpr bool same(itype::u32 a, itype::u32 b) {
+#ifndef NDEBUG
+        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+#endif
+        return root(a) == root(b);
+    }
+    constexpr const T& potential(itype::u32 n) {
+#ifndef NDEBUG
+        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::potential / The index is out of range. ( n=", n, ", size=", size(), " )");
+#endif
+        root(n);
+        return diff[n];
+    }
+    // A[a] = func(A[b], result)
+    constexpr T potential(itype::u32 a, itype::u32 b) {
+#ifndef NDEBUG
+        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::potential / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+#endif
+        root(a);
+        root(b);
+        return func(inv(diff[b]), diff[a]);
+    }
+    // A[a] = func(A[b], w) return leader(a)
+    constexpr itype::u32 merge(const itype::u32 a, const itype::u32 b, const T& w) {
+#ifndef NDEBUG
+        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+#endif
+        const itype::i32 ar = root(a), br = root(b);
+        if (ar == br) return ar;
+        const itype::i32 sa = parent[ar], sb = parent[br];
+        const bool f = sa < sb;
+        const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
+        parent[tmp1] += parent[tmp2];
+        parent[tmp2] = tmp1;
+        diff[tmp2] = func(diff[f ? a : b], inv(func(diff[f ? b : a], f ? w : inv(w))));
+        --cnt;
+        return tmp1;
+    }
+    // A[a] = func(A[b], w) return same(a, b)
+    constexpr bool merge_same(const itype::u32 a, const itype::u32 b, const T& w) {
+#ifndef NDEBUG
+        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+#endif
+        const itype::i32 ar = root(a), br = root(b);
+        if (ar == br) return true;
+        const itype::i32 sa = parent[ar], sb = parent[br];
+        const bool f = sa < sb;
+        const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
+        parent[tmp1] += parent[tmp2];
+        parent[tmp2] = tmp1;
+        diff[tmp2] = func(diff[f ? a : b], inv(func(diff[f ? b : a], f ? w : inv(w))));
+        --cnt;
+        return false;
+    }
+    // A[a] = func(A[b], w)
+    constexpr bool merge_valid(const itype::u32 a, const itype::u32 b, const T& w) {
+#ifndef NDEBUG
+        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge_valid / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+#endif
+        const itype::i32 ar = root(a), br = root(b);
+        if (ar == br) return diff[a] == func(diff[b], w);
+        const itype::i32 sa = parent[ar], sb = parent[br];
+        const bool f = sa < sb;
+        const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
+        parent[tmp1] += parent[tmp2];
+        parent[tmp2] = tmp1;
+        diff[tmp2] = func(diff[f ? a : b], inv(func(diff[f ? b : a], f ? w : inv(w))));
+        --cnt;
+        return true;
+    }
+    constexpr itype::u32 size(itype::u32 n) {
+#ifndef NDEBUG
+        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::size(itype::u32) / The index is out of range. ( n=", n, ", size=", size(), " )");
+#endif
+        return -parent[root(n)];
+    }
+    constexpr itype::u32 count_groups() const noexcept { return cnt; }
+    constexpr Arr<itype::u32> extract(itype::u32 n) {
+#ifndef NDEBUG
+        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::extract / The index is out of range. ( n=", n, ", size=", size(), " )");
+#endif
+        const itype::i32 nr = root(n);
+        itype::u32 ccnt = 0;
+        for (itype::u32 i = 0; i != size(); ++i) ccnt += root(i) == nr;
+        Arr<itype::u32> res(ccnt);
+        for (itype::u32 i = 0, j = 0; i != size(); ++i)
+            if (i == static_cast<itype::u32>(nr) || parent[i] == nr) res[j++] = i;
+        return res;
+    }
+    constexpr Arr<Arr<itype::u32>> groups() {
+        Arr<itype::u32> key(size());
+        itype::u32 cnt = 0;
+        for (itype::u32 i = 0; i != size(); ++i) {
+            if (parent[i] < 0) key[i] = cnt++;
+        }
+        Arr<itype::u32> cnt2(cnt);
+        for (itype::u32 i = 0; i != size(); ++i) ++cnt2[key[root(i)]];
+        Arr<Arr<itype::u32>> res(cnt);
+        for (itype::u32 i = 0; i != cnt; ++i) {
+            res[i].resize(cnt2[i]);
+            cnt2[i] = 0;
+        }
+        for (itype::u32 i = 0; i != size(); ++i) {
+            const itype::u32 idx = key[parent[i] < 0 ? i : parent[i]];
+            res[idx][cnt2[idx]++] = i;
+        }
+        return res;
     }
 };
 

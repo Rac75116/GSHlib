@@ -166,5 +166,34 @@ template<RandomAccessRange R> constexpr Arr<itype::u32> LongestCommonPrefix(R&& 
     return res;
 }
 
+template<class T = itype::u64, Rangeof<itype::u32> R> constexpr T CountDistinctSubsequences(R&& r) {
+    using traits = RangeTraits<R>;
+    const itype::u32 n = traits::size(r);
+    if (n == 0) return 0;
+    Arr<itype::u64> s(n);
+    for (itype::u32 i = 0; itype::u32 x : r) {
+        s[i] = static_cast<itype::u64>(i) << 32 | x;
+        ++i;
+    }
+    internal::SortUnsigned32(s.data(), n);
+    Arr<itype::u32> rank(n);
+    rank[s[0] >> 32] = 0;
+    itype::u32 cnt = 0, end = s[0];
+    for (itype::u32 i = 1; i != n; ++i) {
+        cnt += end != static_cast<itype::u32>(s[i]);
+        rank[s[i] >> 32] = cnt;
+        end = s[i];
+    }
+    Arr<itype::u32> last(cnt + 1, n);
+    Arr<T> dp(n + 1);
+    dp[0] = 1;
+    const T m = 2;
+    for (itype::u32 i = 0; i != n; ++i) {
+        dp[i + 1] = m * dp[i] - dp[last[rank[i]]];
+        last[rank[i]] = i;
+    }
+    return dp[n] - dp[0];
+}
+
 
 }  // namespace gsh

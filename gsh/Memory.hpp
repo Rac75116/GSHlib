@@ -222,7 +222,7 @@ template<itype::u32 Size> class MemoryPool {
     template<class T> friend class PoolAllocator;
     itype::u32 cnt = 0;
     itype::u32 ref = 0;
-    itype::u8 buf[Size];
+    ctype::c8 buf[Size];
 public:
     constexpr ~MemoryPool() noexcept(false) {
         if (ref != 0) throw Exception("gsh::MemoryPool::~MemoryPool / There are some gsh::PoolAllocator tied to this object have not yet been destroyed.");
@@ -232,7 +232,7 @@ template<class T> class PoolAllocator {
     template<class U> friend class PoolAllocator;
     itype::u32* cnt;
     itype::u32* ref;
-    itype::u8* buf;
+    ctype::c8* buf;
 public:
     using value_type = T;
     using propagate_on_container_copy_assignmant = std::true_type;

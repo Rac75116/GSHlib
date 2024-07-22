@@ -614,7 +614,28 @@ public:
 };
 template<> class Formatter<const ctype::c8*> {
 public:
-    template<class Stream> constexpr void operator()(Stream& stream, const ctype::c8* s) const {}
+    template<class Stream> constexpr void operator()(Stream& stream, const ctype::c8* s) const {
+        itype::u32 len = std::strlen(s);
+        itype::u32 avail = stream.avail();
+        if (avail >= len) [[likely]] {
+            std::memcpy(stream.current(), s, len);
+            stream.skip(len);
+        } else {
+            std::memcpy(stream.current(), s, avail);
+            len -= avail;
+            s += avail;
+            stream.skip(avail);
+            while (len != 0) {
+                stream.reload();
+                avail = stream.avail();
+                const itype::u32 tmp = len < avail ? len : avail;
+                std::memcpy(stream.current(), s, tmp);
+                len -= tmp;
+                s += tmp;
+                stream.skip(tmp);
+            }
+        }
+    }
 };
 
 class BasicReader {
@@ -706,7 +727,6 @@ public:
         std::memcpy(buf, rhs.buf, rhs.cur - rhs.buf);
         cur = buf + (rhs.cur - rhs.buf);
     }
-    ~BasicWriter() { reload(); }
     BasicWriter& operator=(const BasicWriter& rhs) {
         fd = rhs.fd;
         std::memcpy(buf, rhs.buf, rhs.cur - rhs.buf);

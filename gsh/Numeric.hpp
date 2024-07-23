@@ -1,8 +1,10 @@
 #pragma once
 #include <type_traits>
 #include <cmath>
+#include <new>
 #include <gsh/Modint.hpp>
 #include <gsh/TypeDef.hpp>
+#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 
@@ -141,5 +143,76 @@ public:
     constexpr itype::u64 val() const noexcept { return x; }
     constexpr itype::u64 operator[](itype::u32 n) { return n < m ? n + 1 : x / (sq - (n - m)); }
 };
+
+
+itype::u32 CountPrimes(itype::u64 N) {
+    if (N <= 1) return 0;
+    const itype::u32 v = IntSqrt(N);
+    itype::u32 s = (v + 1) / 2;
+    auto const storage = reinterpret_cast<ctype::c8*>(::operator new(11 * (v + 1)));
+    itype::u64* const invs = reinterpret_cast<itype::u64*>(storage);
+    itype::u32* const smalls = reinterpret_cast<itype::u32*>(storage + 4 * (v + 1));
+    itype::u32* const larges = reinterpret_cast<itype::u32*>(storage + 6 * (v + 1));
+    itype::u32* const roughs = reinterpret_cast<itype::u32*>(storage + 8 * (v + 1));
+    bool* const smooth = reinterpret_cast<bool*>(storage + 10 * (v + 1));
+    for (itype::u32 i = 0; i != v; ++i) smooth[i] = false;
+    for (itype::u32 i = 0; i != s; ++i) smalls[i] = i;
+    for (itype::u32 i = 0; i != s; ++i) roughs[i] = 2 * i + 1;
+    for (itype::u32 i = 0; i != s; ++i) invs[i] = (ftype::f64) N / roughs[i];
+    for (itype::u32 i = 0; i != s; ++i) larges[i] = (invs[i] - 1) / 2;
+    itype::u32 pc = 0;
+    for (itype::u64 p = 3; p * p <= v; p += 2) {
+        if (smooth[p]) continue;
+        for (itype::u64 i = p * p; i <= v; i += 2 * p) smooth[i] = true;
+        smooth[p] = true;
+        const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](itype::u64 inv_j) -> itype::u64 {
+            return (itype::u128(inv_j) * invp) >> 64;
+        };
+        itype::u32 ns = 0;
+        itype::u32 k = 0;
+        GSH_INTERNAL_UNROLL(16)
+        for (; true; ++k) {
+            const itype::u32 j = roughs[k];
+            if (j * p > v) break;
+            if (smooth[j]) continue;
+            larges[ns] = larges[k] - larges[smalls[j * p / 2] - pc] + pc;
+            invs[ns] = invs[k];
+            roughs[ns] = roughs[k];
+            ++ns;
+        }
+        GSH_INTERNAL_UNROLL(16)
+        for (; k < s; ++k) {
+            const itype::u32 j = roughs[k];
+            if (smooth[j]) continue;
+            larges[ns] = larges[k] - smalls[(divide_p(invs[k]) - 1) / 2] + pc;
+            invs[ns] = invs[k];
+            roughs[ns] = roughs[k];
+            ++ns;
+        }
+        s = ns;
+        itype::u64 i = (v - 1) / 2;
+        for (itype::u64 j = (divide_p(v) - 1) | 1; j >= p; j -= 2) {
+            const itype::u32 d = smalls[j / 2] - pc;
+            for (; i >= j * p / 2; --i) smalls[i] -= d;
+        }
+        ++pc;
+    }
+    itype::u32 ret = 1;
+    ret += larges[0] + s * (s - 1) / 2 + (pc - 1) * (s - 1);
+    for (itype::u32 k = 1; k < s; ++k) ret -= larges[k];
+    for (itype::u32 k1 = 1; k1 < s; ++k1) {
+        const itype::u64 p = roughs[k1];
+        const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](itype::u64 inv_j) -> itype::u64 {
+            return (itype::u128(inv_j) * invp) >> 64;
+        };
+        const itype::u32 k2_max = smalls[(divide_p(invs[k1]) - 1) / 2] - pc;
+        if (k2_max <= k1) break;
+        for (itype::u32 k2 = k1 + 1; k2 <= k2_max; ++k2) ret += smalls[(divide_p(invs[k2]) - 1) / 2];
+        ret -= (k2_max - k1) * (pc + k1 - 1);
+    }
+    ::operator delete(storage);
+    return ret;
+}
+
 
 }  // namespace gsh

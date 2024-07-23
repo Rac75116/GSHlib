@@ -9,6 +9,7 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
+#include <gsh/Modint.hpp>
 
 #if false
 #include <fcntl.h>
@@ -32,16 +33,20 @@ void Main() {
         Formatter<c8>{}(w, '\n');
     }
     */
-    u64 N = Parser<u64>{}(r);
-    u32 cnt = 0;
-    for (u32 i = 2; i != 1000001; ++i) {
-        while (N % i == 0) {
-            N /= i;
-            ++cnt;
+    using mint = StaticModint32<1000000007>;
+    u64 L = Parser<u64>{}(r), R = Parser<u64>{}(r);
+    u64 k = 1;
+    mint res = 0;
+    for (u32 i = 1; i <= 18; ++i) {
+        u64 l = k * 10 - 1;
+        if (!(l < L || k > R)) {
+            u64 a = k < L ? L : k;
+            u64 b = l < R ? l : R;
+            res += mint(i) * (mint(a) + mint(b)) * mint(b - a + 1) / 2;
         }
+        k *= 10;
     }
-    cnt += N != 1;
-    Formatter<u16>{}(w, std::bit_width(cnt - 1));
+    Formatter<u32>{}(w, res.val());
 }
 int main() {
 #ifdef ONLINE_JUDGE

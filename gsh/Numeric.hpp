@@ -130,6 +130,104 @@ constexpr itype::u32 LinearModMin(itype::u32 n, itype::u32 m, itype::u32 a, ityp
     return res;
 }
 
+template<class T> constexpr itype::i32 Legendre(const T& x) noexcept {
+    auto res = x.pow((T::mod() - 1) >> 1).val();
+    return (res <= 1 ? static_cast<itype::i32>(res) : -1);
+}
+template<class T> constexpr itype::i32 Jacobi(const T& x, bool skip_calc_gcd = false) noexcept {
+    auto a = x.val(), n = T::mod();
+    if (a == 1) return 1;
+    if (!skip_calc_gcd && calc_gcd(a, n) != 1) return 0;
+    itype::i32 res = 1;
+    while (a != 0) {
+        while (!(a & 1) && a != 0) {
+            a >>= 1;
+            res = ((n & 0b111) == 3 || (n & 0b111) == 5) ? -res : res;
+        }
+        res = ((a & 0b11) == 3 || (n & 0b11) == 3) ? -res : res;
+        auto tmp = n;
+        n = a;
+        a = tmp;
+        a %= n;
+    }
+    return n == 1 ? res : 0;
+}
+template<class T> constexpr Option<T> ModSqrt(const T& n) noexcept {
+    const auto vl = n.val(), md = T::mod();
+    if (vl <= 1) return n;
+    auto get_min = [](T x) {
+        return x.val() > (T::mod() >> 1) ? -x : x;
+    };
+    if ((md & 0b11) == 3) {
+        T res = n.pow((md + 1) >> 2);
+        if (res * res != n) return Null;
+        else return get_min(res);
+    } else if ((md & 0b111) == 5) {
+        T res = n.pow((md + 3) >> 3);
+        if constexpr (T::is_static_mod) {
+            constexpr T p = T::raw(2).pow((md - 1) >> 2);
+            res *= p;
+        } else if (res * res != n) res *= T::raw(2).pow((md - 1) >> 2);
+        if (res * res != n) return Null;
+        else return get_min(res);
+    } else {
+        const itype::u32 S = std::countr_zero(md - 1);
+        const auto Q = (md - 1) >> S;
+        const itype::u32 W = std::bit_width(md);
+        if (S * S <= 12 * W) {
+            const T tmp = n.pow(Q / 2);
+            T R = tmp * n, t = R * tmp;
+            if (t.val() == 1) return R;
+            T u = t;
+            for (itype::u32 i = 0; i != S - 1; ++i) u *= u;
+            if (u.val() != 1) return Null;
+            const T z = [&]() {
+                if (md % 3 == 2) return T::raw(3);
+                if (auto x = md % 5; x == 2 || x == 3) return T::raw(5);
+                if (auto x = md % 7; x == 3 || x == 5 || x == 6) return T::raw(7);
+                if (auto x = md % 11; x == 2 || x == 6 || x == 7 || x == 8 || x == 10) return T(11);
+                if (auto x = md % 13; x == 2 || x == 5 || x == 6 || x == 7 || x == 8 || x == 11) return T(13);
+                for (const itype::u32 x : { 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97 }) {
+                    if (Legendre(T(x)) == -1) return T(x);
+                }
+                T z = 101;
+                while (Legendre(z) != -1) z += 2;
+                return z;
+            }();
+            itype::u32 M = S;
+            T c = z.pow(Q);
+            do {
+                T U = t * t;
+                itype::u32 i = 1;
+                while (U.val() != 1) U = U * U, ++i;
+                T b = c;
+                for (itype::u32 j = 0, k = M - i - 1; j < k; ++j) b *= b;
+                M = i, c = b * b, t *= c, R *= b;
+            } while (t.val() != 1);
+            return get_min(R);
+        } else {
+            if (Legendre(n) != 1) return Null;
+            T a = 2;
+            while (Legendre(a * a - n) != -1) ++a;
+            T res1 = T::raw(1), res2, pow1 = a, pow2 = T::raw(1), w = a * a - n;
+            auto e = (md + 1) / 2;
+            while (true) {
+                const T tmp2 = pow2 * w;
+                if (e & 1) {
+                    const T tmp = res1;
+                    res1 = res1 * pow1 + res2 * tmp2;
+                    res2 = tmp * pow2 + res2 * pow1;
+                }
+                e >>= 1;
+                if (e == 0) return get_min(res1);
+                const T tmp = pow1;
+                pow1 = pow1 * pow1 + pow2 * tmp2;
+                pow2 *= tmp + tmp;
+            }
+        }
+    }
+}
+
 class QuotientsList {
     const itype::u64 x;
     const itype::u32 sq;

@@ -9,6 +9,7 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
+#include <gsh/Numeric.hpp>
 
 #if false
 #include <fcntl.h>
@@ -37,6 +38,7 @@ int main() {
         gsh::Formatter<const gsh::ctype::c8*>{}(w, "gsh::Exception was throwed: ");
         gsh::Formatter<const gsh::ctype::c8*>{}(w, e.what());
         gsh::Formatter<gsh::ctype::c8>{}(w, '\n');
+        w.reload();
     }
 #endif
 }

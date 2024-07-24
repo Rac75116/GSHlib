@@ -33,12 +33,12 @@ namespace internal {
     public:
         using value_type = std::decay_t<decltype(base_type::mod())>;
         using modint_type = ModintImpl;
-        constexpr static bool is_staticmod = !requires { base_type::set_mod(0); };
+        constexpr static bool is_static_mod = !requires { base_type::set_mod(0); };
         constexpr ModintImpl() noexcept : T() {}
         template<class U> constexpr ModintImpl(U x) noexcept { operator=(x); }
         constexpr explicit operator value_type() const noexcept { return val(); }
         constexpr static void set_mod(value_type x) {
-            static_assert(!is_staticmod, "gsh::internal::ModintImpl::set_mod / Mod must be dynamic.");
+            static_assert(!is_static_mod, "gsh::internal::ModintImpl::set_mod / Mod must be dynamic.");
             if (x <= 1) throw Exception("gsh::internal::ModintImpl::set_mod / Mod must be at least 2.");
             if (x == mod()) return;
             base_type::set_mod(x);
@@ -153,271 +153,168 @@ namespace internal {
         friend constexpr modint_type operator/(modint_type l, modint_type r) { return modint_type(l) /= r; }
         friend constexpr bool operator==(modint_type l, modint_type r) noexcept { return l.val() == r.val(); }
         friend constexpr bool operator!=(modint_type l, modint_type r) noexcept { return l.val() != r.val(); }
-        constexpr int legendre() const noexcept {
-            value_type res = pow((mod() - 1) >> 1).val();
-            return (res <= 1 ? static_cast<int>(res) : -1);
-        }
-        constexpr int jacobi(bool skip_calc_gcd = false) const noexcept {
-            value_type a = val(), n = mod();
-            if (a == 1) return 1;
-            if (!skip_calc_gcd && calc_gcd(a, n) != 1) return 0;
-            int res = 1;
-            while (a != 0) {
-                while (!(a & 1) && a != 0) {
-                    a >>= 1;
-                    res = ((n & 0b111) == 3 || (n & 0b111) == 5) ? -res : res;
-                }
-                res = ((a & 0b11) == 3 || (n & 0b11) == 3) ? -res : res;
-                value_type tmp = n;
-                n = a;
-                a = tmp;
-                a %= n;
-            }
-            return n == 1 ? res : 0;
-        }
-        constexpr Option<modint_type> sqrt() const noexcept {
-            const value_type vl = val(), md = mod();
-            if (vl <= 1) return *this;
-            auto get_min = [](modint_type x) {
-                return x.val() > (mod() >> 1) ? -x : x;
-            };
-            if ((md & 0b11) == 3) {
-                modint_type res = pow((md + 1) >> 2);
-                if (res * res != *this) return Null;
-                else return get_min(res);
-            } else if ((md & 0b111) == 5) {
-                modint_type res = pow((md + 3) >> 3);
-                if constexpr (is_staticmod) {
-                    constexpr modint_type p = modint_type::raw(2).pow((md - 1) >> 2);
-                    res *= p;
-                } else if (res * res != *this) res *= modint_type::raw(2).pow((md - 1) >> 2);
-                if (res * res != *this) return Null;
-                else return get_min(res);
-            } else {
-                const itype::u32 S = std::countr_zero(md - 1);
-                const value_type Q = (md - 1) >> S;
-                const itype::u32 W = std::bit_width(md);
-                if (S * S <= 12 * W) {
-                    const modint_type tmp = pow(Q / 2);
-                    modint_type R = tmp * (*this), t = R * tmp;
-                    if (t.val() == 1) return R;
-                    modint_type u = t;
-                    for (itype::u32 i = 0; i != S - 1; ++i) u *= u;
-                    if (u.val() != 1) return Null;
-                    const modint_type z = [&]() {
-                        if (md % 3 == 2) return modint_type::raw(3);
-                        if (auto x = md % 5; x == 2 || x == 3) return modint_type::raw(5);
-                        if (auto x = md % 7; x == 3 || x == 5 || x == 6) return modint_type::raw(7);
-                        if (auto x = md % 11; x == 2 || x == 6 || x == 7 || x == 8 || x == 10) return modint_type(11);
-                        if (auto x = md % 13; x == 2 || x == 5 || x == 6 || x == 7 || x == 8 || x == 11) return modint_type(13);
-                        for (const itype::u32 x : { 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97 }) {
-                            if (modint_type(x).legendre() == -1) return modint_type(x);
-                        }
-                        modint_type z = 101;
-                        while (z.legendre() != -1) z += 2;
-                        return z;
-                    }();
-                    itype::u32 M = S;
-                    modint_type c = z.pow(Q);
-                    do {
-                        modint_type U = t * t;
-                        itype::u32 i = 1;
-                        while (U.val() != 1) U = U * U, ++i;
-                        modint_type b = c;
-                        for (itype::u32 j = 0, k = M - i - 1; j < k; ++j) b *= b;
-                        M = i, c = b * b, t *= c, R *= b;
-                    } while (t.val() != 1);
-                    return get_min(R);
-                } else {
-                    if (legendre() != 1) return Null;
-                    modint_type a = 2;
-                    while ((a * a - *this).legendre() != -1) ++a;
-                    modint_type res1 = modint_type::raw(1), res2, pow1 = a, pow2 = modint_type::raw(1), w = a * a - *this;
-                    value_type e = (md + 1) / 2;
-                    while (true) {
-                        const modint_type tmp2 = pow2 * w;
-                        if (e & 1) {
-                            const modint_type tmp = res1;
-                            res1 = res1 * pow1 + res2 * tmp2;
-                            res2 = tmp * pow2 + res2 * pow1;
-                        }
-                        e >>= 1;
-                        if (e == 0) return get_min(res1);
-                        const modint_type tmp = pow1;
-                        pow1 = pow1 * pow1 + pow2 * tmp2;
-                        pow2 *= tmp + tmp;
-                    }
-                }
-            }
-        }
     };
 
-    template<itype::u32 mod_> class StaticModint32_impl {
+    template<class T> class StaticModintImpl {
+        [[no_unique_address]] T mint;
+        typename T::value_type val_ = 0;
+    protected:
+        using value_type = typename T::value_type;
+        constexpr StaticModintImpl() noexcept {}
+        constexpr value_type val() const noexcept { return mint.val(val_); }
+        constexpr static value_type mod() noexcept { return T::get_mod(); }
+        constexpr void assign(itype::u32 x) noexcept { val_ = mint.build(x); }
+        constexpr void assign(itype::u64 x) noexcept { val_ = mint.build(x); }
+        constexpr void rawassign(value_type x) noexcept { val_ = mint.raw(x); }
+        constexpr void neg() noexcept { val_ = mint.neg(val_); }
+        constexpr void inc() noexcept { val_ = mint.inc(val_); }
+        constexpr void dec() noexcept { val_ = mint.dec(val_); }
+        constexpr void add(StaticModintImpl x) noexcept { val_ = mint.add(val_, x.val_); }
+        constexpr void sub(StaticModintImpl x) noexcept { val_ = mint.sub(val_, x.val_); }
+        constexpr void mul(StaticModintImpl x) noexcept { val_ = mint.mul(val_, x.val_); }
+    };
+
+    template<itype::u32 mod_> class StaticModint32Impl {
+    public:
         using value_type = itype::u32;
-        using modint_type = StaticModint32_impl;
-        value_type val_ = 0;
-    protected:
-        constexpr StaticModint32_impl() noexcept {}
-        constexpr value_type val() const noexcept { return val_; }
-        static constexpr value_type mod() noexcept { return mod_; }
-        constexpr void assign(itype::u32 x) noexcept { val_ = x % mod_; }
-        constexpr void assign(itype::u64 x) noexcept { val_ = x % mod_; }
-        constexpr void rawassign(value_type x) noexcept { val_ = x; }
-        constexpr void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
-        constexpr void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
-        constexpr void dec() noexcept { val_ = (val_ == 0 ? mod_ - 1 : val_ - 1); }
-        constexpr void add(modint_type x) noexcept {
-            if (mod_ - val_ > x.val_) val_ += x.val_;
-            else val_ = x.val_ - (mod_ - val_);
-        }
-        constexpr void sub(modint_type x) noexcept {
-            if (val_ >= x.val_) val_ -= x.val_;
-            else val_ = mod_ - (x.val_ - val_);
-        }
-        constexpr void mul(modint_type x) noexcept { val_ = static_cast<itype::u64>(val_) * x.val_ % mod_; }
+        constexpr StaticModint32Impl() noexcept {}
+        constexpr value_type val(value_type x) const noexcept { return x; }
+        constexpr value_type mod() const noexcept { return mod_; }
+        constexpr static value_type get_mod() noexcept { return mod_; }
+        constexpr value_type build(itype::u32 x) const noexcept { return x % mod_; }
+        constexpr value_type build(itype::u64 x) const noexcept { return x % mod_; }
+        constexpr value_type raw(value_type x) const noexcept { return x; }
+        constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : mod_ - x; }
+        constexpr value_type inc(value_type x) const noexcept { return x == mod_ - 1 ? 0 : x + 1; }
+        constexpr value_type dec(value_type x) const noexcept { return x == 0 ? mod_ - 1 : x - 1; }
+        constexpr value_type add(value_type x, value_type y) const noexcept { return mod_ - x > y ? x + y : y - (mod_ - x); }
+        constexpr value_type sub(value_type x, value_type y) const noexcept { return x >= y ? x - y : mod_ - (y - x); }
+        constexpr value_type mul(value_type x, value_type y) noexcept { return static_cast<itype::u64>(x) * y % mod_; }
     };
 
-    template<itype::u64 mod_> class StaticModint64_impl {
+    template<itype::u64 mod_> class StaticModint64Impl {
+    public:
         using value_type = itype::u64;
-        using modint_type = StaticModint64_impl;
-        value_type val_ = 0;
-    protected:
-        constexpr StaticModint64_impl() noexcept {}
-        constexpr value_type val() const noexcept { return val_; }
-        static constexpr value_type mod() noexcept { return mod_; }
-        constexpr void assign(itype::u32 x) noexcept {
-            if constexpr (mod_ < (1ull << 32)) val_ = x % mod_;
-            else val_ = x;
-        }
-        constexpr void assign(itype::u64 x) noexcept { val_ = x % mod_; }
-        constexpr void rawassign(value_type x) noexcept { val_ = x; }
-        constexpr void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
-        constexpr void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
-        constexpr void dec() noexcept { val_ = (val_ == 0 ? mod_ - 1 : val_ - 1); }
-        constexpr void add(modint_type x) noexcept {
-            if (mod_ - val_ > x.val_) val_ += x.val_;
-            else val_ = x.val_ - (mod_ - val_);
-        }
-        constexpr void sub(modint_type x) noexcept {
-            if (val_ >= x.val_) val_ -= x.val_;
-            else val_ = mod_ - (x.val_ - val_);
-        }
-        constexpr void mul(modint_type x) noexcept {
+        constexpr StaticModint64Impl() noexcept {}
+        constexpr value_type val(value_type x) const noexcept { return x; }
+        constexpr value_type mod() const noexcept { return mod_; }
+        constexpr static value_type get_mod() noexcept { return mod_; }
+        constexpr value_type build(itype::u32 x) const noexcept { return x % mod_; }
+        constexpr value_type build(itype::u64 x) const noexcept { return x % mod_; }
+        constexpr value_type raw(value_type x) const noexcept { return x; }
+        constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : mod_ - x; }
+        constexpr value_type inc(value_type x) const noexcept { return x == mod_ - 1 ? 0 : x + 1; }
+        constexpr value_type dec(value_type x) const noexcept { return x == 0 ? mod_ - 1 : x - 1; }
+        constexpr value_type add(value_type x, value_type y) const noexcept { return mod_ - x > y ? x + y : y - (mod_ - x); }
+        constexpr value_type sub(value_type x, value_type y) const noexcept { return x >= y ? x - y : mod_ - (y - x); }
+        constexpr value_type mul(value_type x, value_type y) const noexcept {
+            constexpr itype::u128 M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
             if constexpr (mod_ < (1ull << 63)) {
-                constexpr itype::u128 M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
-                const value_type a = (((M_ * val_) >> 64) * x.val_) >> 64;
-                const value_type b = val_ * x.val_;
-                const value_type c = a * mod_;
-                const value_type d = b - c;
+                const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
+                const itype::u64 b = x * y;
+                const itype::u64 c = a * mod_;
+                const itype::u64 d = b - c;
                 const bool e = d < mod_;
-                const value_type f = d - mod_;
-                val_ = e ? d : f;
+                const itype::u64 f = d - mod_;
+                return e ? d : f;
             } else {
-                constexpr itype::u128 M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
-                const value_type a = (((M_ * val_) >> 64) * x.val_) >> 64;
-                const itype::u128 b = (itype::u128) val_ * x.val_;
-                const itype::u128 c = (itype::u128) a * mod_;
+                const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
+                const itype::u128 b = static_cast<itype::u128>(x) * y;
+                const itype::u128 c = static_cast<itype::u128>(a) * mod_;
                 const itype::u128 d = b - c;
                 const bool e = d < mod_;
                 const itype::u128 f = d - mod_;
-                val_ = e ? d : f;
+                return e ? d : f;
             }
         }
     };
 
-    template<int id> class DynamicModint32_impl {
+    template<class T, itype::u32 id> class DynamicModintImpl {
+        static inline T mint{};
+        typename T::value_type val_;
+    public:
+        using value_type = typename T::value_type;
+        DynamicModintImpl() noexcept {}
+        static void set_mod(value_type newmod) noexcept { mint.set_mod(newmod); }
+        value_type val() const noexcept { return mint.val(val_); }
+        static value_type mod() noexcept { return mint.mod(); }
+        void assign(itype::u32 x) noexcept { val_ = mint.build(x); }
+        void assign(itype::u64 x) noexcept { val_ = mint.build(x); }
+        void rawassign(value_type x) noexcept { val_ = mint.raw(x); }
+        void neg() noexcept { val_ = mint.neg(val_); }
+        void inc() noexcept { val_ = mint.inc(val_); }
+        void dec() noexcept { val_ = mint.dec(val_); }
+        void add(DynamicModintImpl x) noexcept { val_ = mint.add(val_, x.val_); }
+        void sub(DynamicModintImpl x) noexcept { val_ = mint.sub(val_, x.val_); }
+        void mul(DynamicModintImpl x) noexcept { val_ = mint.mul(val_, x.val_); }
+    };
+
+    class DynamicModint32Impl {
+        itype::u32 mod_ = 0;
+        itype::u64 M_ = 0;
+    public:
         using value_type = itype::u32;
-        using modint_type = DynamicModint32_impl;
-        static inline value_type mod_ = 0;
-        static inline itype::u64 M_ = 0;
-        value_type val_ = 0;
-    protected:
-        DynamicModint32_impl() noexcept {}
-        static void set_mod(value_type newmod) noexcept {
+        constexpr DynamicModint32Impl() noexcept {}
+        constexpr void set_mod(value_type newmod) noexcept {
             mod_ = newmod;
             M_ = std::numeric_limits<itype::u64>::max() / mod_ + std::has_single_bit(mod_);
         }
-        value_type val() const noexcept { return val_; }
-        static value_type mod() noexcept { return mod_; }
-        void assign(itype::u32 x) noexcept { val_ = x % mod_; }
-        void assign(itype::u64 x) noexcept { val_ = x % mod_; }
-        void rawassign(value_type x) noexcept { val_ = x; }
-        void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
-        void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
-        void dec() noexcept { val_ = (val_ == 0 ? mod_ - 1 : val_ - 1); }
-        void add(modint_type x) noexcept {
-            const auto tmp = val_ + x.val_;
-            const auto tmp2 = mod_ - val_;
-            val_ = tmp2 > x.val_ ? tmp : x.val_ - tmp2;
-        }
-        void sub(modint_type x) noexcept {
-            if (val_ >= x.val_) val_ -= x.val_;
-            else val_ = mod_ - (x.val_ - val_);
-        }
-        void mul(modint_type x) noexcept {
-            const itype::u64 a = (itype::u64) val_ * x.val_;
-            const itype::u64 b = ((itype::u128) M_ * a) >> 64;
+        constexpr value_type val(value_type x) const noexcept { return x; }
+        constexpr value_type mod() const noexcept { return mod_; }
+        constexpr value_type build(itype::u32 x) noexcept { return x % mod_; }
+        constexpr value_type build(itype::u64 x) noexcept { return x % mod_; }
+        constexpr value_type raw(value_type x) noexcept { return x; }
+        constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : mod_ - x; }
+        constexpr value_type inc(value_type x) const noexcept { return x == mod_ - 1 ? 0 : x + 1; }
+        constexpr value_type dec(value_type x) const noexcept { return x == 0 ? mod_ - 1 : x - 1; }
+        constexpr value_type add(value_type x, value_type y) const noexcept { return mod_ - x > y ? x + y : y - (mod_ - x); }
+        constexpr value_type sub(value_type x, value_type y) const noexcept { return x >= y ? x - y : mod_ - (y - x); }
+        constexpr value_type mul(value_type x, value_type y) const noexcept {
+            const itype::u64 a = static_cast<itype::u64>(x) * y;
+            const itype::u64 b = (static_cast<itype::u128>(M_) * a) >> 64;
             const itype::u64 c = a - b * mod_;
-            val_ = c < mod_ ? c : c - mod_;
-            /*
-            const value_type a = (((M_ * val_) >> 32) * x.val_) >> 32;
-            const value_type b = val_ * x.val_;
-            const value_type c = a * mod_;
-            const value_type d = b - c;
-            const bool e = d < mod_;
-            const value_type f = d - mod_;
-            val_ = e ? d : f;
-            */
+            return c < mod_ ? c : c - mod_;
         }
     };
 
-    template<int id> class DynamicModint64_impl {
+    class DynamicModint64Impl {
+        itype::u64 mod_ = 0;
+        itype::u128 M_ = 0;
+    public:
         using value_type = itype::u64;
-        using modint_type = DynamicModint64_impl;
-        static inline value_type mod_ = 0;
-        static inline itype::u128 M_ = 0;
-        value_type val_ = 0;
-    protected:
-        DynamicModint64_impl() noexcept {}
-        static void set_mod(value_type newmod) noexcept {
+        constexpr DynamicModint64Impl() noexcept {}
+        constexpr void set_mod(value_type newmod) noexcept {
             mod_ = newmod;
             M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
         }
-        value_type val() const noexcept { return val_; }
-        static value_type mod() noexcept { return mod_; }
-        void assign(itype::u32 x) noexcept { val_ = x % mod_; }
-        void assign(itype::u64 x) noexcept { val_ = x % mod_; }
-        void rawassign(value_type x) noexcept { val_ = x; }
-        void neg() noexcept { val_ = (val_ == 0 ? 0 : mod_ - val_); }
-        void inc() noexcept { val_ = (val_ == mod_ - 1 ? 0 : val_ + 1); }
-        void dec() noexcept { val_ = (val_ == 0 ? mod_ - 1 : val_ - 1); }
-        void add(modint_type x) noexcept {
-            const auto tmp = val_ + x.val_;
-            const auto tmp2 = mod_ - val_;
-            val_ = tmp2 > x.val_ ? tmp : x.val_ - tmp2;
-        }
-        void sub(modint_type x) noexcept {
-            if (val_ >= x.val_) val_ -= x.val_;
-            else val_ = mod_ - (x.val_ - val_);
-        }
-        void mul(modint_type x) noexcept {
-            const value_type a = (((M_ * val_) >> 64) * x.val_) >> 64;
-            const value_type b = val_ * x.val_;
-            const value_type c = a * mod_;
-            const value_type d = b - c;
+        constexpr value_type val(value_type x) const noexcept { return x; }
+        constexpr value_type mod() const noexcept { return mod_; }
+        constexpr value_type build(itype::u32 x) noexcept { return x % mod_; }
+        constexpr value_type build(itype::u64 x) noexcept { return x % mod_; }
+        constexpr value_type raw(value_type x) noexcept { return x; }
+        constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : mod_ - x; }
+        constexpr value_type inc(value_type x) const noexcept { return x == mod_ - 1 ? 0 : x + 1; }
+        constexpr value_type dec(value_type x) const noexcept { return x == 0 ? mod_ - 1 : x - 1; }
+        constexpr value_type add(value_type x, value_type y) const noexcept { return mod_ - x > y ? x + y : y - (mod_ - x); }
+        constexpr value_type sub(value_type x, value_type y) const noexcept { return x >= y ? x - y : mod_ - (y - x); }
+        constexpr value_type mul(value_type x, value_type y) const noexcept {
+            const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
+            const itype::u64 b = x * y;
+            const itype::u64 c = a * mod_;
+            const itype::u64 d = b - c;
             const bool e = d < mod_;
-            const value_type f = d - mod_;
-            val_ = e ? d : f;
+            const itype::u64 f = d - mod_;
+            return e ? d : f;
         }
     };
 
 }  // namespace internal
 
-template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintImpl<internal::StaticModint32_impl<mod_>>;
-template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintImpl<internal::StaticModint64_impl<mod_>>;
+template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintImpl<internal::StaticModintImpl<internal::StaticModint32Impl<mod_>>>;
+template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintImpl<internal::StaticModintImpl<internal::StaticModint64Impl<mod_>>>;
 template<itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ < (1ull << 32)), StaticModint32<mod_>, StaticModint64<mod_>>;
-template<int id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModint32_impl<id>>;
-template<int id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModint64_impl<id>>;
+template<int id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint32Impl, id>>;
+template<int id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint64Impl, id>>;
 template<int id = 0> using DynamicModint = DynamicModint64<id>;
 
 }  // namespace gsh

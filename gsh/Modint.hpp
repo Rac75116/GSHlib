@@ -156,12 +156,12 @@ namespace internal {
     };
 
     template<class T> class StaticModintImpl {
-        [[no_unique_address]] T mint;
+        [[no_unique_address]] T mint{};
         typename T::value_type val_ = 0;
     protected:
         using value_type = typename T::value_type;
         constexpr StaticModintImpl() noexcept {}
-        constexpr value_type val() const noexcept { return mint.val(val_); }
+        constexpr value_type val() noexcept { return mint.val(val_); }
         constexpr static value_type mod() noexcept { return T::get_mod(); }
         constexpr void assign(itype::u32 x) noexcept { val_ = mint.build(x); }
         constexpr void assign(itype::u64 x) noexcept { val_ = mint.build(x); }
@@ -261,9 +261,9 @@ namespace internal {
         }
         constexpr value_type val(value_type x) const noexcept { return x; }
         constexpr value_type mod() const noexcept { return mod_; }
-        constexpr value_type build(itype::u32 x) noexcept { return x % mod_; }
-        constexpr value_type build(itype::u64 x) noexcept { return x % mod_; }
-        constexpr value_type raw(value_type x) noexcept { return x; }
+        constexpr value_type build(itype::u32 x) const noexcept { return x % mod_; }
+        constexpr value_type build(itype::u64 x) const noexcept { return x % mod_; }
+        constexpr value_type raw(value_type x) const noexcept { return x; }
         constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : mod_ - x; }
         constexpr value_type inc(value_type x) const noexcept { return x == mod_ - 1 ? 0 : x + 1; }
         constexpr value_type dec(value_type x) const noexcept { return x == 0 ? mod_ - 1 : x - 1; }
@@ -289,9 +289,9 @@ namespace internal {
         }
         constexpr value_type val(value_type x) const noexcept { return x; }
         constexpr value_type mod() const noexcept { return mod_; }
-        constexpr value_type build(itype::u32 x) noexcept { return x % mod_; }
-        constexpr value_type build(itype::u64 x) noexcept { return x % mod_; }
-        constexpr value_type raw(value_type x) noexcept { return x; }
+        constexpr value_type build(itype::u32 x) const noexcept { return x % mod_; }
+        constexpr value_type build(itype::u64 x) const noexcept { return x % mod_; }
+        constexpr value_type raw(value_type x) const noexcept { return x; }
         constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : mod_ - x; }
         constexpr value_type inc(value_type x) const noexcept { return x == mod_ - 1 ? 0 : x + 1; }
         constexpr value_type dec(value_type x) const noexcept { return x == 0 ? mod_ - 1 : x - 1; }
@@ -308,13 +308,48 @@ namespace internal {
         }
     };
 
+    class MontgomeryModint64Impl {
+        itype::u64 mod_ = 0, R2 = 0, ninv = 0;
+        __attribute__((always_inline)) constexpr itype::u64 reduce(const itype::u64 t) const noexcept {
+            const itype::u64 res = (static_cast<itype::u128>(t * ninv) * mod_ + t) >> 64;
+            return res < mod_ ? res : res - mod_;
+        }
+        __attribute__((always_inline)) constexpr itype::u64 reduce(const itype::u128 t) const noexcept {
+            const itype::u64 res = (static_cast<itype::u128>(static_cast<itype::u64>(t) * ninv) * mod_ + t) >> 64;
+            return res < mod_ ? res : res - mod_;
+        }
+    public:
+        using value_type = itype::u64;
+        constexpr MontgomeryModint64Impl() noexcept {}
+        constexpr void set_mod(value_type newmod) {
+            if (newmod % 2 == 0) [[unlikely]]
+                throw Exception("gsh::internal::MontgomeryModint64Impl::set_mod / It is not allowed to set the modulo to an even number.");
+            mod_ = newmod;
+            R2 = -static_cast<itype::u128>(mod_) % mod_;
+            ninv = mod_;
+            for (itype::u32 i = 0; i != 5; ++i) ninv *= 2 - mod_ * ninv;
+            ninv = -ninv;
+        }
+        constexpr value_type val(value_type x) const noexcept { return reduce(x); }
+        constexpr value_type mod() const noexcept { return mod_; }
+        constexpr value_type build(itype::u32 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
+        constexpr value_type build(itype::u64 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
+        constexpr value_type raw(value_type x) const noexcept { return reduce(static_cast<itype::u128>(x) * R2); }
+        constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : mod_ - x; }
+        constexpr value_type inc(value_type x) const noexcept { return x == mod_ - 1 ? 0 : x + 1; }
+        constexpr value_type dec(value_type x) const noexcept { return x == 0 ? mod_ - 1 : x - 1; }
+        constexpr value_type add(value_type x, value_type y) const noexcept { return mod_ - x > y ? x + y : y - (mod_ - x); }
+        constexpr value_type sub(value_type x, value_type y) const noexcept { return x >= y ? x - y : mod_ - (y - x); }
+        constexpr value_type mul(value_type x, value_type y) const noexcept { return reduce(static_cast<itype::u128>(x) * y); }
+    };
+
 }  // namespace internal
 
 template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintImpl<internal::StaticModintImpl<internal::StaticModint32Impl<mod_>>>;
 template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintImpl<internal::StaticModintImpl<internal::StaticModint64Impl<mod_>>>;
 template<itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ < (1ull << 32)), StaticModint32<mod_>, StaticModint64<mod_>>;
-template<int id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint32Impl, id>>;
-template<int id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint64Impl, id>>;
-template<int id = 0> using DynamicModint = DynamicModint64<id>;
+template<itype::u32 id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint32Impl, id>>;
+template<itype::u32 id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint64Impl, id>>;
+template<itype::u32 id = 0> using MontgomeryModint64 = internal::ModintImpl<internal::DynamicModintImpl<internal::MontgomeryModint64Impl, id>>;
 
 }  // namespace gsh

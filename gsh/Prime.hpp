@@ -5,6 +5,7 @@
 #include <gsh/Modint.hpp>
 #include <gsh/Vec.hpp>
 #include <gsh/Numeric.hpp>
+#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 
@@ -33,112 +34,176 @@ namespace internal {
         constexpr static bool calc(const itype::u16 x) { return x == 2 || (x % 2 == 1 && (flag_table[x / 128] & (1ull << (x % 128 / 2)))); }
     };
 
-    bool isPrime32(const itype::u32 x) {
-        if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0) return false;
+    template<itype::u32> struct isPrime32 {
         // clang-format off
-        const static itype::u16 bases[] = {
+        constexpr static itype::u16 bases[] = {
 1216,1836,8885,4564,10978,5228,15613,13941,1553,173,3615,3144,10065,9259,233,2362,6244,6431,10863,5920,6408,6841,22124,2290,45597,6935,4835,7652,1051,445,5807,842,1534,22140,1282,1733,347,6311,14081,11157,186,703,9862,15490,1720,17816,10433,49185,2535,9158,2143,2840,664,29074,24924,1035,41482,1065,10189,8417,130,4551,5159,48886,
 786,1938,1013,2139,7171,2143,16873,188,5555,42007,1045,3891,2853,23642,148,3585,3027,280,3101,9918,6452,2716,855,990,1925,13557,1063,6916,4965,4380,587,3214,1808,1036,6356,8191,6783,14424,6929,1002,840,422,44215,7753,5799,3415,231,2013,8895,2081,883,3855,5577,876,3574,1925,1192,865,7376,12254,5952,2516,20463,186,
 5411,35353,50898,1084,2127,4305,115,7821,1265,16169,1705,1857,24938,220,3650,1057,482,1690,2718,4309,7496,1515,7972,3763,10954,2817,3430,1423,714,6734,328,2581,2580,10047,2797,155,5951,3817,54850,2173,1318,246,1807,2958,2697,337,4871,2439,736,37112,1226,527,7531,5418,7242,2421,16135,7015,8432,2605,5638,5161,11515,14949,
 748,5003,9048,4679,1915,7652,9657,660,3054,15469,2910,775,14106,1749,136,2673,61814,5633,1244,2567,4989,1637,1273,11423,7974,7509,6061,531,6608,1088,1627,160,6416,11350,921,306,18117,1238,463,1722,996,3866,6576,6055,130,24080,7331,3922,8632,2706,24108,32374,4237,15302,287,2296,1220,20922,3350,2089,562,11745,163,11951};
         // clang-format on
-        using mint = DynamicModint32<-1>;
-        mint::set_mod(x);
-        const itype::u32 h = x * 0xad625b89;
-        itype::u32 d = x - 1;
-        mint cur = mint::raw(bases[h >> 24]);
-        itype::i32 s = std::countr_zero(d);
-        d >>= s;
-        cur = cur.pow(d);
-        if (cur.val() == 1) return true;
-        while (--s && cur.val() != x - 1) cur *= cur;
-        return cur.val() == x - 1;
-    }
+        template<class Modint = internal::DynamicModint32Impl> constexpr static bool calc(const itype::u32 x) {
+            if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
+            Modint mint;
+            mint.set_mod(x);
+            const itype::u32 h = x * 0xad625b89;
+            itype::u32 d = x - 1;
+            auto pow = mint.raw(bases[h >> 24]);
+            itype::u32 s = std::countr_zero(d);
+            d >>= s;
+            const auto one = mint.raw(1), mone = mint.neg(one);
+            auto cur = one;
+            while (d) {
+                auto tmp = mint.mul(pow, pow);
+                if (d & 1) cur = mint.mul(cur, pow);
+                pow = tmp;
+                d >>= 1;
+            }
+            if (cur == one) return true;
+            while (--s && cur != mone) cur = mint.mul(cur, cur);
+            return cur == mone;
+        }
+    };
 
-    template<bool Prob> bool isPrime64(const itype::u64 x) {
-        if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
-        using mint = DynamicModint64<-1>;
-        mint::set_mod(x);
-        const itype::i32 s = std::countr_zero(x - 1);
-        const itype::u64 d = (x - 1) >> s;
-        if constexpr (true) {
-            auto test = [&](itype::u64 a) -> bool {
-                mint cur = mint(a).pow(d);
-                if (cur.val() <= 1) return true;
-                itype::i32 i = s;
-                while (--i && cur.val() != x - 1) cur *= cur;
-                return cur.val() == x - 1;
+    template<bool Prob, itype::u32> struct isPrime64;
+    template<itype::u32 id> struct isPrime64<false, id> {
+        template<class Modint = internal::MontgomeryModint64Impl> constexpr static bool calc(const itype::u64 x) {
+            if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
+            Modint mint;
+            mint.set_mod(x);
+            const itype::u32 S = std::countr_zero(x - 1);
+            const itype::u64 D = (x - 1) >> S;
+            const auto one = mint.raw(1), mone = mint.neg(one);
+            auto test2 = [&](itype::u64 base1, itype::u64 base2) __attribute__((always_inline)) {
+                auto a = one, b = one;
+                auto c = mint.build(base1), d = mint.build(base2);
+                itype::u64 ex = D;
+                while (ex) {
+                    auto e = mint.mul(c, c), f = mint.mul(d, d);
+                    if (ex & 1) a = mint.mul(a, e), b = mint.mul(b, f);
+                    c = e, d = f;
+                    ex >>= 1;
+                }
+                bool res1 = a == one || a == mone, res2 = b == one || b == mone;
+                if (!(res1 && res2)) {
+                    for (itype::u32 i = 0; i != S - 1; ++i) {
+                        a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
+                        res1 |= a == mone, res2 |= b == mone;
+                    }
+                    if (!res1 || !res2) return false;
+                }
+                return true;
+            };
+            auto test3 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3) __attribute__((always_inline)) {
+                auto a = one, b = one, c = one;
+                auto d = mint.build(base1), e = mint.build(base2), f = mint.build(base3);
+                itype::u64 ex = D;
+                while (ex) {
+                    const auto g = mint.mul(d, d), h = mint.mul(e, e), i = mint.mul(f, f);
+                    if (ex & 1) a = mint.mul(a, d), b = mint.mul(b, e), c = mint.mul(c, f);
+                    d = g, e = h, f = i;
+                    ex >>= 1;
+                }
+                bool res1 = a == one || a == mone, res2 = b == one || b == mone, res3 = c == one || c == mone;
+                if (!(res1 && res2 && res3)) {
+                    for (itype::u32 i = 0; i != S - 1; ++i) {
+                        a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
+                        res1 |= a == mone, res2 |= b == mone, res3 |= c == mone;
+                    }
+                    if (!res1 || !res2 || !res3) return false;
+                }
+                return true;
+            };
+            auto test4 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3, itype::u64 base4) __attribute__((always_inline)) {
+                auto a = one, b = one, c = one, d = one;
+                auto e = mint.build(base1), f = mint.build(base2), g = mint.build(base3), h = mint.build(base4);
+                itype::u64 ex = D;
+                while (ex) {
+                    auto i = mint.mul(e, e), j = mint.mul(f, f), k = mint.mul(g, g), l = mint.mul(h, h);
+                    if (ex & 1) a = mint.mul(a, e), b = mint.mul(b, f), c = mint.mul(c, g), d = mint.mul(d, h);
+                    e = i, f = j, g = k, h = l;
+                    ex >>= 1;
+                }
+                bool res1 = a == one || a == mone, res2 = b == one || b == mone, res3 = c == one || c == mone, res4 = d == one || d == mone;
+                if (!(res1 && res2 && res3 && res4)) {
+                    for (itype::u32 i = 0; i != S - 1; ++i) {
+                        a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c), d = mint.mul(d, d);
+                        res1 |= a == mone, res2 |= b == mone, res3 |= c == mone, res4 |= d == mone;
+                    }
+                    if (!res1 || !res2 || !res3 || !res4) return false;
+                }
+                return true;
             };
             if (x < 585226005592931977ull) {
                 if (x < 7999252175582851ull) {
-                    if (x < 350269456337ull) return test(4230279247111683200ull) && test(14694767155120705706ull) && test(16641139526367750375ull);
-                    else if (x < 55245642489451ull) return test(2ull) && test(141889084524735ull) && test(1199124725622454117ull) && test(11096072698276303650ull);
-                    else return test(2ull) && test(4130806001517ull) && test(149795463772692060ull) && test(186635894390467037ull) && test(3967304179347715805ull);
-                } else return test(2ull) && test(123635709730000ull) && test(9233062284813009ull) && test(43835965440333360ull) && test(761179012939631437ull) && test(1263739024124850375ull);
-            } else return test(2ull) && test(325ull) && test(9375ull) && test(28178ull) && test(450775ull) && test(9780504ull) && test(1795265022ull);
-        } else {
+                    if (x < 350269456337ull) return test3(4230279247111683200ull, 14694767155120705706ull, 16641139526367750375ull);
+                    else if (x < 55245642489451ull) return test4(2ull, 141889084524735ull, 1199124725622454117ull, 11096072698276303650ull);
+                    else return test2(2ull, 4130806001517ull) && test3(149795463772692060ull, 186635894390467037ull, 3967304179347715805ull);
+                } else return test3(2ull, 123635709730000ull, 9233062284813009ull) && test3(43835965440333360ull, 761179012939631437ull, 1263739024124850375ull);
+            } else return test3(2ull, 325ull, 9375ull) && test4(28178ull, 450775ull, 9780504ull, 1795265022ull);
         }
-    }
+    };
+    template<itype::u32 id> struct isPrime64<true, id> {
+        constexpr static itype::u16 bases1[] = {
+#include <gsh/internal/MRbase.txt>
+        };
+        constexpr static itype::u64 bases2 = 15ull | (135ull << 8) | (13ull << 16) | (60ull << 24) | (15ull << 32) | (117ull << 40) | (65ull << 48) | (29ull << 56);
+        template<class Modint = internal::MontgomeryModint64Impl> constexpr static bool calc(const itype::u64 x) {
+            if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
+            Modint mint;
+            mint.set_mod(x);
+            const itype::u32 S = std::countr_zero(x - 1);
+            const itype::u64 D = (x - 1) >> S;
+            const auto one = mint.raw(1), mone = mint.raw(x - 1);
+            auto test2 = [&](itype::u32 base1, itype::u32 base2) __attribute__((always_inline)) {
+                auto a = one, b = one;
+                auto c = mint.raw(base1), d = mint.raw(base2);
+                itype::u64 ex = D;
+                while (ex) {
+                    auto e = mint.mul(c, c), f = mint.mul(d, d);
+                    if (ex & 1) a = mint.mul(a, e), b = mint.mul(b, f);
+                    c = e, d = f;
+                    ex >>= 1;
+                }
+                bool res1 = a == one || a == mone, res2 = b == one || b == mone;
+                for (itype::u32 i = 0; i != S - 1; ++i) {
+                    a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
+                    res1 |= a == mone, res2 |= b == mone;
+                }
+                return res1 && res2;
+            };
+            auto test3 = [&](itype::u32 base1, itype::u32 base2, itype::u32 base3) __attribute__((always_inline)) {
+                auto a = one, b = one, c = one;
+                auto d = mint.raw(base1), e = mint.raw(base2), f = mint.raw(base3);
+                itype::u64 ex = D;
+                while (ex) {
+                    const auto g = mint.mul(d, d), h = mint.mul(e, e), i = mint.mul(f, f);
+                    if (ex & 1) a = mint.mul(a, d), b = mint.mul(b, e), c = mint.mul(c, f);
+                    d = g, e = h, f = i;
+                    ex >>= 1;
+                }
+                bool res1 = a == one || a == mone, res2 = b == one || b == mone, res3 = c == one || c == mone;
+                for (itype::u32 i = 0; i != S - 1; ++i) {
+                    a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
+                    res1 |= a == mone, res2 |= b == mone, res3 |= c == mone;
+                }
+                return res1 && res2 && res3;
+            };
+            const itype::u32 base = bases1[(0xad625b89u * static_cast<itype::u32>(x)) >> 18];
+            if (x < (1ull << 49)) return test2(2, base);
+            else return test3(2, base, (bases2 >> (8 * (base >> 13))) & 0xff);
+        }
+    };
 
 }  // namespace internal
 
 // @brief Prime number determination
 template<bool Prob = false> constexpr bool isPrime(const itype::u64 x) {
-    if (x < 2147483648u) {
+    if (x <= 0xffffffff) {
         if (x < 65536u) return internal::isPrime16<0>::calc(x);
-        else return internal::isPrime32(x);
-    } else return internal::isPrime64<Prob>(x);
-}
-
-constexpr Vec<itype::u32> EnumeratePrimes(const itype::u32 max_n) {
-    if (max_n <= 1000) {
-        constexpr itype::u32 primes[168] = { 2,   3,   5,   7,   11,  13,  17,  19,  23,  29,  31,  37,  41,  43,  47,  53,  59,  61,  67,  71,  73,  79,  83,  89,  97,  101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433,
-                                             439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997 };
-        return Vec<itype::u32>(std::begin(primes), std::upper_bound(std::begin(primes), std::end(primes), max_n));
-    }
-    const itype::u32 flag_size = max_n / 30 + (max_n % 30 != 0);
-    constexpr itype::u32 table1[256] = { 0,  1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 23, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1,
-                                         29, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 23, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 19, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1, 17, 1, 7, 1, 11, 1, 7, 1, 13, 1, 7, 1, 11, 1, 7, 1 };
-    constexpr itype::u8 table2[30] = { 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 4, 0, 8, 0, 0, 0, 16, 0, 32, 0, 0, 0, 64, 0, 0, 0, 0, 0, 128 };
-    Vec<itype::u8> flag(flag_size, 0xffu);
-    flag[0] = 0b11111110u;
-    Vec<itype::u32> primes{ 2, 3, 5 };
-    double primes_size = max_n / std::log(max_n);
-    primes.reserve(static_cast<itype::u32>(1.1 * primes_size));
-    Vec<itype::u32> sieved(static_cast<itype::u32>(primes_size));
-    itype::u32 *first = sieved.data(), *last;
-    itype::u32 k, l, x, y;
-    itype::u8 temp;
-    for (k = 0; k * k < flag_size; ++k) {
-        while (flag[k] != 0) {
-            x = 30ull * k + table1[flag[k]];
-            itype::u32 limit = max_n / x;
-            primes.push_back(x);
-            last = first;
-            bool smaller = true;
-            for (l = k; smaller; ++l) {
-                for (temp = flag[l]; temp != 0; temp &= (temp - 1)) {
-                    y = 30u * l + table1[temp];
-                    if (y > limit) {
-                        smaller = false;
-                        break;
-                    }
-                    *(last++) = x * y;
-                }
-            }
-            flag[k] &= (flag[k] - 1);
-            for (itype::u32* i = first; i < last; ++i) flag[*i / 30] ^= table2[*i % 30];
-        }
-    }
-    for (; k < flag_size; k++) {
-        while (flag[k] != 0) {
-            x = 30 * k + table1[flag[k]];
-            if (x > max_n) return primes;
-            primes.push_back(x);
-            flag[k] &= (flag[k] - 1);
-        }
-    }
-    return primes;
+        else if (x < 2147483648u) return internal::isPrime32<0>::calc(x);
+        else return internal::isPrime32<0>::calc<internal::MontgomeryModint64Impl>(x);
+    } else return internal::isPrime64<Prob, 0>::calc(x);
 }
 
 itype::u32 CountPrimes(itype::u64 N) {

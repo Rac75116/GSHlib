@@ -161,7 +161,7 @@ namespace internal {
     protected:
         using value_type = typename T::value_type;
         constexpr StaticModintImpl() noexcept {}
-        constexpr value_type val() noexcept { return mint.val(val_); }
+        constexpr value_type val() const noexcept { return mint.val(val_); }
         constexpr static value_type mod() noexcept { return T::get_mod(); }
         constexpr void assign(itype::u32 x) noexcept { val_ = mint.build(x); }
         constexpr void assign(itype::u64 x) noexcept { val_ = mint.build(x); }

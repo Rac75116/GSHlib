@@ -11,6 +11,10 @@ namespace gsh {
 
 namespace internal {
 
+    template<itype::u32> struct isPrime8 {
+        constexpr static itype::u64 flag_table[4] = { 2891462833508853932u, 9223979663092122248u, 9234666804958202376u, 577166812715155618u };
+        constexpr static bool calc(const itype::u8 n) { return (flag_table[n / 64] >> (n % 64)) & 1; }
+    };
     template<itype::u32> struct isPrime16 {
         // clang-format off
         constexpr static itype::u64 flag_table[512] = {
@@ -273,6 +277,81 @@ itype::u32 CountPrimes(itype::u64 N) {
     }
     ::operator delete(storage);
     return ret;
+}
+
+namespace internal {
+    constexpr itype::u32 FindFactor32(itype::u32 n) {}
+    constexpr void FactorizeSub32(itype::u32 n, itype::u64*& res) {
+        if (n < 256 || isPrime(n)) {
+            *(res++) = n;
+            return;
+        }
+        const itype::u64 m = FindFactor32(n);
+        FactorizeSub32(n / m, res);
+        FactorizeSub32(m, res);
+    }
+    constexpr itype::u64 FindFactor64(itype::u64 n) {}
+    constexpr void FactorizeSub64(itype::u64 n, itype::u64*& res) {
+        if (n <= 0xffffffff) {
+            FactorizeSub32(n, res);
+            return;
+        }
+        if (isPrime(n)) {
+            *(res++) = n;
+            return;
+        }
+        const itype::u64 m = FindFactor64(n);
+        FactorizeSub64(n / m, res);
+        FactorizeSub64(m, res);
+    }
+}  // namespace internal
+constexpr Arr<itype::u64> Factorize(itype::u64 n) {
+    if (n <= 1) [[unlikely]]
+        return {};
+    itype::u64 res[64];
+    itype::u64* p = res;
+    {
+        itype::u32 rz = std::countr_zero(n);
+        n >>= rz;
+        for (itype::u32 i = 0; i != rz; ++i) *(p++) = 2;
+    }
+    {
+        const bool a = n % 3 == 0, b = n % 5 == 0, c = n % 7 == 0, d = n % 11 == 0, e = n % 13 == 0;
+        if (a) [[unlikely]] {
+            do {
+                n /= 3;
+                *(p++) = 3;
+            } while (n % 3 == 0);
+        }
+        if (b) [[unlikely]] {
+            do {
+                n /= 5;
+                *(p++) = 5;
+            } while (n % 5 == 0);
+        }
+        if (c) [[unlikely]] {
+            do {
+                n /= 7;
+                *(p++) = 7;
+            } while (n % 7 == 0);
+        }
+        if (d) [[unlikely]] {
+            do {
+                n /= 11;
+                *(p++) = 11;
+            } while (n % 11 == 0);
+        }
+        if (e) [[unlikely]] {
+            do {
+                n /= 13;
+                *(p++) = 13;
+            } while (n % 13 == 0);
+        }
+    }
+    if (n >= 256) [[likely]]
+        internal::FactorizeSub64(n, p);
+    else *(p++) = n;
+    return {};
 }
 
 }  // namespace gsh

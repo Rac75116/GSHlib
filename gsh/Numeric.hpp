@@ -4,6 +4,7 @@
 #include <new>
 #include <gsh/Modint.hpp>
 #include <gsh/TypeDef.hpp>
+#include <gsh/Arr.hpp>
 #include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
@@ -240,6 +241,64 @@ public:
     constexpr itype::u32 div_limit() const noexcept { return m; }
     constexpr itype::u64 val() const noexcept { return x; }
     constexpr itype::u64 operator[](itype::u32 n) { return n < m ? n + 1 : x / (sq - (n - m)); }
+};
+
+namespace internal {
+    template<class T> class BinCoeffTable {
+        T mint;
+        Arr<typename T::value_type> fac, finv;
+    public:
+        using value_type = typename T::value_type;
+        constexpr BinCoeffTable(itype::u32 mx, value_type mod) : fac(mod < mx ? mod : mx), finv(mod < mx ? mod : mx) {
+            mx = mod < mx ? mod : mx;
+            mint.set_mod(mod);
+            fac[0] = mint.raw(1), finv[0] = mint.raw(1);
+            if (mx > 1) {
+                fac[1] = mint.raw(1), finv[1] = mint.raw(1);
+                if (mx > 2) {
+                    for (itype::u32 i = 2; i != mx; ++i) fac[i] = mint.mul(fac[i - 1], mint.raw(i));
+                    value_type e = mod - 2;
+                    auto res = mint.raw(1), pow = fac.back();
+                    while (e) {
+                        const auto tmp = mint.mul(pow, pow);
+                        if (e & 1) res = mint.mul(res, pow);
+                        pow = tmp;
+                        e >>= 1;
+                    }
+                    finv.back() = res;
+                    for (itype::u32 i = mx - 1; i != 2; --i) finv[i - 1] = mint.mul(finv[i], mint.raw(i));
+                }
+            }
+        }
+        constexpr value_type operator()(itype::u32 n, itype::u32 k) const {
+            if (n < k) return 0;
+            else return mint.val(mint.mul(mint.mul(fac[n], finv[k]), finv[n - k]));
+        }
+    };
+}  // namespace internal
+using BinCoeffTable32 = internal::BinCoeffTable<internal::DynamicModint32Impl>;
+using BinCoeffTable64 = internal::BinCoeffTable<internal::DynamicModint64Impl>;
+
+template<itype::u64 mod = 998244353> class BinCoeffTableStaticMod {
+    using mint = StaticModint<mod>;
+    Arr<mint> fac, finv;
+public:
+    using value_type = typename mint::value_type;
+    constexpr BinCoeffTableStaticMod(itype::u32 mx) : fac(mx), finv(mx) {
+        fac[0] = mint::raw(1), finv[0] = mint::raw(1);
+        if (mx > 1) {
+            fac[1] = mint::raw(1), finv[1] = mint::raw(1);
+            if (mx > 2) {
+                for (itype::u32 i = 2; i != mx; ++i) fac[i] = fac[i - 1] * mint::raw(i);
+                finv.back() = fac.back().pow(mod - 2);
+                for (itype::u32 i = mx - 1; i != 2; --i) finv[i - 1] = finv[i] * mint::raw(i);
+            }
+        }
+    }
+    constexpr value_type operator()(itype::u32 n, itype::u32 k) const {
+        if (n < k) return 0;
+        else return (fac[n] * finv[k] * finv[n - k]).val();
+    }
 };
 
 }  // namespace gsh

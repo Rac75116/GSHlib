@@ -280,17 +280,70 @@ itype::u32 CountPrimes(itype::u64 N) {
 }
 
 namespace internal {
-    constexpr itype::u32 FindFactor32(itype::u32 n) {}
+    template<itype::u8 A, itype::u8 B, itype::u8 C, itype::u8 D> __attribute__((always_inline)) constexpr void TrialDiv(itype::u32& n, itype::u64*& res) {
+        const bool a = n % A == 0, b = n % B == 0, c = n % C == 0, d = n % D == 0;
+        if (a) [[unlikely]] {
+            do {
+                n /= A;
+                *(res++) = A;
+            } while (n % A == 0);
+        }
+        if (b) [[unlikely]] {
+            do {
+                n /= B;
+                *(res++) = B;
+            } while (n % B == 0);
+        }
+        if (c) [[unlikely]] {
+            do {
+                n /= C;
+                *(res++) = C;
+            } while (n % C == 0);
+        }
+        if (d) [[unlikely]] {
+            do {
+                n /= D;
+                *(res++) = D;
+            } while (n % D == 0);
+        }
+    }
     constexpr void FactorizeSub32(itype::u32 n, itype::u64*& res) {
         if (n < 256 || isPrime(n)) {
             *(res++) = n;
             return;
         }
-        const itype::u64 m = FindFactor32(n);
-        FactorizeSub32(n / m, res);
-        FactorizeSub32(m, res);
+        const itype::u32 copy = n;
+        // clang-format off
+#define GSH_INTERNAL_TDIV(a, b, c, d) TrialDiv<a, b, c, d>(n, res); if(d != 251 && n < (d + 2) * (d + 2)) { *(res++) = n; return; }
+        GSH_INTERNAL_TDIV(17,19,23,29)GSH_INTERNAL_TDIV(31,37,41,43)GSH_INTERNAL_TDIV(47,53,59,61)GSH_INTERNAL_TDIV(67,71,73,79)
+        GSH_INTERNAL_TDIV(83,89,97,101)GSH_INTERNAL_TDIV(103,107,109,113)GSH_INTERNAL_TDIV(127,131,137,139)GSH_INTERNAL_TDIV(149,151,157,163)
+        GSH_INTERNAL_TDIV(167,173,179,181)GSH_INTERNAL_TDIV(191,193,197,199)GSH_INTERNAL_TDIV(211,223,227,229)GSH_INTERNAL_TDIV(233,239,241,251)
+#undef GSH_INTERNAL_TDIV
+          // clang-format on
+          if (n < 65536 || (copy != n && isPrime(n))) {
+            *(res++) = n;
+            return;
+        }
+        for (itype::u32 x = 240; x != 65520; x += 30) {
+            const itype::u32 a = x + 17, b = x + 19, c = x + 23, d = x + 29, e = x + 31, f = x + 37, g = x + 41, h = x + 43;
+            const bool i = n % a == 0, j = n % b == 0, k = n % c == 0, l = n % d == 0, m = n % e == 0, o = n % f == 0, p = n % g == 0, q = n % h == 0;
+            auto div = [&](itype::u32 val, bool flag) __attribute__((always_inline)) {
+                if (flag) [[unlikely]] {
+                    do {
+                        n /= val;
+                        *(res++) = val;
+                    } while (n % val == 0);
+                }
+            };
+            div(a, i), div(b, j), div(c, k), div(d, l), div(e, m), div(f, o), div(g, p), div(h, q);
+            if (n <= h * h) [[unlikely]]
+                break;
+        }
+        if (n != 1) *(res++) = n;
     }
-    constexpr itype::u64 FindFactor64(itype::u64 n) {}
+    constexpr itype::u64 FindFactor64(itype::u64 n) {
+        return n;
+    }
     constexpr void FactorizeSub64(itype::u64 n, itype::u64*& res) {
         if (n <= 0xffffffff) {
             FactorizeSub32(n, res);

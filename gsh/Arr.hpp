@@ -4,7 +4,7 @@
 #include <initializer_list>   // std::initializer_list
 #include <type_traits>        // std::remove_cv_t, std::is_trivially_(***), std::is_constant_evaluated, std::common_type_t, std::conditional_t, std::is_void_v, std::integral_constant
 #include <concepts>           // std::same_as
-#include <cstring>            // std::memcpy, std::memset
+#include <cstring>            // std::memset
 #include <utility>            // std::move, std::forward, std::swap
 #include <tuple>              // std::tuple_size, std::tuple_element
 #include <gsh/TypeDef.hpp>    // gsh::itype
@@ -69,11 +69,7 @@ public:
         if (len == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, len);
-        if (std::is_trivially_copy_constructible_v<value_type> && !std::is_constant_evaluated()) {
-            std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
-        } else {
-            for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
-        }
+        for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
     }
     constexpr Arr(Arr&& x, const allocator_type& a) : alloc(a) {
         if (traits::is_always_equal || x.get_allocator() == a) {
@@ -84,11 +80,7 @@ public:
                 return;
             len = x.len;
             ptr = traits::allocate(alloc, len);
-            if constexpr (std::is_trivially_move_constructible_v<value_type> && !std::is_constant_evaluated()) {
-                std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
-            } else {
-                for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, std::move(*(x.ptr + i)));
-            }
+            for (size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, std::move(*(x.ptr + i)));
             traits::deallocate(x.alloc, x.ptr, x.len);
             x.ptr = nullptr, x.len = 0;
         }
@@ -112,11 +104,7 @@ public:
             ptr = traits::allocate(alloc, x.len);
         }
         len = x.len;
-        if (std::is_trivially_copy_assignable_v<value_type> && !std::is_constant_evaluated()) {
-            std::memcpy(ptr, x.ptr, sizeof(value_type) * len);
-        } else {
-            for (size_type i = 0; i != len; ++i) *(ptr + i) = *(x.ptr + i);
-        }
+        for (size_type i = 0; i != len; ++i) *(ptr + i) = *(x.ptr + i);
         return *this;
     }
     constexpr Arr& operator=(Arr&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
@@ -161,11 +149,7 @@ public:
         const pointer new_ptr = traits::allocate(alloc, sz);
         const size_type mn = len < sz ? len : sz;
         if (len != 0) {
-            if (std::is_trivially_move_constructible_v<value_type> && !std::is_constant_evaluated()) {
-                std::memcpy(new_ptr, ptr, sizeof(value_type) * mn);
-            } else {
-                for (size_type i = 0; i != mn; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-            }
+            for (size_type i = 0; i != mn; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
             if constexpr (!std::is_trivially_destructible_v<value_type>)
                 for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
@@ -185,11 +169,7 @@ public:
         const pointer new_ptr = traits::allocate(alloc, sz);
         const size_type mn = len < sz ? len : sz;
         if (len != 0) {
-            if (std::is_trivially_move_constructible_v<value_type> && !std::is_constant_evaluated()) {
-                std::memcpy(new_ptr, ptr, sizeof(value_type) * mn);
-            } else {
-                for (size_type i = 0; i != mn; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-            }
+            for (size_type i = 0; i != mn; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
             if constexpr (!std::is_trivially_destructible_v<value_type>)
                 for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);

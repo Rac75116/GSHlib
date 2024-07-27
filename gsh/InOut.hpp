@@ -325,9 +325,9 @@ public:
 template<class T> class Formatter;
 
 namespace internal {
-    template<int> constexpr auto InttoStr = [] {
+    template<itype::u32> constexpr auto InttoStr = [] {
         struct {
-            ctype::c8 table[40004];
+            ctype::c8 table[40004] = {};
         } res;
         for (itype::u32 i = 0; i != 10000; ++i) {
             res.table[4 * i + 0] = (i / 1000 + '0');
@@ -585,7 +585,7 @@ public:
         stream.reload(9);
         *stream.current() = '-';
         stream.skip(n.val < 0);
-        internal::Formatu8dig(stream, itype::u8dig{ n.val < 0 ? -n.val : n.val });
+        internal::Formatu8dig(stream, itype::u8dig{ static_cast<itype::u32>(n.val < 0 ? -n.val : n.val) });
     }
 };
 template<> class Formatter<itype::u16dig> {
@@ -601,7 +601,7 @@ public:
         stream.reload(17);
         *stream.current() = '-';
         stream.skip(n.val < 0);
-        internal::Formatu16dig(stream, itype::u16dig{ n.val < 0 ? -n.val : n.val });
+        internal::Formatu16dig(stream, itype::u16dig{ static_cast<itype::u64>(n.val < 0 ? -n.val : n.val) });
     }
 };
 template<> class Formatter<ctype::c8> {

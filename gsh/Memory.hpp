@@ -209,9 +209,14 @@ public:
         else return static_cast<T*>(::operator new(sizeof(T) * n));
     }
     [[nodiscard]] constexpr T* allocate(size_type align, size_type n) { return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(align))); }
-    constexpr void deallocate(T* p, size_type n) {
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) {
+#ifdef __cpp_sized_deallocation
         if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
         else ::operator delete(p, n);
+#else
+        if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, static_cast<std::align_val_t>(alignof(T)));
+        else ::operator delete(p);
+#endif
     }
     //[[nodiscard]] constexpr T* reallocate(T* p, size_type, size_type n) { return reinterpret_cast<T*>(std::realloc(p, sizeof(T) * n)); }
     constexpr Allocator& operator=(const Allocator&) = default;

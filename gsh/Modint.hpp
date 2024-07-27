@@ -12,18 +12,20 @@ namespace internal {
 
     // https://lpha-z.hatenablog.com/entry/2020/05/24/231500
     template<class T> constexpr T calc_gcd(T x, T y) {
-        if (x == 0 || y == 0) [[unlikely]]
-            return x | y;
+        if (x == 0 || y == 0) return x | y;
         const itype::i32 n = std::countr_zero(x);
         const itype::i32 m = std::countr_zero(y);
         const itype::i32 l = n < m ? n : m;
         x >>= n;
         y >>= m;
         while (x != y) {
-            const T s = y < x ? x - y : y - x;
-            const itype::i32 t = std::countr_zero(s);
-            y = y < x ? y : x;
-            x = s >> t;
+            const T a = y - x, b = x - y;
+            const itype::i32 m = std::countr_zero(a), n = std::countr_zero(b);
+            if (m != n) __builtin_unreachable();
+            const T s = y < x ? b : a;
+            const T t = x < y ? x : y;
+            x = s >> m;
+            y = t;
         }
         return x << l;
     }

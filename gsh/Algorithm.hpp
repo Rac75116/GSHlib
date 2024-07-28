@@ -195,5 +195,19 @@ template<class T = itype::u64, Rangeof<itype::u32> R> constexpr T CountDistinctS
     return dp[n] - dp[0];
 }
 
+template<Range R> constexpr auto Majority(R&& r) {
+    using traits = RangeTraits<R>;
+    itype::u32 c = 0;
+    itype::u32 len = 0;
+    auto i = traits::begin(r), j = traits::end(r), k = j;
+    for (; i != j; ++i) {
+        ++len;
+        if (c == 0) k = i, c = 1;
+        else c += static_cast<itype::u32>(static_cast<bool>(*i == *k)) * 2 - 1;
+    }
+    c = 0;
+    for (i = traits::begin(r); i != j; ++i) c += static_cast<bool>(*i == *k);
+    return (2 * c >= len ? k : j);
+}
 
 }  // namespace gsh

@@ -210,16 +210,15 @@ template<bool Prob = false> constexpr bool isPrime(const itype::u64 x) {
     } else return internal::isPrime64<Prob, 0>::calc(x);
 }
 
-itype::u32 CountPrimes(itype::u64 N) {
+constexpr itype::u32 CountPrimes(itype::u64 N) {
     if (N <= 1) return 0;
-    const itype::u32 v = IntSqrt(N);
+    const itype::u32 v = IntSqrt64(N);
     itype::u32 s = (v + 1) / 2;
-    auto const storage = reinterpret_cast<ctype::c8*>(::operator new(11 * (v + 1)));
-    itype::u64* const invs = reinterpret_cast<itype::u64*>(storage);
-    itype::u32* const smalls = reinterpret_cast<itype::u32*>(storage + 4 * (v + 1));
-    itype::u32* const larges = reinterpret_cast<itype::u32*>(storage + 6 * (v + 1));
-    itype::u32* const roughs = reinterpret_cast<itype::u32*>(storage + 8 * (v + 1));
-    bool* const smooth = reinterpret_cast<bool*>(storage + 10 * (v + 1));
+    itype::u64* const invs = new itype::u64[s];
+    itype::u32* const smalls = new itype::u32[s];
+    itype::u32* const larges = new itype::u32[s];
+    itype::u32* const roughs = new itype::u32[s];
+    bool* const smooth = new bool[v + 1];
     for (itype::u32 i = 0; i != v; ++i) smooth[i] = false;
     for (itype::u32 i = 0; i != s; ++i) smalls[i] = i;
     for (itype::u32 i = 0; i != s; ++i) roughs[i] = 2 * i + 1;
@@ -275,9 +274,15 @@ itype::u32 CountPrimes(itype::u64 N) {
         for (itype::u32 k2 = k1 + 1; k2 <= k2_max; ++k2) ret += smalls[(divide_p(invs[k2]) - 1) / 2];
         ret -= (k2_max - k1) * (pc + k1 - 1);
     }
-    ::operator delete(storage);
+    delete[] invs;
+    delete[] smalls;
+    delete[] larges;
+    delete[] roughs;
+    delete[] smooth;
     return ret;
 }
+
+//constexpr auto EnumeratePrimes(itype::u32 N, itype::u32 gap, itype::u32 start) {}
 
 namespace internal {
     template<itype::u8 A, itype::u8 B, itype::u8 C, itype::u8 D> __attribute__((always_inline)) constexpr void TrialDiv(itype::u32& n, itype::u64*& res) {

@@ -11,10 +11,12 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
+#include <gsh/Modint.hpp>
 #include <gsh/Numeric.hpp>
 #include <gsh/Prime.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
+#include <gsh/Algorithm.hpp>
 
 #if false
 #include <fcntl.h>
@@ -30,15 +32,25 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    Rand64 engine;
-    u64 res = 0;
+    /*
+    internal::MontgomeryModint64Impl mint;
+    mint.set_mod((1ull << 61) - 1);
+    auto a = mint.raw(2), b = mint.raw(3), c = mint.raw(5);
+    const auto d = a, e = b, f = c;
     ClockTimer t;
-    for (u32 i = 0; i != 10000000; ++i) {
-        res += std::__gcd(engine(), engine());
+    for (u32 i = 0; i != 100000000; ++i) {
+        a = mint.add(mint.mul(a, a), d);
+        b = mint.add(mint.mul(b, b), e);
+        c = mint.add(mint.mul(c, c), f);
     }
     t.print();
-    Formatter<u64>{}(w, res);
+    Formatter<u64>{}(w, mint.val(a));
     Formatter<c8>{}(w, '\n');
+    Formatter<u64>{}(w, mint.val(b));
+    Formatter<c8>{}(w, '\n');
+    Formatter<u64>{}(w, mint.val(c));
+    Formatter<c8>{}(w, '\n');
+    */
 }
 int main() {
 #ifdef ONLINE_JUDGE

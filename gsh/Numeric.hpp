@@ -10,44 +10,65 @@
 namespace gsh {
 
 //@brief Find the largest x for which x * x <= n (https://rsk0315.hatenablog.com/entry/2023/11/07/221428)
-constexpr itype::u32 IntSqrt(const itype::u32 x) {
+constexpr itype::u32 IntSqrt32(const itype::u32 x) {
     if (x == 0) return 0;
-    itype::u32 tmp = static_cast<itype::u32>(std::sqrt(static_cast<ftype::f32>(x))) - 1;
-    return tmp + (tmp * (tmp + 2) < x);
+    if (std::is_constant_evaluated()) {
+        itype::u32 low = 0, high = 0xffff;
+        while (low != high) {
+            itype::u32 mid = low + (high - low + 1) / 2;
+            if (mid * mid > x) high = mid - 1;
+            else low = mid;
+        }
+        return low;
+    } else {
+        itype::u32 tmp = static_cast<itype::u32>(std::sqrt(static_cast<ftype::f32>(x))) - 1;
+        return tmp + (tmp * (tmp + 2) < x);
+    }
 }
-constexpr itype::u64 IntSqrt(const itype::u64 x) {
+constexpr itype::u64 IntSqrt64(const itype::u64 x) {
     if (x == 0) return 0;
-    itype::u64 tmp = static_cast<itype::u64>(std::sqrt(static_cast<ftype::f64>(x))) - 1;
-    return tmp + (tmp * (tmp + 2) < x);
+    if (std::is_constant_evaluated()) {
+        itype::u64 low = 0, high = 0xffffffff;
+        while (low != high) {
+            itype::u64 mid = low + (high - low + 1) / 2;
+            if (mid * mid > x) high = mid - 1;
+            else low = mid;
+        }
+        return low;
+    } else {
+        itype::u64 tmp = static_cast<itype::u64>(std::sqrt(static_cast<ftype::f64>(x))) - 1;
+        return tmp + (tmp * (tmp + 2) < x);
+    }
 }
 namespace internal {
-    bool isSquare_mod9360(const itype::u16 x) {
+    template<itype::u32> struct isSquareMod9360 {
         // clang-format off
-        const static itype::u64 table[147] = {0x2001002010213u,0x200001000020001u,0x20100010000u,0x10000200000010u,0x200000001u,0x20000000010u,0x200000000010000u,0x1200000000u,0x20000u,0x2000002000201u,0x1000000201u,0x20002100000u,0x10000000010000u,0x1000000000200u,0x2000000000010u,0x2010002u,0x100001u,0x20002u,0x210u,0x1000200000200u,0x110000u,0x2000000u,0x201001100000000u,0x2000100000000u,0x2000002000000u,0x201u,
+        constexpr static itype::u64 table[147] = {0x2001002010213u,0x200001000020001u,0x20100010000u,0x10000200000010u,0x200000001u,0x20000000010u,0x200000000010000u,0x1200000000u,0x20000u,0x2000002000201u,0x1000000201u,0x20002100000u,0x10000000010000u,0x1000000000200u,0x2000000000010u,0x2010002u,0x100001u,0x20002u,0x210u,0x1000200000200u,0x110000u,0x2000000u,0x201001100000000u,0x2000100000000u,0x2000002000000u,0x201u,
         0x20002u,0x10001000000002u,0x200000000000000u,0x2100000u,0x10012u,0x200020100000000u,0x20100000000u,0x2000000000010u,0x1000200100200u,0u,0x10001000000003u,0x1200000000u,0x10000000000000u,0x2000002000010u,0x21000000001u,0x20100000000u,0x10000000010000u,0x200000200000000u,0u,0x2001000010200u,0x1000020000u,0x20000u,0x12000000000000u,0x1000200000201u,0x2020000100000u,0x10000002010000u,0x1001000000000u,0x20000u,
         0x2000000u,0x1u,0x10000000130000u,0x2u,0x201000300000200u,0x2000000100010u,0x2000010u,0x200001000000001u,0x100000002u,0x2000000000000u,0x1000000000201u,0x2010000u,0x10000000000002u,0x200020100000000u,0x100020010u,0x10u,0x200u,0x20100100000u,0x1000010000u,0x201000200020200u,0x2000000u,0x2000000000002u,0x21000000000u,0x20000000000u,0x13000000000010u,0x1u,0x20000000002u,0x10000002010001u,0x200000200020000u,
         0x100020000u,0x2000200000000u,0x1000000000u,0x120000u,0x211000000000000u,0x1000200000200u,0x100000u,0x2010201u,0x1000020001u,0x10020000020000u,0u,0x200000001u,0x100010u,0x200000000000002u,0x201001200000000u,0x100020000u,0x2000210u,0x1000000201u,0x10000100100000u,0x200000002u,0x1000000000200u,0x2000000000010u,0x2000000000012u,0x200000000000000u,0x20100020000u,0x10000000000010u,0x1000000000200u,0x20000110000u,
         0x10000u,0x201000200000000u,0x2000100000000u,0x3000000000000u,0x1000100000u,0x20000000000u,0x10001000010002u,0x200000000020000u,0x2000000u,0x2010010u,0x200000000000001u,0x20100020000u,0x203000000000000u,0x200100000u,0x100000u,0x10001002000001u,0x1001200000000u,0u,0x2000000u,0x1000000201u,0x20000020000u,0x200000000010002u,0x200000000u,0x100000u,0x212u,0x200001000000000u,0x100030000u,0x200000010u,0x1000000000201u,
         0x2000000100000u,0x2000002u,0x1000000000000u,0x20000u,0x2000000000011u,0u,0u};
         // clang-format on
-        return (table[x / 64] >> (x % 64)) & 1;
-    }
+        constexpr static bool calc(const itype::u16 x) { return (table[x / 64] >> (x % 64)) & 1; }
+    };
 }  // namespace internal
-constexpr bool isSquare(const itype::u32 x) {
-    const itype::u32 tmp = IntSqrt(x);
+constexpr bool isSquare32(const itype::u32 x) {
+    const itype::u32 tmp = IntSqrt32(x);
     return tmp * tmp == x;
 }
-constexpr bool isSquare(const itype::u64 x) {
-    if (!std::is_constant_evaluated() && !internal::isSquare_mod9360(x % 9360)) return false;
-    const itype::u64 tmp = IntSqrt(x);
+constexpr bool isSquare64(const itype::u64 x) {
+    if (!internal::isSquareMod9360<0>::calc(x % 9360)) return false;
+    const itype::u64 tmp = IntSqrt64(x);
     return tmp * tmp == x;
 }
 
 template<class T> constexpr T IntPow(const T x, itype::u64 e) {
     T res = 1, pow = x;
     while (e != 0) {
+        const T tmp = pow * pow;
         if (e & 1) res *= pow;
-        pow *= pow;
+        pow = tmp;
         e >>= 1;
     }
     return res;
@@ -55,8 +76,9 @@ template<class T> constexpr T IntPow(const T x, itype::u64 e) {
 template<class T> constexpr T PowMod(const T x, itype::u64 e, const T mod) {
     T res = 1, pow = x % mod;
     while (e != 0) {
+        const T tmp = (pow * pow) % mod;
         if (e & 1) res = (res * pow) % mod;
-        pow = (pow * pow) % mod;
+        pow = tmp;
         e >>= 1;
     }
     return res;
@@ -235,7 +257,7 @@ class QuotientsList {
     itype::u32 m;
 public:
     using value_type = itype::u32;
-    constexpr QuotientsList(itype::u64 n) : x(n), sq(IntSqrt(n)) { m = (itype::u64(sq) * sq + sq <= n ? sq : sq - 1); }
+    constexpr QuotientsList(itype::u64 n) : x(n), sq(IntSqrt64(n)) { m = (itype::u64(sq) * sq + sq <= n ? sq : sq - 1); }
     constexpr itype::u32 size() const noexcept { return sq + m; }
     constexpr itype::u32 iota_limit() const noexcept { return sq; }
     constexpr itype::u32 div_limit() const noexcept { return m; }

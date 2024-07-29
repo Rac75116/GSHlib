@@ -5,7 +5,6 @@
 #include <gsh/Modint.hpp>
 #include <gsh/Vec.hpp>
 #include <gsh/Numeric.hpp>
-#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 

@@ -13,8 +13,10 @@ namespace itype {
     using ulong = unsigned long;
     using i64 = long long;
     using u64 = unsigned long long;
+#ifdef __SIZEOF_INT128__
     using i128 = __int128_t;
     using u128 = __uint128_t;
+#endif
     using isize = i32;
     using usize = u32;
     struct i4dig {
@@ -47,7 +49,9 @@ namespace ftype {
     //using f16 = _Float16;
     using f32 = float;
     using f64 = double;
+#ifdef __SIZEOF_FLOAT128__
     using f128 = __float128;
+#endif
     using flong = long double;
 }  // namespace ftype
 
@@ -142,3 +146,17 @@ public:
 };  // namespace class Byte
 
 }  // namespace gsh
+
+#define GSH_INTERNAL_STR(s) #s
+#ifdef __clang__
+#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(unroll n))
+#elif defined __GNUC__
+#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(GCC unroll n))
+#else
+#define GSH_INTERNAL_UNROLL(n)
+#endif
+#ifdef __GNUC__
+#define GSH_INTERNAL_INLINE __attribute__((always_inline))
+#elif _MSC_VER
+#define GSH_INTERNAL_INLINE __forceinline
+#endif

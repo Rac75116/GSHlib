@@ -5,7 +5,6 @@
 #include <gsh/Modint.hpp>
 #include <gsh/TypeDef.hpp>
 #include <gsh/Arr.hpp>
-#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 
@@ -73,7 +72,7 @@ template<class T> constexpr T IntPow(const T x, itype::u64 e) {
     }
     return res;
 }
-template<class T> constexpr T PowMod(const T x, itype::u64 e, const T mod) {
+template<class T> constexpr T ModPow(const T x, itype::u64 e, const T mod) {
     T res = 1, pow = x % mod;
     while (e != 0) {
         const T tmp = (pow * pow) % mod;
@@ -117,8 +116,8 @@ constexpr itype::u64 LinearFloorSum(itype::u32 n, itype::u32 m, itype::u32 a, it
         const itype::u32 p = a / m, q = b / m;
         a %= m;
         b %= m;
-        res += (itype::u64) n * (n - 1) / 2 * p + (itype::u64) n * q;
-        const itype::u64 last = a * (itype::u64) n + b;
+        res += static_cast<itype::u64>(n) * (n - 1) / 2 * p + static_cast<itype::u64>(n) * q;
+        const itype::u64 last = a * static_cast<itype::u64>(n) + b;
         if (last < m) return res;
         n = last / m;
         b = last % m;
@@ -157,10 +156,11 @@ template<class T> constexpr itype::i32 Legendre(const T& x) noexcept {
     auto res = x.pow((T::mod() - 1) >> 1).val();
     return (res <= 1 ? static_cast<itype::i32>(res) : -1);
 }
-template<class T> constexpr itype::i32 Jacobi(const T& x, bool skip_calc_gcd = false) noexcept {
+template<bool skip_calc_gcd = false, class T> constexpr itype::i32 Jacobi(const T& x) noexcept {
     auto a = x.val(), n = T::mod();
     if (a == 1) return 1;
-    if (!skip_calc_gcd && calc_gcd(a, n) != 1) return 0;
+    if constexpr (!skip_calc_gcd)
+        if (internal::calc_gcd(a, n) != 1) return 0;
     itype::i32 res = 1;
     while (a != 0) {
         while (!(a & 1) && a != 0) {

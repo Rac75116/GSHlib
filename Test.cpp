@@ -32,7 +32,6 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    /*
     internal::MontgomeryModint64Impl mint;
     mint.set_mod((1ull << 61) - 1);
     auto a = mint.raw(2), b = mint.raw(3), c = mint.raw(5);
@@ -50,7 +49,6 @@ void Main() {
     Formatter<c8>{}(w, '\n');
     Formatter<u64>{}(w, mint.val(c));
     Formatter<c8>{}(w, '\n');
-    */
 }
 int main() {
 #ifdef ONLINE_JUDGE

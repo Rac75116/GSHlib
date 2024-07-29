@@ -1,8 +1,10 @@
 #pragma once
-#include <bit>       // std::countr_zero, std::bit_cast, std::countr_one
-#include <cstdlib>   // std::exit
-#include <cstring>   // std::memset, std::memcpy, std::memmove
+#include <bit>      // std::countr_zero, std::bit_cast, std::countr_one
+#include <cstdlib>  // std::exit
+#include <cstring>  // std::memset, std::memcpy, std::memmove
+#if __has_include(<unistd.h>)
 #include <unistd.h>  // read, write
+#endif
 #ifndef _WIN32
 #include <sys/mman.h>  // mmap
 #include <sys/stat.h>  // stat, fstat

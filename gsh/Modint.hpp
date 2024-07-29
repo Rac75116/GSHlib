@@ -315,14 +315,15 @@ namespace internal {
         __attribute__((always_inline)) constexpr itype::u64 reduce(const itype::u64 t) const noexcept {
             const itype::u64 res = (t + static_cast<itype::u128>(t * ninv) * mod_) >> 64;
             return res < mod_ ? res : res - mod_;
+            //return mod_ - ((static_cast<itype::u128>(t * ninv) * mod_) >> 64);
         }
         __attribute__((always_inline)) constexpr itype::u64 reduce(const itype::u128 t) const noexcept {
-            //const itype::u64 res = (static_cast<itype::u128>(static_cast<itype::u64>(t) * ninv) * mod_ + t) >> 64;
-            //return res < mod_ ? res : res - mod_;
             const itype::u64 a = t, b = t >> 64;
             const itype::u64 c = a * ninv;
             const itype::u64 d = (static_cast<itype::u128>(c) * mod_) >> 64;
             return b + d + (a != 0);
+            //const itype::u64 a = t, b = t >> 64, m = mod_;
+            //return m + b - static_cast<itype::u64>((static_cast<itype::u128>(a * ninv) * m) >> 64);
         }
     public:
         using value_type = itype::u64;

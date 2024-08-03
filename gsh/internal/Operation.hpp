@@ -1,4 +1,5 @@
 #pragma once
+#include <utility>      // std::move
 #include <type_traits>  // std::is_convertible_v
 
 namespace gsh {
@@ -18,7 +19,11 @@ namespace internal {
             --get_ref();
             return copy;
         }
-        constexpr D operator+() const { return get_ref(); }
+        constexpr D operator+() const
+            requires requires(D x) { -x; }
+        {
+            return get_ref();
+        }
         friend constexpr auto operator*(const D& t1, const D& t2) { return D(t1) *= t2; }
         friend constexpr auto operator/(const D& t1, const D& t2) { return D(t1) /= t2; }
         friend constexpr auto operator%(const D& t1, const D& t2) { return D(t1) %= t2; }

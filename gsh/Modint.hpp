@@ -312,18 +312,10 @@ namespace internal {
 
     class MontgomeryModint64Impl {
         itype::u64 mod_ = 0, R2 = 0, ninv = 0;
-        __attribute__((always_inline)) constexpr itype::u64 reduce(const itype::u64 t) const noexcept {
-            const itype::u64 res = (t + static_cast<itype::u128>(t * ninv) * mod_) >> 64;
-            return res < mod_ ? res : res - mod_;
-            //return mod_ - ((static_cast<itype::u128>(t * ninv) * mod_) >> 64);
-        }
-        __attribute__((always_inline)) constexpr itype::u64 reduce(const itype::u128 t) const noexcept {
+        constexpr itype::u64 reduce(const itype::u128 t) const noexcept {
             const itype::u64 a = t, b = t >> 64;
-            const itype::u64 c = a * ninv;
-            const itype::u64 d = (static_cast<itype::u128>(c) * mod_) >> 64;
-            return b + d + (a != 0);
-            //const itype::u64 a = t, b = t >> 64, m = mod_;
-            //return m + b - static_cast<itype::u64>((static_cast<itype::u128>(a * ninv) * m) >> 64);
+            const itype::u64 c = (static_cast<itype::u128>(a * ninv) * mod_) >> 64;
+            return b + c + (a != 0);
         }
     public:
         using value_type = itype::u64;
@@ -337,17 +329,30 @@ namespace internal {
             for (itype::u32 i = 0; i != 5; ++i) ninv *= 2 - mod_ * ninv;
             ninv = -ninv;
         }
-        constexpr value_type val(value_type x) const noexcept { return reduce(x); }
+        constexpr value_type val(value_type x) const noexcept {
+            const itype::u64 res = static_cast<itype::u64>((static_cast<itype::u128>(x * ninv) * mod_) >> 64) + (x != 0);
+            return res == mod_ ? 0 : res;
+        }
         constexpr value_type mod() const noexcept { return mod_; }
         constexpr value_type build(itype::u32 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
         constexpr value_type build(itype::u64 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
         constexpr value_type raw(value_type x) const noexcept { return reduce(static_cast<itype::u128>(x) * R2); }
-        constexpr value_type neg(value_type x) const noexcept { return x == 0 ? 0 : 2 * mod_ - x; }
+        constexpr value_type neg(value_type x) const noexcept {
+            const itype::u64 tmp = 2 * mod_ - x;
+            return x == 0 ? 0 : tmp;
+        }
         constexpr value_type inc(value_type x) const noexcept { return x + 1 == 2 * mod_ ? 0 : x + 1; }
         constexpr value_type dec(value_type x) const noexcept { return x == 0 ? 2 * mod_ - 1 : x - 1; }
-        constexpr value_type add(value_type x, value_type y) const noexcept { return 2 * mod_ - x > y ? x + y : y - (2 * mod_ - x); }
-        constexpr value_type sub(value_type x, value_type y) const noexcept { return x >= y ? x - y : 2 * mod_ - (y - x); }
+        constexpr value_type add(value_type x, value_type y) const noexcept { return x + y >= 2 * mod_ ? x + y - 2 * mod_ : x + y; }
+        constexpr value_type sub(value_type x, value_type y) const noexcept { return x - y < 2 * mod_ ? x - y : 2 * mod_ + (x - y); }
         constexpr value_type mul(value_type x, value_type y) const noexcept { return reduce(static_cast<itype::u128>(x) * y); }
+        constexpr value_type fma(value_type x, value_type y, value_type z) const noexcept {
+            const itype::u128 t = static_cast<itype::u128>(x) * y;
+            const itype::u64 a = t, b = t >> 64;
+            const itype::u64 c = (static_cast<itype::u128>(a * ninv) * mod_) >> 64;
+            const itype::u64 res = b + c + (a != 0) + z;
+            return res < 2 * mod_ ? res : res - 2 * mod_;
+        }
     };
 
 }  // namespace internal

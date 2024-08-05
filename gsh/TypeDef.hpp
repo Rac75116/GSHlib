@@ -147,8 +147,9 @@ public:
 
 }  // namespace gsh
 
+// clang-format off
 #define GSH_INTERNAL_STR(s) #s
-#ifdef __clang__
+#if defined __clang__ || defined __INTEL_COMPILER
 #define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(unroll n))
 #elif defined __GNUC__
 #define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(GCC unroll n))
@@ -156,7 +157,20 @@ public:
 #define GSH_INTERNAL_UNROLL(n)
 #endif
 #ifdef __GNUC__
-#define GSH_INTERNAL_INLINE __attribute__((always_inline))
+#define GSH_INTERNAL_INLINE [[gnu::always_inline]]
 #elif _MSC_VER
-#define GSH_INTERNAL_INLINE __forceinline
+#define GSH_INTERNAL_INLINE [[msvc::forceinline]]
+#else
+#define GSH_INTERNAL_INLINE inline
 #endif
+#if defined __clang__
+#define GSH_INTERNAL_ASSUME(...) [&]() GSH_INTERNAL_INLINE { __builtin_assume(bool(__VA_ARGS__)); }()
+#elif defined __GNUC__
+#define GSH_INTERNAL_ASSUME(...) [&]() GSH_INTERNAL_INLINE { if (!(__VA_ARGS__)) __builtin_unreachable(); }()
+#elif _MSC_VER
+#define GSH_INTERNAL_ASSUME(...) [&]() GSH_INTERNAL_INLINE { __assume(bool(__VA_ARGS__)); }()
+#else
+namespace gsh { namespace internal { [[noreturn]] inline void unreachable() noexcept {} } }
+#define GSH_INTERNAL_ASSUME(...) [&]() { if(!(__VA_ARGS__)) gsh::internal::unreachable(); }()
+#endif
+// clang-format on

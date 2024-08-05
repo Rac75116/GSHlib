@@ -11,7 +11,6 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <unordered_map>
 //#include <gsh/Modint.hpp>
 //#include <gsh/Numeric.hpp>
 //#include <gsh/Prime.hpp>

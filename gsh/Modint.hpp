@@ -30,11 +30,11 @@ namespace internal {
     }
 
     template<class T> concept IsStaticModint = !requires(T x, typename T::value_type m) { x.set(m); };
-    template<class T, itype::u32> class ModintBase {
+    template<class T, itype::u32 id> class ModintBase {
     protected:
         static inline T mint{};
     };
-    template<IsStaticModint T, itype::u32> class ModintBase {
+    template<IsStaticModint T, itype::u32 id> class ModintBase<T, id> {
     protected:
         constexpr static T mint{};
     };
@@ -53,7 +53,7 @@ namespace internal {
         constexpr ModintImpl() noexcept {}
         template<class U> constexpr ModintImpl(U x) noexcept { operator=(x); }
         constexpr explicit operator value_type() const noexcept { return val(); }
-        constexpr static void set_mod(value_type x) { mint().set_mod(x); }
+        constexpr static void set_mod(value_type x) { mint().set(x); }
         constexpr value_type val() const noexcept { return mint().val(val_); }
         constexpr static value_type mod() noexcept { return mint().mod(); }
         template<class U> constexpr ModintImpl& operator=(U x) noexcept {
@@ -75,87 +75,44 @@ namespace internal {
         }
         constexpr ModintImpl operator++(int) noexcept {
             ModintImpl copy = *this;
-            operator++();
+            val_ = mint().inc(val_);
             return copy;
         }
         constexpr ModintImpl operator--(int) noexcept {
             ModintImpl copy = *this;
-            operator--();
+            val_ = mint().dec(val_);
             return copy;
         }
-        constexpr modint_type& operator+=(modint_type x) noexcept {
-            base_type::add(x);
+        constexpr ModintImpl& operator+=(ModintImpl x) noexcept {
+            val_ = mint().add(val_, x.val_);
             return *this;
         }
-        constexpr modint_type& operator-=(modint_type x) noexcept {
-            base_type::sub(x);
+        constexpr ModintImpl& operator-=(ModintImpl x) noexcept {
+            val_ = mint().sub(val_, x.val_);
             return *this;
         }
-        constexpr modint_type& operator*=(modint_type x) noexcept {
-            base_type::mul(x);
+        constexpr ModintImpl& operator*=(ModintImpl x) noexcept {
+            val_ = mint().mul(val_, x.val_);
             return *this;
         }
-        constexpr modint_type& operator/=(modint_type x) {
-            auto iv = x.inv();
-            if (!iv) throw gsh::Exception("gsh::internal::ModintImpl::operator/= / Cannot calculate inverse.");
-            operator*=(*iv);
+        constexpr ModintImpl& operator/=(ModintImpl x) {
+            val_ = mint().div(val_, x.val_);
             return *this;
         }
-        friend constexpr modint_type operator+(modint_type l, modint_type r) noexcept { return modint_type(l) += r; }
-        friend constexpr modint_type operator-(modint_type l, modint_type r) noexcept { return modint_type(l) -= r; }
-        friend constexpr modint_type operator*(modint_type l, modint_type r) noexcept { return modint_type(l) *= r; }
-        friend constexpr modint_type operator/(modint_type l, modint_type r) { return modint_type(l) /= r; }
-        friend constexpr bool operator==(modint_type l, modint_type r) noexcept { return l.val() == r.val(); }
-        friend constexpr bool operator!=(modint_type l, modint_type r) noexcept { return l.val() != r.val(); }
+        friend constexpr ModintImpl operator+(ModintImpl l, ModintImpl r) noexcept { return construct(mint().add(l.val_, r.val_)); }
+        friend constexpr ModintImpl operator-(ModintImpl l, ModintImpl r) noexcept { return construct(mint().sub(l.val_, r.val_)); }
+        friend constexpr ModintImpl operator*(ModintImpl l, ModintImpl r) noexcept { return construct(mint().mul(l.val_, r.val_)); }
+        friend constexpr ModintImpl operator/(ModintImpl l, ModintImpl r) { return construct(mint().div(l.val_, r.val_)); }
+        friend constexpr bool operator==(ModintImpl l, ModintImpl r) noexcept { return mint().same(l.val_, r.val_); }
+        friend constexpr bool operator!=(ModintImpl l, ModintImpl r) noexcept { return !mint().same(l.val_, r.val_); }
     };
-
-    /*
-    template<class T> class StaticModintImpl {
-        [[no_unique_address]] T mint{};
-        typename T::value_type val_ = 0;
-    protected:
-        using value_type = typename T::value_type;
-        constexpr StaticModintImpl() noexcept {}
-        constexpr value_type val() const noexcept { return mint.val(val_); }
-        constexpr static value_type mod() noexcept { return T::get_mod(); }
-        constexpr void assign(itype::u32 x) noexcept { val_ = mint.build(x); }
-        constexpr void assign(itype::u64 x) noexcept { val_ = mint.build(x); }
-        constexpr void rawassign(value_type x) noexcept { val_ = mint.raw(x); }
-        constexpr void neg() noexcept { val_ = mint.neg(val_); }
-        constexpr void inc() noexcept { val_ = mint.inc(val_); }
-        constexpr void dec() noexcept { val_ = mint.dec(val_); }
-        constexpr void add(StaticModintImpl x) noexcept { val_ = mint.add(val_, x.val_); }
-        constexpr void sub(StaticModintImpl x) noexcept { val_ = mint.sub(val_, x.val_); }
-        constexpr void mul(StaticModintImpl x) noexcept { val_ = mint.mul(val_, x.val_); }
-    };
-
-    template<class T, itype::u32 id> class DynamicModintImpl {
-        static inline T mint{};
-        typename T::value_type val_;
-    public:
-        using value_type = typename T::value_type;
-        DynamicModintImpl() noexcept {}
-        static void set_mod(value_type newmod) noexcept { mint.set(newmod); }
-        value_type val() const noexcept { return mint.val(val_); }
-        static value_type mod() noexcept { return mint.mod(); }
-        void assign(itype::u32 x) noexcept { val_ = mint.build(x); }
-        void assign(itype::u64 x) noexcept { val_ = mint.build(x); }
-        void rawassign(value_type x) noexcept { val_ = mint.raw(x); }
-        void neg() noexcept { val_ = mint.neg(val_); }
-        void inc() noexcept { val_ = mint.inc(val_); }
-        void dec() noexcept { val_ = mint.dec(val_); }
-        void add(DynamicModintImpl x) noexcept { val_ = mint.add(val_, x.val_); }
-        void sub(DynamicModintImpl x) noexcept { val_ = mint.sub(val_, x.val_); }
-        void mul(DynamicModintImpl x) noexcept { val_ = mint.mul(val_, x.val_); }
-    };
-    */
 
     template<class D, class T> class ModintInterface {
         constexpr D& derived() noexcept { return *static_cast<D*>(this); }
         constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
     public:
         using value_type = T;
-        constexpr value_type val(value_type x) { return x; }
+        constexpr value_type val(value_type x) const noexcept { return x; }
         constexpr value_type build(itype::u32 x) const noexcept { return x % derived().mod(); }
         constexpr value_type build(itype::u64 x) const noexcept { return x % derived().mod(); }
         template<class U> constexpr value_type build(U x) const noexcept {
@@ -185,6 +142,12 @@ namespace internal {
         constexpr value_type add(value_type x, value_type y) const noexcept { return derived().mod() - x > y ? x + y : y - (derived().mod() - x); }
         constexpr value_type sub(value_type x, value_type y) const noexcept { return x >= y ? x - y : derived().mod() - (y - x); }
         constexpr value_type fma(value_type x, value_type y, value_type z) const noexcept { return derived().add(derived().mul(x, y), z); }
+        constexpr value_type div(value_type x, value_type y) const noexcept {
+            const value_type iv = derived().inv(y);
+            if (derived().same(iv, derived().zero())) [[unlikely]]
+                throw gsh::Exception("gsh::internal::ModintInterface::div / Cannot calculate inverse.");
+            return derived().mul(x, iv);
+        }
         constexpr bool same(value_type x, value_type y) const noexcept { return x == y; }
         constexpr value_type pow(value_type x, itype::u64 e) const noexcept {
             value_type res = derived().one();
@@ -219,7 +182,7 @@ namespace internal {
                 if (y <= 1) {
                     if (y == 0) [[unlikely]]
                         return derived().zero();
-                    else return derived().build(mod() - b);
+                    else return derived().build(derived().mod() - b);
                 }
                 a += b * (x / y);
                 x %= y;
@@ -231,7 +194,7 @@ namespace internal {
     public:
         constexpr StaticModint32Impl() noexcept {}
         constexpr itype::u32 mod() const noexcept { return mod_; }
-        constexpr itype::u32 mul(itype::u32 x, itype::u32 y) noexcept { return static_cast<itype::u64>(x) * y % mod_; }
+        constexpr itype::u32 mul(itype::u32 x, itype::u32 y) const noexcept { return static_cast<itype::u64>(x) * y % mod_; }
     };
 
     template<itype::u64 mod_> class StaticModint64Impl : public ModintInterface<StaticModint64Impl<mod_>, itype::u64> {
@@ -265,7 +228,7 @@ namespace internal {
         itype::u64 M_ = 0;
     public:
         constexpr DynamicModint32Impl() noexcept {}
-        constexpr void set(itype::u32 n) noexcept {
+        constexpr void set(itype::u32 n) {
             if (n <= 1) [[unlikely]]
                 throw Exception("gsh::internal::DynamicModint32Impl::set / Mod must be at least 2.");
             mod_ = n;
@@ -285,7 +248,7 @@ namespace internal {
         itype::u128 M_ = 0;
     public:
         constexpr DynamicModint64Impl() noexcept {}
-        constexpr void set(itype::u64 n) noexcept {
+        constexpr void set(itype::u64 n) {
             if (n <= 1) [[unlikely]]
                 throw Exception("gsh::internal::DynamicModint64Impl::set / Mod must be at least 2.");
             mod_ = n;
@@ -330,6 +293,7 @@ namespace internal {
         constexpr itype::u64 mod() const noexcept { return mod_; }
         constexpr itype::u64 build(itype::u32 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
         constexpr itype::u64 build(itype::u64 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
+        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintInterface::build(x); }
         constexpr itype::u64 raw(itype::u64 x) const noexcept { return reduce(static_cast<itype::u128>(x) * R2); }
         constexpr itype::u64 neg(itype::u64 x) const noexcept {
             const itype::u64 tmp = 2 * mod_ - x;
@@ -352,11 +316,11 @@ namespace internal {
 
 }  // namespace internal
 
-template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintImpl<internal::StaticModintImpl<internal::StaticModint32Impl<mod_>>>;
-template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintImpl<internal::StaticModintImpl<internal::StaticModint64Impl<mod_>>>;
-template<itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ < (1ull << 32)), StaticModint32<mod_>, StaticModint64<mod_>>;
-template<itype::u32 id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint32Impl, id>>;
-template<itype::u32 id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModintImpl<internal::DynamicModint64Impl, id>>;
-template<itype::u32 id = 0> using MontgomeryModint64 = internal::ModintImpl<internal::DynamicModintImpl<internal::MontgomeryModint64Impl, id>>;
+template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintImpl<internal::StaticModint32Impl<mod_>>;
+template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintImpl<internal::StaticModint64Impl<mod_>>;
+template<itype::u64 mod_ = 998244353> using StaticModint = std::conditional_t<(mod_ <= 0xffffffff), StaticModint32<mod_>, StaticModint64<mod_>>;
+template<itype::u32 id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModint32Impl, id>;
+template<itype::u32 id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModint64Impl, id>;
+template<itype::u32 id = 0> using MontgomeryModint64 = internal::ModintImpl<internal::MontgomeryModint64Impl, id>;
 
 }  // namespace gsh

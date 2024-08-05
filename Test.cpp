@@ -11,11 +11,11 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-//#include <gsh/Modint.hpp>
+#include <gsh/Modint.hpp>
 //#include <gsh/Numeric.hpp>
 //#include <gsh/Prime.hpp>
 //#include <gsh/Random.hpp>
-//#include <gsh/Timer.hpp>
+#include <gsh/Timer.hpp>
 //#include <gsh/Algorithm.hpp>
 
 #if false
@@ -32,19 +32,18 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    /*
-    internal::MontgomeryModint64Impl mint;
-    mint.set_mod((1ull << 62) - 1);
+    internal::DynamicModint64Impl mint;
+    mint.set((1ull << 62) - 1);
     auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);
     ClockTimer t;
     [&]() __attribute__((noinline)) {
         for (u32 i = 0; i != 100000000; ++i) {
-            //a = mint.add(mint.mul(a, a), b);
-            //b = mint.add(mint.mul(b, b), c);
-            //c = mint.add(mint.mul(c, c), a);
-            a = mint.fma(a, a, b);
-            b = mint.fma(b, b, c);
-            c = mint.fma(c, c, a);
+            a = mint.add(mint.mul(a, a), b);
+            b = mint.add(mint.mul(b, b), c);
+            c = mint.add(mint.mul(c, c), a);
+            //a = mint.fma(a, a, b);
+            //b = mint.fma(b, b, c);
+            //c = mint.fma(c, c, a);
         }
     }
     ();
@@ -55,7 +54,6 @@ void Main() {
     Formatter<c8>{}(w, '\n');
     Formatter<u64>{}(w, mint.val(c));
     Formatter<c8>{}(w, '\n');
-    */
 }
 int main() {
 #ifdef ONLINE_JUDGE

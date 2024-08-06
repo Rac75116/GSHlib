@@ -164,11 +164,11 @@ public:
 #define GSH_INTERNAL_INLINE inline
 #endif
 #if defined __clang__
-#define GSH_INTERNAL_ASSUME(...) [&]() GSH_INTERNAL_INLINE { __builtin_assume(bool(__VA_ARGS__)); }()
+#define GSH_INTERNAL_ASSUME(...) [&]() { __builtin_assume(bool(__VA_ARGS__)); }()
 #elif defined __GNUC__
-#define GSH_INTERNAL_ASSUME(...) [&]() GSH_INTERNAL_INLINE { if (!(__VA_ARGS__)) __builtin_unreachable(); }()
+#define GSH_INTERNAL_ASSUME(...) [&]() { if (!(__VA_ARGS__)) __builtin_unreachable(); }()
 #elif _MSC_VER
-#define GSH_INTERNAL_ASSUME(...) [&]() GSH_INTERNAL_INLINE { __assume(bool(__VA_ARGS__)); }()
+#define GSH_INTERNAL_ASSUME(...) [&]() { __assume(bool(__VA_ARGS__)); }()
 #else
 namespace gsh { namespace internal { [[noreturn]] inline void unreachable() noexcept {} } }
 #define GSH_INTERNAL_ASSUME(...) [&]() { if(!(__VA_ARGS__)) gsh::internal::unreachable(); }()

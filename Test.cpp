@@ -33,20 +33,20 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    internal::DynamicModint64Impl mint;
-    //mint.set(998244353);
-    mint.set((51ull << 53) + 1);
+    internal::DynamicModint32Impl mint;
+    mint.set(998244353);
+    //mint.set((51ull << 53) + 1);
     //mint.set(4 * 123456789ull + 3);
     auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);
     ClockTimer t;
     [&]() __attribute__((noinline)) {
-        /*
-        for (u32 i = 0; i != 10000000; ++i) {
-            a = mint.mul(a, a);
-            b = mint.mul(b, b);
-            c = mint.mul(c, c);
+        for (u32 i = 0; i != 100000000; ++i) {
+            auto d = mint.neg(mint.inc(mint.sub(mint.dec(mint.add(mint.mul(a, a), b)), c)));
+            auto e = mint.neg(mint.inc(mint.sub(mint.dec(mint.add(mint.mul(b, b), c)), a)));
+            auto f = mint.neg(mint.inc(mint.sub(mint.dec(mint.add(mint.mul(c, c), a)), b)));
+            a = d, b = e, c = f;
         }
-        */
+        /*
         for (u32 i = 0; i != 200000; ++i) {
             auto tmp_a = mint.sqrt(a);
             auto tmp_b = mint.sqrt(b);
@@ -58,6 +58,7 @@ void Main() {
             b = mint.mul(tmp_b ? tmp_b.val() : b, b);
             c = mint.mul(tmp_c ? tmp_c.val() : c, c);
         }
+        */
     }
     ();
     t.print();

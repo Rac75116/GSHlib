@@ -48,13 +48,13 @@ namespace internal {
         template<class Modint = internal::DynamicModint32Impl> constexpr static bool calc(const itype::u32 x) {
             if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
             Modint mint;
-            mint.set_mod(x);
+            mint.set(x);
             const itype::u32 h = x * 0xad625b89;
             itype::u32 d = x - 1;
             auto pow = mint.raw(bases[h >> 24]);
             itype::u32 s = std::countr_zero(d);
             d >>= s;
-            const auto one = mint.raw(1), mone = mint.neg(one);
+            const auto one = mint.one(), mone = mint.neg(one);
             auto cur = one;
             while (d) {
                 auto tmp = mint.mul(pow, pow);
@@ -73,11 +73,11 @@ namespace internal {
         template<class Modint = internal::MontgomeryModint64Impl> constexpr static bool calc(const itype::u64 x) {
             if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
             Modint mint;
-            mint.set_mod(x);
+            mint.set(x);
             const itype::u32 S = std::countr_zero(x - 1);
             const itype::u64 D = (x - 1) >> S;
-            const auto one = mint.raw(1), mone = mint.neg(one);
-            auto test2 = [&](itype::u64 base1, itype::u64 base2) __attribute__((always_inline)) {
+            const auto one = mint.one(), mone = mint.neg(one);
+            auto test2 = [&](itype::u64 base1, itype::u64 base2) GSH_INTERNAL_INLINE {
                 auto a = one, b = one;
                 auto c = mint.build(base1), d = mint.build(base2);
                 itype::u64 ex = D;
@@ -87,17 +87,18 @@ namespace internal {
                     c = e, d = f;
                     ex >>= 1;
                 }
-                bool res1 = a == one || a == mone, res2 = b == one || b == mone;
+                bool res1 = mint.same(a, one) || mint.same(a, mone);
+                bool res2 = mint.same(b, one) || mint.same(b, mone);
                 if (!(res1 && res2)) {
                     for (itype::u32 i = 0; i != S - 1; ++i) {
                         a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
-                        res1 |= a == mone, res2 |= b == mone;
+                        res1 |= mint.same(a, mone), res2 |= mint.same(b, mone);
                     }
                     if (!res1 || !res2) return false;
                 }
                 return true;
             };
-            auto test3 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3) __attribute__((always_inline)) {
+            auto test3 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3) GSH_INTERNAL_INLINE {
                 auto a = one, b = one, c = one;
                 auto d = mint.build(base1), e = mint.build(base2), f = mint.build(base3);
                 itype::u64 ex = D;
@@ -107,17 +108,19 @@ namespace internal {
                     d = g, e = h, f = i;
                     ex >>= 1;
                 }
-                bool res1 = a == one || a == mone, res2 = b == one || b == mone, res3 = c == one || c == mone;
+                bool res1 = mint.same(a, one) || mint.same(a, mone);
+                bool res2 = mint.same(b, one) || mint.same(b, mone);
+                bool res3 = mint.same(c, one) || mint.same(c, mone);
                 if (!(res1 && res2 && res3)) {
                     for (itype::u32 i = 0; i != S - 1; ++i) {
                         a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
-                        res1 |= a == mone, res2 |= b == mone, res3 |= c == mone;
+                        res1 |= mint.same(a, mone), res2 |= mint.same(b, mone), res3 |= mint.same(c, mone);
                     }
                     if (!res1 || !res2 || !res3) return false;
                 }
                 return true;
             };
-            auto test4 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3, itype::u64 base4) __attribute__((always_inline)) {
+            auto test4 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3, itype::u64 base4) GSH_INTERNAL_INLINE {
                 auto a = one, b = one, c = one, d = one;
                 auto e = mint.build(base1), f = mint.build(base2), g = mint.build(base3), h = mint.build(base4);
                 itype::u64 ex = D;
@@ -127,11 +130,14 @@ namespace internal {
                     e = i, f = j, g = k, h = l;
                     ex >>= 1;
                 }
-                bool res1 = a == one || a == mone, res2 = b == one || b == mone, res3 = c == one || c == mone, res4 = d == one || d == mone;
+                bool res1 = mint.same(a, one) || mint.same(a, mone);
+                bool res2 = mint.same(b, one) || mint.same(b, mone);
+                bool res3 = mint.same(c, one) || mint.same(c, mone);
+                bool res4 = mint.same(d, one) || mint.same(d, mone);
                 if (!(res1 && res2 && res3 && res4)) {
                     for (itype::u32 i = 0; i != S - 1; ++i) {
                         a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c), d = mint.mul(d, d);
-                        res1 |= a == mone, res2 |= b == mone, res3 |= c == mone, res4 |= d == mone;
+                        res1 |= mint.same(a, mone), res2 |= mint.same(b, mone), res3 |= mint.same(c, mone), res4 |= mint.same(d, mone);
                     }
                     if (!res1 || !res2 || !res3 || !res4) return false;
                 }
@@ -154,11 +160,11 @@ namespace internal {
         template<class Modint = internal::MontgomeryModint64Impl> constexpr static bool calc(const itype::u64 x) {
             if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
             Modint mint;
-            mint.set_mod(x);
+            mint.set(x);
             const itype::u32 S = std::countr_zero(x - 1);
             const itype::u64 D = (x - 1) >> S;
-            const auto one = mint.raw(1), mone = mint.raw(x - 1);
-            auto test2 = [&](itype::u32 base1, itype::u32 base2) __attribute__((always_inline)) {
+            const auto one = mint.one(), mone = mint.neg(one);
+            auto test2 = [&](itype::u32 base1, itype::u32 base2) GSH_INTERNAL_INLINE {
                 auto a = one, b = one;
                 auto c = mint.raw(base1), d = mint.raw(base2);
                 itype::u64 ex = D;
@@ -168,14 +174,15 @@ namespace internal {
                     c = e, d = f;
                     ex >>= 1;
                 }
-                bool res1 = a == one || a == mone, res2 = b == one || b == mone;
+                bool res1 = mint.same(a, one) || mint.same(a, mone);
+                bool res2 = mint.same(b, one) || mint.same(b, mone);
                 for (itype::u32 i = 0; i != S - 1; ++i) {
                     a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
-                    res1 |= a == mone, res2 |= b == mone;
+                    res1 |= mint.same(a, mone), res2 |= mint.same(b, mone);
                 }
                 return res1 && res2;
             };
-            auto test3 = [&](itype::u32 base1, itype::u32 base2, itype::u32 base3) __attribute__((always_inline)) {
+            auto test3 = [&](itype::u32 base1, itype::u32 base2, itype::u32 base3) GSH_INTERNAL_INLINE {
                 auto a = one, b = one, c = one;
                 auto d = mint.raw(base1), e = mint.raw(base2), f = mint.raw(base3);
                 itype::u64 ex = D;
@@ -185,10 +192,12 @@ namespace internal {
                     d = g, e = h, f = i;
                     ex >>= 1;
                 }
-                bool res1 = a == one || a == mone, res2 = b == one || b == mone, res3 = c == one || c == mone;
+                bool res1 = mint.same(a, one) || mint.same(a, mone);
+                bool res2 = mint.same(b, one) || mint.same(b, mone);
+                bool res3 = mint.same(c, one) || mint.same(c, mone);
                 for (itype::u32 i = 0; i != S - 1; ++i) {
                     a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
-                    res1 |= a == mone, res2 |= b == mone, res3 |= c == mone;
+                    res1 |= mint.same(a, mone), res2 |= mint.same(b, mone), res3 |= mint.same(c, mone);
                 }
                 return res1 && res2 && res3;
             };
@@ -201,7 +210,7 @@ namespace internal {
 }  // namespace internal
 
 // @brief Prime number determination
-template<bool Prob = false> constexpr bool isPrime(const itype::u64 x) {
+template<bool Prob = true> constexpr bool isPrime(const itype::u64 x) {
     if (x <= 0xffffffff) {
         if (x < 65536u) return internal::isPrime16<0>::calc(x);
         else if (x < 2147483648u) return internal::isPrime32<0>::calc(x);

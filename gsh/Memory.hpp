@@ -4,25 +4,11 @@
 #include <utility>          // std::forward
 #include <iterator>         // std::begin, std::end
 #include <cstdlib>          // std::malloc, std::free, std::realloc, std::aligned_alloc
-#include <new>              // ::operator new, std::launder
+#include <new>              // ::operator new
+#include <memory>           // std::construct_at, std::destroy_at
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
-
-template<class T, class... Args> constexpr T* ConstructAt(T* location, Args&&... args) {
-    auto ptr = ::new (const_cast<void*>(static_cast<const volatile void*>(location))) T(std::forward<Args>(args)...);
-    if constexpr (std::is_array_v<T>) return std::launder(location);
-    else return ptr;
-}
-template<class T> constexpr void DestroyAt(T* location) {
-    if constexpr (!std::is_trivially_destructible_v<T>) {
-        if constexpr (std::is_array_v<T>) {
-            auto beg = std::begin(*location);
-            auto end = std::end(*location);
-            for (auto itr = beg; itr != end; ++itr) DestroyAt(itr);
-        } else location->~T();
-    }
-}
 
 namespace internal {
     template<class T, class U> struct GetPtr {
@@ -181,11 +167,11 @@ public:
     }
     template<class T, class... Args> static constexpr void construct(Alloc& a, T* p, Args&&... args) {
         if constexpr (requires { a.construct(p, std::forward<Args>(args)...); }) a.construct(p, std::forward<Args>(args)...);
-        else ConstructAt(p, std::forward<Args>(args)...);
+        else std::construct_at(p, std::forward<Args>(args)...);
     }
     template<class T> static constexpr void destroy(Alloc& a, T* p) {
         if constexpr (requires { a.destroy(p); }) a.destroy(p);
-        else DestroyAt(p);
+        else std::destroy_at(p);
     }
     static constexpr Alloc select_on_container_copy_construction(const Alloc& a) {
         if constexpr (requires { a.select_on_container_copy_construction(); }) return a.select_on_container_copy_construction();

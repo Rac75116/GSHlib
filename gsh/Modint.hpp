@@ -4,6 +4,7 @@
 #include <bit>                // std::countr_zero, std::has_single_bit
 #include <gsh/TypeDef.hpp>    // gsh::itype
 #include <gsh/Exception.hpp>  // gsh::Exception
+#include <gsh/Option.hpp>     // gsh::Option
 
 namespace gsh {
 
@@ -108,7 +109,6 @@ namespace internal {
     };
 
     template<class D, class T> class ModintInterface {
-        constexpr D& derived() noexcept { return *static_cast<D*>(this); }
         constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
     public:
         using value_type = T;
@@ -149,20 +149,11 @@ namespace internal {
             return derived().mul(x, iv);
         }
         constexpr bool same(value_type x, value_type y) const noexcept { return x == y; }
+        constexpr value_type abs(value_type x) const noexcept { return derived().val(x) > (derived().mod() / 2) ? derived().neg(x) : x; }
         constexpr value_type pow(value_type x, itype::u64 e) const noexcept {
             value_type res = derived().one();
             while (e) {
-                value_type tmp = derived().mul(x, x);
-                if (e & 1) res = derived().mul(res, x);
-                x = tmp;
-                e >>= 1;
-            }
-            return res;
-        }
-        constexpr value_type pow(value_type x, itype::u32 e) const noexcept {
-            value_type res = derived().one();
-            while (e) {
-                value_type tmp = derived().mul(x, x);
+                auto tmp = derived().mul(x, x);
                 if (e & 1) res = derived().mul(res, x);
                 x = tmp;
                 e >>= 1;
@@ -186,6 +177,104 @@ namespace internal {
                 }
                 a += b * (x / y);
                 x %= y;
+            }
+        }
+        constexpr itype::i32 legendre(value_type x) const noexcept {
+            auto res = derived().pow(x, (derived().mod() - 1) >> 1);
+            const bool a = derived().same(res, derived().zero()), b = derived().same(res, derived().one());
+            return a ? 0 : (b ? 1 : -1);
+        }
+        constexpr itype::i32 jacobi(value_type x) const noexcept {
+            auto a = derived().val(x), n = derived().mod();
+            if (a == 1) return 1;
+            itype::i32 res = 1;
+            while (a != 0) {
+                while (!(a & 1) && a != 0) {
+                    a >>= 1;
+                    res = ((n & 0b111) == 3 || (n & 0b111) == 5) ? -res : res;
+                }
+                res = ((a & 0b11) == 3 || (n & 0b11) == 3) ? -res : res;
+                auto tmp = n;
+                n = a;
+                a = tmp;
+                a %= n;
+            }
+            return n == 1 ? res : 0;
+        }
+        constexpr Option<value_type> sqrt(value_type n) const noexcept {
+            const auto md = derived().mod();
+            if (derived().same(n, derived().zero()) || derived().same(n, derived().one())) return n;
+            if (md % 4 == 3) {
+                auto res = derived().pow(n, (md + 1) >> 2);
+                if (!derived().same(derived().mul(res, res), n)) return Null;
+                else return derived().abs(res);
+            } else if (md % 8 == 5) {
+                auto res = derived().pow(n, (md + 3) >> 3);
+                if (!derived().same(derived().mul(res, res), n)) {
+                    const auto p = derived().pow(derived().raw(2), (md - 1) >> 2);
+                    res = derived().mul(res, p);
+                }
+                if (!derived().same(derived().mul(res, res), n)) return Null;
+                else return derived().abs(res);
+            } else {
+                const itype::u32 S = std::countr_zero(md - 1);
+                const itype::u32 W = std::bit_width(md);
+                if (false && S * S <= 12 * W) {
+                    const auto Q = (md - 1) >> S;
+                    const auto tmp = derived().pow(n, Q / 2);
+                    auto R = derived().mul(tmp, n), t = derived().mul(tmp, R);
+                    if (derived().same(t, derived().one())) return R;
+                    auto u = t;
+                    for (itype::u32 i = 0; i != S - 1; ++i) u = derived().mul(u, u);
+                    if (!derived().same(u, derived().one())) return Null;
+                    const auto z = derived().pow(
+                      [&]() {
+                          if (md % 3 == 2) return derived().raw(3);
+                          if (auto x = md % 5; x == 2 || x == 3) return derived().raw(5);
+                          if (auto x = md % 7; x == 3 || x == 5 || x == 6) return derived().raw(7);
+                          if (auto x = md % 11; x == 2 || x == 6 || x == 7 || x == 8 || x == 10) return derived().build(11);
+                          if (auto x = md % 13; x == 2 || x == 5 || x == 6 || x == 7 || x == 8 || x == 11) return derived().build(13);
+                          for (const itype::u32 x : { 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97 }) {
+                              const auto y = derived().build(x);
+                              if (derived().legendre(y) == -1) return y;
+                          }
+                          auto z = derived().build(101);
+                          while (derived().legendre(z) != -1) z = derived().add(z, derived().raw(2));
+                          return z;
+                      }(),
+                      Q);
+                    itype::u32 M = S;
+                    auto c = z;
+                    do {
+                        auto U = derived().mul(t, t);
+                        itype::u32 i = 1;
+                        while (!derived().same(U, derived().one())) U = derived().mul(U, U), ++i;
+                        auto b = c;
+                        for (itype::u32 j = 0, k = M - i - 1; j != k; ++j) b = derived().mul(b, b);
+                        M = i, c = derived().mul(b, b), t = derived().mul(t, c), R = derived().mul(R, b);
+                    } while (!derived().same(t, derived().one()));
+                    return derived().abs(R);
+                } else {
+                    if (derived().legendre(n) != 1) return Null;
+                    auto a = derived().raw(4);
+                    decltype(a) w;
+                    while (derived().legendre(w = derived().sub(derived().mul(a, a), n)) != -1) a = derived().inc(a);
+                    auto res1 = derived().one(), res2 = derived().zero(), pow1 = a, pow2 = res1;
+                    auto e = (md + 1) / 2;
+                    while (true) {
+                        const auto tmp2 = derived().mul(pow2, w);
+                        if (e & 1) {
+                            const auto tmp = res1;
+                            res1 = derived().add(derived().mul(res1, pow1), derived().mul(res2, tmp2));
+                            res2 = derived().add(derived().mul(tmp, pow2), derived().mul(res2, pow1));
+                        }
+                        e >>= 1;
+                        if (e == 0) return derived().abs(res1);
+                        const auto tmp = pow1;
+                        pow1 = derived().add(derived().mul(pow1, pow1), derived().mul(pow2, tmp2));
+                        pow2 = derived().mul(pow2, derived().add(tmp, tmp));
+                    }
+                }
             }
         }
     };

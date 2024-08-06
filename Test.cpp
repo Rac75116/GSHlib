@@ -12,11 +12,12 @@
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
 #include <gsh/Modint.hpp>
-//#include <gsh/Numeric.hpp>
-//#include <gsh/Prime.hpp>
+#include <gsh/Numeric.hpp>
+#include <gsh/Prime.hpp>
 //#include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
 //#include <gsh/Algorithm.hpp>
+#include <cassert>
 
 #if false
 #include <fcntl.h>
@@ -33,17 +34,29 @@ void Main() {
     using namespace gsh::ftype;
     using namespace gsh::ctype;
     internal::DynamicModint64Impl mint;
-    mint.set((1ull << 62) - 1);
+    //mint.set(998244353);
+    mint.set((51ull << 53) + 1);
+    //mint.set(4 * 123456789ull + 3);
     auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);
     ClockTimer t;
     [&]() __attribute__((noinline)) {
-        for (u32 i = 0; i != 100000000; ++i) {
-            a = mint.add(mint.mul(a, a), b);
-            b = mint.add(mint.mul(b, b), c);
-            c = mint.add(mint.mul(c, c), a);
-            //a = mint.fma(a, a, b);
-            //b = mint.fma(b, b, c);
-            //c = mint.fma(c, c, a);
+        /*
+        for (u32 i = 0; i != 10000000; ++i) {
+            a = mint.mul(a, a);
+            b = mint.mul(b, b);
+            c = mint.mul(c, c);
+        }
+        */
+        for (u32 i = 0; i != 200000; ++i) {
+            auto tmp_a = mint.sqrt(a);
+            auto tmp_b = mint.sqrt(b);
+            auto tmp_c = mint.sqrt(c);
+            if (tmp_a) assert(mint.same(mint.mul(*tmp_a, *tmp_a), a));
+            if (tmp_b) assert(mint.same(mint.mul(*tmp_b, *tmp_b), b));
+            if (tmp_c) assert(mint.same(mint.mul(*tmp_c, *tmp_c), c));
+            a = mint.mul(tmp_a ? tmp_a.val() : a, a);
+            b = mint.mul(tmp_b ? tmp_b.val() : b, b);
+            c = mint.mul(tmp_c ? tmp_c.val() : c, c);
         }
     }
     ();

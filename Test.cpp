@@ -33,8 +33,9 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    internal::DynamicModint32Impl mint;
-    mint.set(998244353);
+    internal::StaticModint32Impl<998244353> mint;
+    //internal::DynamicModint32Impl mint;
+    //mint.set(998244353);
     //mint.set((51ull << 53) + 1);
     //mint.set(4 * 123456789ull + 3);
     auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);

@@ -77,7 +77,7 @@ namespace internal {
             const itype::u32 S = std::countr_zero(x - 1);
             const itype::u64 D = (x - 1) >> S;
             const auto one = mint.one(), mone = mint.neg(one);
-            auto test2 = [&](itype::u64 base1, itype::u64 base2) GSH_INTERNAL_INLINE {
+            auto test2 = [&](itype::u64 base1, itype::u64 base2) {
                 auto a = one, b = one;
                 auto c = mint.build(base1), d = mint.build(base2);
                 itype::u64 ex = D;
@@ -98,7 +98,7 @@ namespace internal {
                 }
                 return true;
             };
-            auto test3 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3) GSH_INTERNAL_INLINE {
+            auto test3 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3) {
                 auto a = one, b = one, c = one;
                 auto d = mint.build(base1), e = mint.build(base2), f = mint.build(base3);
                 itype::u64 ex = D;
@@ -120,7 +120,7 @@ namespace internal {
                 }
                 return true;
             };
-            auto test4 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3, itype::u64 base4) GSH_INTERNAL_INLINE {
+            auto test4 = [&](itype::u64 base1, itype::u64 base2, itype::u64 base3, itype::u64 base4) {
                 auto a = one, b = one, c = one, d = one;
                 auto e = mint.build(base1), f = mint.build(base2), g = mint.build(base3), h = mint.build(base4);
                 itype::u64 ex = D;
@@ -164,7 +164,7 @@ namespace internal {
             const itype::u32 S = std::countr_zero(x - 1);
             const itype::u64 D = (x - 1) >> S;
             const auto one = mint.one(), mone = mint.neg(one);
-            auto test2 = [&](itype::u32 base1, itype::u32 base2) GSH_INTERNAL_INLINE {
+            auto test2 = [&](itype::u32 base1, itype::u32 base2) {
                 auto a = one, b = one;
                 auto c = mint.raw(base1), d = mint.raw(base2);
                 itype::u64 ex = D;
@@ -182,7 +182,7 @@ namespace internal {
                 }
                 return res1 && res2;
             };
-            auto test3 = [&](itype::u32 base1, itype::u32 base2, itype::u32 base3) GSH_INTERNAL_INLINE {
+            auto test3 = [&](itype::u32 base1, itype::u32 base2, itype::u32 base3) {
                 auto a = one, b = one, c = one;
                 auto d = mint.raw(base1), e = mint.raw(base2), f = mint.raw(base3);
                 itype::u64 ex = D;

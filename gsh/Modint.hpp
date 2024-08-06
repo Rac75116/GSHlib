@@ -133,7 +133,10 @@ namespace internal {
                 }
             }
         }
-        constexpr value_type raw(value_type x) const noexcept { return x; }
+        constexpr value_type raw(value_type x) const noexcept {
+            GSH_INTERNAL_ASSUME(x < derived().mod());
+            return x;
+        }
         constexpr value_type zero() const noexcept { return derived().raw(0); }
         constexpr value_type one() const noexcept { return derived().raw(1); }
         constexpr value_type neg(value_type x) const noexcept {
@@ -164,7 +167,10 @@ namespace internal {
             return derived().mul(x, iv);
         }
         constexpr bool same(value_type x, value_type y) const noexcept { return x == y; }
-        constexpr value_type abs(value_type x) const noexcept { return derived().val(x) > (derived().mod() / 2) ? derived().neg(x) : x; }
+        constexpr value_type abs(value_type x) const noexcept {
+            GSH_INTERNAL_ASSUME(x < derived().mod());
+            return derived().val(x) > (derived().mod() / 2) ? derived().neg(x) : x;
+        }
         constexpr value_type pow(value_type x, itype::u64 e) const noexcept {
             value_type res = derived().one();
             while (e) {

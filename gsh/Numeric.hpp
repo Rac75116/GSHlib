@@ -111,6 +111,173 @@ template<class T, class... Args> constexpr auto LCM(T x, Args... y) {
     return LCM(x, LCM(y...));
 }
 
+namespace internal {
+    template<itype::u32> struct KthRootImpl {
+        // clang-format off
+        constexpr static itype::u64 pw3[] = {
+1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,
+1162261467,3486784401,10460353203,31381059609,94143178827,282429536481,847288609443,2541865828329,7625597484987,
+22876792454961,68630377364883,205891132094649,617673396283947,1853020188851841,5559060566555523,16677181699666569,
+50031545098999707,150094635296999121,450283905890997363,1350851717672992089,4052555153018976267,12157665459056928801u
+        };
+        constexpr static itype::u64 pw5[] = {
+1,5,25,125,625,3125,15625,78125,390625,1953125,9765625,48828125,244140625,1220703125,6103515625,30517578125,
+152587890625,762939453125,3814697265625,19073486328125,95367431640625,476837158203125,2384185791015625,
+11920928955078125,59604644775390625,298023223876953125,1490116119384765625,7450580596923828125
+        };
+        constexpr static itype::u64 pw7[] = {
+1,7,49,343,2401,16807,117649,823543,5764801,40353607,282475249,1977326743,13841287201,96889010407,678223072849,4747561509943,33232930569601,
+232630513987207,1628413597910449,11398895185373143,79792266297612001,558545864083284007,3909821048582988049,8922003266371364727,7113790643470898241
+        };
+        constexpr static itype::u64 pw11[] = {
+1,11,121,1331,14641,161051,1771561,19487171,214358881,2357947691,25937424601,285311670611,3138428376721,
+34522712143931,379749833583241,4177248169415651,45949729863572161,505447028499293771,5559917313492231481
+        };
+        constexpr static itype::u64 pw13[] = {
+1,13,169,2197,28561,371293,4826809,62748517,815730721,10604499373,137858491849,1792160394037,
+23298085122481,302875106592253,3937376385699289,51185893014090757,665416609183179841,8650415919381337933
+        };
+        constexpr static itype::u64 pw17[] = {
+1,17,289,4913,83521,1419857,24137569,410338673,6975757441,118587876497,2015993900449,
+34271896307633,582622237229761,9904578032905937,168377826559400929,2862423051509815793
+        };
+        constexpr static itype::u64 pw19[] = {
+1,19,361,6859,130321,2476099,47045881,893871739,16983563041,322687697779,6131066257801,
+116490258898219,2213314919066161,42052983462257059,799006685782884121,15181127029874798299u
+        };
+        constexpr static itype::u64 pw23[] = {
+1,23,529,12167,279841,6436343,148035889,3404825447,78310985281,1801152661463,
+41426511213649,952809757913927,21914624432020321,504036361936467383,11592836324538749809u
+        };
+        constexpr static itype::u64 pw29[] = {
+1,29,841,24389,707281,20511149,594823321,17249876309,500246412961,14507145975869,
+420707233300201,12200509765705829,353814783205469041,10260628712958602189u
+        };
+        constexpr static itype::u64 pw31[] = {
+1,31,961,29791,923521,28629151,887503681,27512614111,852891037441,26439622160671,819628286980801,25408476896404831,787662783788549761
+        };
+        constexpr static itype::u64 pw37[] = {
+1,37,1369,50653,1874161,69343957,2565726409,94931877133,3512479453921,129961739795077,4808584372417849,177917621779460413,6582952005840035281
+        };
+        constexpr static ftype::f64 iv[] = {
+0.0,0x1.fffffffffffffp-1,0x1.fffffffffffffp-2,0x1.5555555555554p-2,0x1.fffffffffffffp-3,0x1.9999999999999p-3,0x1.5555555555554p-3,
+0x1.2492492492491p-3,0x1.fffffffffffffp-4,0x1.c71c71c71c71bp-4,0x1.9999999999999p-4,0x1.745d1745d1745p-4,0x1.5555555555554p-4,
+0x1.3b13b13b13b13p-4,0x1.2492492492491p-4,0x1.111111111111p-4,0x1.fffffffffffffp-5,0x1.e1e1e1e1e1e1dp-5,0x1.c71c71c71c71bp-5,
+0x1.af286bca1af27p-5,0x1.9999999999999p-5,0x1.8618618618617p-5,0x1.745d1745d1745p-5,0x1.642c8590b2163p-5,0x1.5555555555554p-5,
+0x1.47ae147ae147ap-5,0x1.3b13b13b13b13p-5,0x1.2f684bda12f67p-5,0x1.2492492492491p-5,0x1.1a7b9611a7b95p-5,0x1.111111111111p-5,0x1.0842108421083p-5
+        };
+        constexpr static itype::u64 lim[] = {
+0,18446744073709551615u,4294967295,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4
+        };
+        // clang-format on
+        template<itype::u64 K> constexpr static itype::u64 calc(itype::u64 n) {
+            if constexpr (K >= 12) {
+                itype::u64 res = 1 + (n >= (1ull << K));
+                if constexpr (K < 41) res += (n >= pw3[K]);
+                if constexpr (K < 32) res += (n >= (1ull << (2 * K)));
+                if constexpr (K < 28) res += (n >= pw5[K]);
+                if constexpr (K < 25) res += (n >= (pw3[K] << K));
+                if constexpr (K < 23) res += (n >= pw7[K]);
+                if constexpr (K < 22) res += (n >= (1ull << (3 * K)));
+                if constexpr (K < 21) res += (n >= pw3[K] * pw3[K]);
+                if constexpr (K < 20) res += (n >= (pw5[K] << K));
+                if constexpr (K < 19) res += (n >= pw11[K]);
+                if constexpr (K < 18) res += (n >= (pw3[K] << (2 * K))) + (n >= pw13[K]);
+                if constexpr (K < 17) res += (n >= (pw7[K] << K)) + (n >= (pw3[K] * pw5[K]));
+                if constexpr (K < 16) res += (n >= (1ull << (4 * K))) + (n >= pw17[K]) + (n >= ((pw3[K] * pw3[K]) << K)) + (n >= pw19[K]);
+                if constexpr (K < 15) res += (n >= (pw5[K] << (2 * K))) + (n >= (pw3[K] * pw7[K])) + (n >= (pw11[K] << K)) + (n >= pw23[K]);
+                if constexpr (K < 14) res += (n >= (pw3[K] << (3 * K))) + (n >= (pw5[K] * pw5[K])) + (n >= (pw13[K] << K)) + (n >= (pw3[K] * pw3[K] * pw3[K])) + (n >= (pw7[K] << (2 * K))) + (n >= pw29[K]) + (n >= ((pw3[K] * pw5[K]) << K));
+                if constexpr (K < 13) res += (n >= pw31[K]) + (n >= (1ull << (5 * K))) + (n >= (pw3[K] * pw11[K])) + (n >= (pw17[K] << K)) + (n >= (pw5[K] * pw7[K])) + (n >= ((pw3[K] * pw3[K]) << (2 * K))) + (n >= pw37[K]) + (n >= (pw19[K] << K)) + (n >= (pw3[K] * pw13[K])) + (n >= (pw5[K] << (3 * K)));
+                return res;
+            } else if constexpr (K >= 3) {
+                const itype::u64 r = static_cast<itype::i64>(std::pow(n, iv[K]));
+                itype::u64 a = 1, p = r + 1;
+                GSH_INTERNAL_UNROLL(8)
+                for (itype::u64 e = K; e != 0; e >>= 1) {
+                    if (e & 1) a *= p;
+                    p *= p;
+                }
+                return r + (r < lim[K] && a <= n);
+            } else if constexpr (K == 2) return IntSqrt64(n);
+            else if constexpr (K == 1) return n;
+            else return 0xffffffffffffffff;
+        }
+        constexpr static itype::u64 calc2(itype::u64 n, itype::u64 k) {
+            if (n == 0) return 0;
+            switch (k) {
+            case 0 : return calc<0>(n);
+            case 1 : return calc<1>(n);
+            case 2 : return calc<2>(n);
+            case 3 : return calc<3>(n);
+            case 4 : return calc<4>(n);
+            case 5 : return calc<5>(n);
+            case 6 : return calc<6>(n);
+            case 7 : return calc<7>(n);
+            case 8 : return calc<8>(n);
+            case 9 : return calc<9>(n);
+            case 10 : return calc<10>(n);
+            case 11 : return calc<11>(n);
+            case 12 : return calc<12>(n);
+            case 13 : return calc<13>(n);
+            case 14 : return calc<14>(n);
+            case 15 : return calc<15>(n);
+            case 16 : return calc<16>(n);
+            case 17 : return calc<17>(n);
+            case 18 : return calc<18>(n);
+            case 19 : return calc<19>(n);
+            case 20 : return calc<20>(n);
+            case 21 : return calc<21>(n);
+            case 22 : return calc<22>(n);
+            case 23 : return calc<23>(n);
+            case 24 : return calc<24>(n);
+            case 25 : return calc<25>(n);
+            case 26 : return calc<26>(n);
+            case 27 : return calc<27>(n);
+            case 28 : return calc<28>(n);
+            case 29 : return calc<29>(n);
+            case 30 : return calc<30>(n);
+            case 31 : return calc<31>(n);
+            case 32 : return calc<32>(n);
+            case 33 : return calc<33>(n);
+            case 34 : return calc<34>(n);
+            case 35 : return calc<35>(n);
+            case 36 : return calc<36>(n);
+            case 37 : return calc<37>(n);
+            case 38 : return calc<38>(n);
+            case 39 : return calc<39>(n);
+            case 40 : return calc<40>(n);
+            case 41 : return calc<41>(n);
+            case 42 : return calc<42>(n);
+            case 43 : return calc<43>(n);
+            case 44 : return calc<44>(n);
+            case 45 : return calc<45>(n);
+            case 46 : return calc<46>(n);
+            case 47 : return calc<47>(n);
+            case 48 : return calc<48>(n);
+            case 49 : return calc<49>(n);
+            case 50 : return calc<50>(n);
+            case 51 : return calc<51>(n);
+            case 52 : return calc<52>(n);
+            case 53 : return calc<53>(n);
+            case 54 : return calc<54>(n);
+            case 55 : return calc<55>(n);
+            case 56 : return calc<56>(n);
+            case 57 : return calc<57>(n);
+            case 58 : return calc<58>(n);
+            case 59 : return calc<59>(n);
+            case 60 : return calc<60>(n);
+            case 61 : return calc<61>(n);
+            case 62 : return calc<62>(n);
+            case 63 : return calc<63>(n);
+            default : return 1;
+            }
+        }
+    };
+}  // namespace internal
+constexpr itype::u64 KthRoot(itype::u64 n, itype::u64 k) {
+    return internal::KthRootImpl<0>::calc2(n, k);
+}
+
 constexpr itype::u64 LinearFloorSum(itype::u32 n, itype::u32 m, itype::u32 a, itype::u32 b) {
     itype::u64 res = 0;
     while (true) {

@@ -108,43 +108,6 @@ namespace simd {
 
 }  // namespace simd
 
-class Byte {
-    itype::u8 b = 0;
-public:
-    friend constexpr Byte operator&(Byte l, Byte r) noexcept { return Byte::from_integer(l.b & r.b); }
-    constexpr Byte& operator&=(Byte r) noexcept {
-        b &= r.b;
-        return *this;
-    }
-    friend constexpr Byte operator|(Byte l, Byte r) noexcept { return Byte::from_integer(l.b | r.b); }
-    constexpr Byte& operator|=(Byte r) noexcept {
-        b |= r.b;
-        return *this;
-    }
-    friend constexpr Byte operator^(Byte l, Byte r) noexcept { return Byte::from_integer(l.b ^ r.b); }
-    constexpr Byte& operator^=(Byte r) noexcept {
-        b ^= r.b;
-        return *this;
-    }
-    template<class IntType> friend constexpr Byte operator<<(Byte l, IntType r) noexcept { return Byte::from_integer(l.b << r); }
-    template<class IntType> constexpr Byte& operator<<=(IntType r) noexcept {
-        b <<= r;
-        return *this;
-    }
-    template<class IntType> friend constexpr Byte operator>>(Byte l, IntType r) noexcept { return Byte::from_integer(l.b >> r); }
-    template<class IntType> constexpr Byte& operator>>=(IntType r) noexcept {
-        b >>= r;
-        return *this;
-    }
-    friend constexpr Byte operator~(Byte l) noexcept { return Byte::from_integer(~l.b); }
-    template<class IntType> constexpr IntType to_integer() noexcept { return static_cast<IntType>(b); }
-    template<class IntType> static constexpr Byte from_integer(IntType l) noexcept {
-        Byte res;
-        res.b = static_cast<itype::u8>(l);
-        return res;
-    }
-};  // namespace class Byte
-
 }  // namespace gsh
 
 // clang-format off
@@ -164,11 +127,28 @@ public:
 #define GSH_INTERNAL_INLINE inline
 #endif
 #if defined __GNUC__ || defined __clang__
-#define GSH_INTERNAL_ASSUME(...) [&]() { if (!(__VA_ARGS__)) __builtin_unreachable(); }()
+#define GSH_INTERNAL_ASSUME(...) ([&]() -> void { if (!(__VA_ARGS__)) __builtin_unreachable(); }())
 #elif _MSC_VER
-#define GSH_INTERNAL_ASSUME(...) [&]() { __assume(bool(__VA_ARGS__)); }()
+#define GSH_INTERNAL_ASSUME(...) ([&]() -> void { if (!(__VA_ARGS__)) __assume(false); }())
 #else
 namespace gsh { namespace internal { [[noreturn]] inline void unreachable() noexcept {} } }
-#define GSH_INTERNAL_ASSUME(...) [&]() { if(!(__VA_ARGS__)) gsh::internal::unreachable(); }()
+#define GSH_INTERNAL_ASSUME(...) ([&]() -> void { if (!(__VA_ARGS__)) gsh::internal::unreachable(); }())
+#endif
+#if defined __GNUC__ || defined __clang__
+#define GSH_INTERNAL_EXPECT(cond, f) __builtin_expect(cond, f)
+#define GSH_INTERNAL_EXPECT_WITH_PROB(cond, prob) __builtin_expect_with_probability(cond, 1, prob)
+#else
+#define GSH_INTERNAL_EXPECT(cond, f) ([&]() -> void { if constexpr (f) { \
+        if (cond) [[likely]] return true; else return false; \
+    } else { \
+        if (cond) [[unlikely]] return true; else return false; \
+    } \
+}())
+#define GSH_INTERNAL_EXPECT_WITH_PROB(cond, prob) ([&]() -> void { if constexpr ((prob) > 0.95) { \
+        if (cond) [[likely]] return true; else return false; \
+    } else if constexpr ((prob) < 0.05) { \
+        if (cond) [[unlikely]] return true; else return false; \
+    } else return (cond); \
+}())
 #endif
 // clang-format on

@@ -21,7 +21,7 @@ namespace internal {
         while (x != y) {
             const T a = y - x, b = x - y;
             const itype::i32 m = std::countr_zero(a), n = std::countr_zero(b);
-            GSH_INTERNAL_ASSUME(m == n);
+            Assume(m == n);
             const T s = y < x ? b : a;
             const T t = x < y ? x : y;
             x = s >> m;
@@ -134,29 +134,29 @@ namespace internal {
             }
         }
         constexpr value_type raw(value_type x) const noexcept {
-            GSH_INTERNAL_ASSUME(x < derived().mod());
+            Assume(x < derived().mod());
             return x;
         }
         constexpr value_type zero() const noexcept { return derived().raw(0); }
         constexpr value_type one() const noexcept { return derived().raw(1); }
         constexpr value_type neg(value_type x) const noexcept {
-            GSH_INTERNAL_ASSUME(x < derived().mod());
+            Assume(x < derived().mod());
             return x == 0 ? 0 : derived().mod() - x;
         }
         constexpr value_type inc(value_type x) const noexcept {
-            GSH_INTERNAL_ASSUME(x < derived().mod());
+            Assume(x < derived().mod());
             return x + 1 == derived().mod() ? 0 : x + 1;
         }
         constexpr value_type dec(value_type x) const noexcept {
-            GSH_INTERNAL_ASSUME(x < derived().mod());
+            Assume(x < derived().mod());
             return x == 0 ? derived().mod() - 1 : x - 1;
         }
         constexpr value_type add(value_type x, value_type y) const noexcept {
-            GSH_INTERNAL_ASSUME(x < derived().mod() && y < derived().mod());
+            Assume(x < derived().mod() && y < derived().mod());
             return derived().mod() - x > y ? x + y : y - (derived().mod() - x);
         }
         constexpr value_type sub(value_type x, value_type y) const noexcept {
-            GSH_INTERNAL_ASSUME(x < derived().mod() && y < derived().mod());
+            Assume(x < derived().mod() && y < derived().mod());
             return x >= y ? x - y : derived().mod() - (y - x);
         }
         constexpr value_type fma(value_type x, value_type y, value_type z) const noexcept { return derived().add(derived().mul(x, y), z); }
@@ -168,7 +168,7 @@ namespace internal {
         }
         constexpr bool same(value_type x, value_type y) const noexcept { return x == y; }
         constexpr value_type abs(value_type x) const noexcept {
-            GSH_INTERNAL_ASSUME(x < derived().mod());
+            Assume(x < derived().mod());
             return derived().val(x) > (derived().mod() / 2) ? derived().neg(x) : x;
         }
         constexpr value_type pow(value_type x, itype::u64 e) const noexcept {
@@ -305,7 +305,7 @@ namespace internal {
         constexpr StaticModint32Impl() noexcept {}
         constexpr itype::u32 mod() const noexcept { return mod_; }
         constexpr itype::u32 mul(itype::u32 x, itype::u32 y) const noexcept {
-            GSH_INTERNAL_ASSUME(x < mod_ && y < mod_);
+            Assume(x < mod_ && y < mod_);
             return static_cast<itype::u64>(x) * y % mod_;
         }
     };
@@ -314,7 +314,7 @@ namespace internal {
         constexpr StaticModint64Impl() noexcept {}
         constexpr itype::u64 mod() const noexcept { return mod_; }
         constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
-            GSH_INTERNAL_ASSUME(x < mod_ && y < mod_);
+            Assume(x < mod_ && y < mod_);
             constexpr itype::u128 M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
             if constexpr (mod_ < (1ull << 63)) {
                 const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
@@ -350,7 +350,7 @@ namespace internal {
         }
         constexpr itype::u32 mod() const noexcept { return mod_; }
         constexpr itype::u32 mul(itype::u32 x, itype::u32 y) const noexcept {
-            GSH_INTERNAL_ASSUME(x < mod_ && y < mod_);
+            Assume(x < mod_ && y < mod_);
             const itype::u64 a = static_cast<itype::u64>(x) * y;
             const itype::u64 b = (static_cast<itype::u128>(M_) * a) >> 64;
             const itype::u64 c = a - b * mod_;
@@ -371,7 +371,7 @@ namespace internal {
         }
         constexpr itype::u64 mod() const noexcept { return mod_; }
         constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
-            GSH_INTERNAL_ASSUME(x < mod_ && y < mod_);
+            Assume(x < mod_ && y < mod_);
             const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
             const itype::u64 b = x * y;
             const itype::u64 c = a * mod_;

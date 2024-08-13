@@ -6,10 +6,12 @@
 #include <gsh/TypeDef.hpp>
 #include <gsh/Arr.hpp>
 #include <gsh/Option.hpp>
+#include <iostream>
 
 namespace gsh {
 
 //@brief Find the largest x for which x * x <= n (https://rsk0315.hatenablog.com/entry/2023/11/07/221428)
+GSH_INTERNAL_PUSH_ATTRIBUTE(function, optimize("no-fast-math"))
 constexpr itype::u32 IntSqrt32(const itype::u32 x) {
     if (x == 0) return 0;
     if (std::is_constant_evaluated()) {
@@ -25,6 +27,8 @@ constexpr itype::u32 IntSqrt32(const itype::u32 x) {
         return tmp + (tmp * (tmp + 2) < x);
     }
 }
+GSH_INTERNAL_POP_ATTRIBUTE
+GSH_INTERNAL_PUSH_ATTRIBUTE(function, optimize("no-fast-math"))
 constexpr itype::u64 IntSqrt64(const itype::u64 x) {
     if (x == 0) return 0;
     if (std::is_constant_evaluated()) {
@@ -40,6 +44,7 @@ constexpr itype::u64 IntSqrt64(const itype::u64 x) {
         return tmp + (tmp * (tmp + 2) < x);
     }
 }
+GSH_INTERNAL_POP_ATTRIBUTE
 namespace internal {
     template<itype::u32> struct isSquareMod9360 {
         // clang-format off
@@ -159,19 +164,15 @@ namespace internal {
         constexpr static itype::u64 pw37[] = {
 1,37,1369,50653,1874161,69343957,2565726409,94931877133,3512479453921,129961739795077,4808584372417849,177917621779460413,6582952005840035281
         };
-        constexpr static ftype::f64 iv[] = {
-0.0,0x1.fffffffffffffp-1,0x1.fffffffffffffp-2,0x1.5555555555554p-2,0x1.fffffffffffffp-3,0x1.9999999999999p-3,0x1.5555555555554p-3,
-0x1.2492492492491p-3,0x1.fffffffffffffp-4,0x1.c71c71c71c71bp-4,0x1.9999999999999p-4,0x1.745d1745d1745p-4,0x1.5555555555554p-4,
-0x1.3b13b13b13b13p-4,0x1.2492492492491p-4,0x1.111111111111p-4,0x1.fffffffffffffp-5,0x1.e1e1e1e1e1e1dp-5,0x1.c71c71c71c71bp-5,
-0x1.af286bca1af27p-5,0x1.9999999999999p-5,0x1.8618618618617p-5,0x1.745d1745d1745p-5,0x1.642c8590b2163p-5,0x1.5555555555554p-5,
-0x1.47ae147ae147ap-5,0x1.3b13b13b13b13p-5,0x1.2f684bda12f67p-5,0x1.2492492492491p-5,0x1.1a7b9611a7b95p-5,0x1.111111111111p-5,0x1.0842108421083p-5
-        };
         constexpr static itype::u64 lim[] = {
 0,18446744073709551615u,4294967295,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4
         };
         // clang-format on
         template<itype::u64 K> constexpr static itype::u64 calc(itype::u64 n) {
-            if constexpr (K >= 12) {
+            if constexpr (K == 2) return IntSqrt64(n);
+            else if constexpr (K == 1) return n;
+            else if constexpr (K == 0) return 0xffffffffffffffff;
+            else if constexpr (K >= 12) {
                 itype::u64 res = 1 + (n >= (1ull << K));
                 if constexpr (K < 41) res += (n >= pw3[K]);
                 if constexpr (K < 32) res += (n >= (1ull << (2 * K)));
@@ -189,18 +190,36 @@ namespace internal {
                 if constexpr (K < 14) res += (n >= (pw3[K] << (3 * K))) + (n >= (pw5[K] * pw5[K])) + (n >= (pw13[K] << K)) + (n >= (pw3[K] * pw3[K] * pw3[K])) + (n >= (pw7[K] << (2 * K))) + (n >= pw29[K]) + (n >= ((pw3[K] * pw5[K]) << K));
                 if constexpr (K < 13) res += (n >= pw31[K]) + (n >= (1ull << (5 * K))) + (n >= (pw3[K] * pw11[K])) + (n >= (pw17[K] << K)) + (n >= (pw5[K] * pw7[K])) + (n >= ((pw3[K] * pw3[K]) << (2 * K))) + (n >= pw37[K]) + (n >= (pw19[K] << K)) + (n >= (pw3[K] * pw13[K])) + (n >= (pw5[K] << (3 * K)));
                 return res;
-            } else if constexpr (K >= 3) {
-                const itype::u64 r = static_cast<itype::i64>(std::pow(n, iv[K]));
-                itype::u64 a = 1, p = r + 1;
-                GSH_INTERNAL_UNROLL(8)
-                for (itype::u64 e = K; e != 0; e >>= 1) {
-                    if (e & 1) a *= p;
-                    p *= p;
+            } else {
+                itype::u64 low = 1, high = lim[K];
+                if constexpr (K == 3) {
+                    ftype::f64 x = 1.0 / (1ull << ((std::bit_width(n) - 1) / 3 + 1));
+                    for (itype::u32 i = 0; i != 4; ++i) {
+                        ftype::f64 h = 1.0 - n * x * x * x;
+                        x += x * h * ((1.0 / 3) + h * ((2.0 / 9) + h * ((14.0 / 81) + (h * ((35.0 / 243) + h * (91.0 / 729))))));
+                    }
+                    x = 1.0 / x;
+                    if (x > 3) low = x - 2;
+                    if (x < lim[K] - 2) high = x + 2;
                 }
-                return r + (r < lim[K] && a <= n);
-            } else if constexpr (K == 2) return IntSqrt64(n);
-            else if constexpr (K == 1) return n;
-            else return 0xffffffffffffffff;
+                if constexpr (K == 4) {
+                    const ftype::f64 x = std::sqrt(std::sqrt(n));
+                    if (x > 3) low = x - 2;
+                    if (x < lim[K] - 2) high = x + 2;
+                }
+                while (low != high) {
+                    const itype::u64 mid = (low + high + 1) / 2;
+                    itype::u64 a = 1, p = mid;
+                    GSH_INTERNAL_UNROLL(8)
+                    for (itype::u64 e = K; e != 0; e >>= 1) {
+                        if (e & 1) a *= p;
+                        p *= p;
+                    }
+                    low = a <= n ? mid : low;
+                    high = a <= n ? high : mid - 1;
+                }
+                return low;
+            }
         }
         constexpr static itype::u64 calc2(itype::u64 n, itype::u64 k) {
             if (n == 0) return 0;

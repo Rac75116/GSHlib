@@ -1,4 +1,31 @@
 #pragma once
+#include <type_traits>  // std::is_constant_evaluated
+
+#define GSH_INTERNAL_STR(s) #s
+#if defined __clang__ || defined __INTEL_COMPILER
+#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(unroll n))
+#elif defined __GNUC__
+#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(GCC unroll n))
+#else
+#define GSH_INTERNAL_UNROLL(n)
+#endif
+#ifdef __GNUC__
+#define GSH_INTERNAL_INLINE [[gnu::always_inline]]
+#elif _MSC_VER
+#define GSH_INTERNAL_INLINE [[msvc::forceinline]]
+#else
+#define GSH_INTERNAL_INLINE inline
+#endif
+#ifdef __GNUC__
+#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma("GCC push_options") _Pragma(GSH_INTERNAL_STR(GCC __VA_ARGS__))
+#define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("GCC pop_options")
+#elif defined __clang__
+#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma(GSH_INTERNAL_STR(clang attribute push(__attribute__((__VA_ARGS__)), apply_to = apply)))
+#define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("clang attribute pop")
+#else
+#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...)
+#define GSH_INTERNAL_POP_ATTRIBUTE
+#endif
 
 namespace gsh {
 
@@ -108,47 +135,52 @@ namespace simd {
 
 }  // namespace simd
 
-}  // namespace gsh
-
-// clang-format off
-#define GSH_INTERNAL_STR(s) #s
-#if defined __clang__ || defined __INTEL_COMPILER
-#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(unroll n))
+[[noreturn]] void Unreachable() {
+#if defined __GNUC__ || defined __clang__
+    __builtin_unreachable();
+#elif _MSC_VER
+    __assume(false);
+#else
+    [[maybe_unused]] itype::u32 n = 1 / 0;
+#endif
+};
+GSH_INTERNAL_INLINE constexpr void Assume(const bool f) {
+    if (std::is_constant_evaluated()) return;
+#if defined __clang__
+    __builtin_assume(f);
 #elif defined __GNUC__
-#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(GCC unroll n))
-#else
-#define GSH_INTERNAL_UNROLL(n)
-#endif
-#ifdef __GNUC__
-#define GSH_INTERNAL_INLINE [[gnu::always_inline]]
+    if (!f) __builtin_unreachable();
 #elif _MSC_VER
-#define GSH_INTERNAL_INLINE [[msvc::forceinline]]
+    __assume(f);
 #else
-#define GSH_INTERNAL_INLINE inline
+    if (!f) Unreachable();
 #endif
+}
+template<bool Likely = true> GSH_INTERNAL_INLINE constexpr bool Expect(const bool f) {
+    if (std::is_constant_evaluated()) return f;
 #if defined __GNUC__ || defined __clang__
-#define GSH_INTERNAL_ASSUME(...) ([&]() -> void { if (!(__VA_ARGS__)) __builtin_unreachable(); }())
-#elif _MSC_VER
-#define GSH_INTERNAL_ASSUME(...) ([&]() -> void { if (!(__VA_ARGS__)) __assume(false); }())
+    return __builtin_expect(f, Likely);
 #else
-namespace gsh { namespace internal { [[noreturn]] inline void unreachable() noexcept {} } }
-#define GSH_INTERNAL_ASSUME(...) ([&]() -> void { if (!(__VA_ARGS__)) gsh::internal::unreachable(); }())
+    if constexpr (Likely) {
+        if (f) [[likely]]
+            return true;
+        else return false;
+    } else {
+        if (f) [[unlikely]]
+            return false;
+        else return true;
+    }
 #endif
-#if defined __GNUC__ || defined __clang__
-#define GSH_INTERNAL_EXPECT(cond, f) __builtin_expect(cond, f)
-#define GSH_INTERNAL_EXPECT_WITH_PROB(cond, prob) __builtin_expect_with_probability(cond, 1, prob)
+}
+GSH_INTERNAL_INLINE constexpr bool Unpredictable(const bool f) {
+    if (std::is_constant_evaluated()) return f;
+#if defined __clang__
+    return __builtin_unpredictable(f);
+#elif defined __GNUC__
+    return __builtin_expect_with_probability(f, 1, 0.5);
 #else
-#define GSH_INTERNAL_EXPECT(cond, f) ([&]() -> void { if constexpr (f) { \
-        if (cond) [[likely]] return true; else return false; \
-    } else { \
-        if (cond) [[unlikely]] return true; else return false; \
-    } \
-}())
-#define GSH_INTERNAL_EXPECT_WITH_PROB(cond, prob) ([&]() -> void { if constexpr ((prob) > 0.95) { \
-        if (cond) [[likely]] return true; else return false; \
-    } else if constexpr ((prob) < 0.05) { \
-        if (cond) [[unlikely]] return true; else return false; \
-    } else return (cond); \
-}())
+    return f;
 #endif
-// clang-format on
+}
+
+}  // namespace gsh

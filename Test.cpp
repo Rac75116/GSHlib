@@ -40,12 +40,11 @@ void Main() {
         k *= 37;
     }
     */
-    /*
     Rand64 r;
     ClockTimer t;
-    volatile u64 n = 0;
+    u64 n = 0;
     for (u32 i = 0; i != 10000000; ++i) {
-        n += KthRoot(r(), 12);
+        n += KthRoot(r(), 3);
     }
     Formatter<u64>{}(w, n);
     Formatter<c8>{}(w, '\n');

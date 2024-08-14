@@ -95,6 +95,7 @@
         "format": "cpp",
         "stdfloat": "cpp",
         "lazysegtree": "cpp",
+        "rope": "cpp"
     },
     "C_Cpp.errorSquiggles": "enabledIfIncludesResolve",
     "code-runner.executorMap": {

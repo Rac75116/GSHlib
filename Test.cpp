@@ -11,12 +11,6 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Modint.hpp>
-#include <gsh/Numeric.hpp>
-#include <gsh/Prime.hpp>
-#include <gsh/Random.hpp>
-#include <gsh/Timer.hpp>
-#include <iostream>
 
 #if false
 #include <fcntl.h>
@@ -33,6 +27,14 @@ void Main() {
     using namespace gsh::ftype;
     using namespace gsh::ctype;
     /*
+    u32 T = Parser<u8dig>{}(r);
+    while (T--) {
+        i128 A = Parser<i128>{}(r), B = Parser<i128>{}(r);
+        Formatter<i128>{}(w, A + B);
+        Formatter<c8>{}(w, '\n');
+    }
+    */
+    /*
     u64 k = 1;
     for (u64 i = 0; i != 13; ++i) {
         Formatter<u64>{}(w, k);
@@ -40,6 +42,7 @@ void Main() {
         k *= 37;
     }
     */
+    /*
     Rand64 r;
     ClockTimer t;
     u64 n = 0;
@@ -49,6 +52,7 @@ void Main() {
     Formatter<u64>{}(w, n);
     Formatter<c8>{}(w, '\n');
     t.print();
+    */
     /*
     u32 T = Parser<u8dig>{}(r).val;
     if (T == 10) return;

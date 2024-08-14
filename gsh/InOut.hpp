@@ -13,6 +13,15 @@
 
 namespace gsh {
 
+namespace itype {
+    struct i4dig {};
+    struct u4dig {};
+    struct i8dig {};
+    struct u8dig {};
+    struct i16dig {};
+    struct u16dig {};
+}  // namespace itype
+
 template<class T> class Parser;
 
 namespace internal {
@@ -177,7 +186,18 @@ namespace internal {
         }
         return res;
     }
-    template<class Stream> constexpr itype::u8dig Parseu8dig(Stream& stream) {
+    template<class Stream> constexpr itype::u16 Parseu4dig(Stream& stream) {
+        itype::u32 v;
+        std::memcpy(&v, stream.current(), 4);
+        v ^= 0x30303030;
+        itype::i32 tmp = std::countr_zero(v & 0xf0f0f0f0) >> 3;
+        v <<= (32 - (tmp << 3));
+        stream.skip(tmp + 1);
+        v = (v * 10 + (v >> 8)) & 0x00ff00ff;
+        v = (v * 100 + (v >> 16)) & 0x0000ffff;
+        return static_cast<itype::u16>(v);
+    }
+    template<class Stream> constexpr itype::u32 Parseu8dig(Stream& stream) {
         itype::u64 v;
         std::memcpy(&v, stream.current(), 8);
         v ^= 0x3030303030303030;
@@ -187,7 +207,7 @@ namespace internal {
         v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
         v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
         v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
-        return itype::u8dig{ static_cast<itype::u32>(v) };
+        return static_cast<itype::u32>(v);
     }
 }  // namespace internal
 
@@ -281,22 +301,40 @@ public:
         return tmp;
     }
 };
+template<> class Parser<itype::u4dig> {
+public:
+    template<class Stream> constexpr itype::u16 operator()(Stream& stream) const {
+        stream.reload(8);
+        return internal::Parseu4dig(stream);
+    }
+};
+template<> class Parser<itype::i4dig> {
+public:
+    template<class Stream> constexpr itype::i16 operator()(Stream& stream) const {
+        stream.reload(8);
+        bool neg = *stream.current() == '-';
+        if (neg) stream.skip(1);
+        itype::i16 tmp = internal::Parseu4dig(stream);
+        if (neg) tmp = -tmp;
+        return tmp;
+    }
+};
 template<> class Parser<itype::u8dig> {
 public:
-    template<class Stream> constexpr itype::u8dig operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u32 operator()(Stream& stream) const {
         stream.reload(16);
         return internal::Parseu8dig(stream);
     }
 };
 template<> class Parser<itype::i8dig> {
 public:
-    template<class Stream> constexpr itype::i8dig operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i32 operator()(Stream& stream) const {
         stream.reload(16);
         bool neg = *stream.current() == '-';
         if (neg) stream.skip(1);
-        itype::i32 tmp = internal::Parseu8dig(stream).val;
+        itype::i32 tmp = internal::Parseu8dig(stream);
         if (neg) tmp = -tmp;
-        return itype::i8dig{ tmp };
+        return tmp;
     }
 };
 template<> class Parser<ctype::c8> {
@@ -323,7 +361,6 @@ public:
 };
 */
 
-
 template<class T> class Formatter;
 
 namespace internal {
@@ -340,12 +377,12 @@ namespace internal {
         return res;
     }();
     template<class Stream> constexpr void Formatu16(Stream& stream, itype::u16 n) {
-        auto copy1 = [&](itype::u32 x) {
+        auto copy1 = [&](itype::u16 x) {
             itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
             std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
             stream.skip(4 - off);
         };
-        auto copy2 = [&](itype::u32 x) {
+        auto copy2 = [&](itype::u16 x) {
             std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
             stream.skip(4);
         };
@@ -424,6 +461,15 @@ namespace internal {
             std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
             stream.skip(4);
         };
+        auto div_1e16 = [&](itype::u64& rem) -> itype::u64 {
+            if (std::is_constant_evaluated()) {
+                rem = n % 10000000000000000;
+                return n / 10000000000000000;
+            }
+            itype::u64 res;
+            __asm__("divq %[v]" : "=a"(res), "=d"(rem) : [v] "r"(10000000000000000), "a"(static_cast<itype::u64>(n)), "d"(static_cast<itype::u64>(n >> 64)));
+            return res;
+        };
         constexpr itype::u128 t = static_cast<itype::u128>(10000000000000000) * 10000000000000000;
         if (n >= t) {
             const itype::u32 r = n / t;
@@ -431,15 +477,17 @@ namespace internal {
             if (r >= 10000) {
                 copy1(r / 10000);
                 copy2(r % 10000);
-            } else copy1(r / 10000);
-            const itype::u64 a = n / 10000000000000000, b = n % 10000000000000000;
+            } else copy1(r);
+            itype::u64 a, b = 0;
+            a = div_1e16(b);
             const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
             copy2(c / 10000), copy2(c % 10000);
             copy2(d / 10000), copy2(d % 10000);
             copy2(e / 10000), copy2(e % 10000);
             copy2(f / 10000), copy2(f % 10000);
         } else {
-            const itype::u64 a = n / 10000000000000000, b = n % 10000000000000000;
+            itype::u64 a, b = 0;
+            a = div_1e16(b);
             const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
             const itype::u32 g = c / 10000, h = c % 10000, i = d / 10000, j = d % 10000, k = e / 10000, l = e % 10000, m = f / 10000, n = f % 10000;
             if (a == 0) {
@@ -461,14 +509,14 @@ namespace internal {
             }
         }
     }
-    template<class Stream> constexpr void Formatu8dig(Stream& stream, itype::u8dig x) {
-        const itype::u64 n = x.val;
-        auto copy1 = [&](itype::u64 x) {
+    template<class Stream> constexpr void Formatu8dig(Stream& stream, itype::u32 x) {
+        const itype::u32 n = x;
+        auto copy1 = [&](itype::u32 x) {
             itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
             std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
             stream.skip(4 - off);
         };
-        auto copy2 = [&](itype::u64 x) {
+        auto copy2 = [&](itype::u32 x) {
             std::memcpy(stream.current(), InttoStr<0>.table + 4 * x, 4);
             stream.skip(4);
         };
@@ -478,8 +526,8 @@ namespace internal {
             copy2(n % 10000);
         }
     }
-    template<class Stream> constexpr void Formatu16dig(Stream& stream, itype::u16dig x) {
-        const itype::u64 n = x.val;
+    template<class Stream> constexpr void Formatu16dig(Stream& stream, itype::u64 x) {
+        const itype::u64 n = x;
         auto copy1 = [&](itype::u64 x) {
             itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
             std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
@@ -576,34 +624,34 @@ public:
 };
 template<> class Formatter<itype::u8dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream& stream, itype::u8dig n) const {
+    template<class Stream> constexpr void operator()(Stream& stream, itype::u32 n) const {
         stream.reload(8);
         internal::Formatu8dig(stream, n);
     }
 };
 template<> class Formatter<itype::i8dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream& stream, itype::i8dig n) const {
+    template<class Stream> constexpr void operator()(Stream& stream, itype::i32 n) const {
         stream.reload(9);
         *stream.current() = '-';
-        stream.skip(n.val < 0);
-        internal::Formatu8dig(stream, itype::u8dig{ static_cast<itype::u32>(n.val < 0 ? -n.val : n.val) });
+        stream.skip(n < 0);
+        internal::Formatu8dig(stream, static_cast<itype::u32>(n < 0 ? -n : n));
     }
 };
 template<> class Formatter<itype::u16dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream& stream, itype::u16dig n) const {
+    template<class Stream> constexpr void operator()(Stream& stream, itype::u64 n) const {
         stream.reload(16);
         internal::Formatu16dig(stream, n);
     }
 };
 template<> class Formatter<itype::i16dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream& stream, itype::i16dig n) const {
+    template<class Stream> constexpr void operator()(Stream& stream, itype::i64 n) const {
         stream.reload(17);
         *stream.current() = '-';
-        stream.skip(n.val < 0);
-        internal::Formatu16dig(stream, itype::u16dig{ static_cast<itype::u64>(n.val < 0 ? -n.val : n.val) });
+        stream.skip(n < 0);
+        internal::Formatu16dig(stream, static_cast<itype::u64>(n < 0 ? -n : n));
     }
 };
 template<> class Formatter<ctype::c8> {

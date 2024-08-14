@@ -1,7 +1,7 @@
 #pragma once
 #include <type_traits>
 #include <tuple>
-#include <utility>          // std::forward, std::make_integer
+#include <utility>          // std::forward, std::make_integer_sequence
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
 namespace gsh {
@@ -25,44 +25,43 @@ namespace internal {
         constexpr T& el() noexcept { return name; } \
         constexpr const T& el() const noexcept { return name; } \
     };
-
-GSH_INTERNAL_DEF_TUPLEEL(0, first)
-GSH_INTERNAL_DEF_TUPLEEL(1, second)
-GSH_INTERNAL_DEF_TUPLEEL(2, third)
-GSH_INTERNAL_DEF_TUPLEEL(3, fourth)
-GSH_INTERNAL_DEF_TUPLEEL(4, fifth)
-GSH_INTERNAL_DEF_TUPLEEL(5, sixth)
-GSH_INTERNAL_DEF_TUPLEEL(6, seventh)
-GSH_INTERNAL_DEF_TUPLEEL(7, eighth)
-GSH_INTERNAL_DEF_TUPLEEL(8, ninth)
-GSH_INTERNAL_DEF_TUPLEEL(9, tenth)
-GSH_INTERNAL_DEF_TUPLEEL(10, eleventh)
-GSH_INTERNAL_DEF_TUPLEEL(11, twelfth)
-GSH_INTERNAL_DEF_TUPLEEL(12, thirteenth)
-GSH_INTERNAL_DEF_TUPLEEL(13, fourteenth)
-GSH_INTERNAL_DEF_TUPLEEL(14, fifteenth)
-GSH_INTERNAL_DEF_TUPLEEL(15, sixteenth)
-GSH_INTERNAL_DEF_TUPLEEL(16, seventeenth)
-GSH_INTERNAL_DEF_TUPLEEL(17, eighteenth)
-GSH_INTERNAL_DEF_TUPLEEL(18, nineteenth)
-GSH_INTERNAL_DEF_TUPLEEL(19, twentieth)
-#undef GSH_INTERNAL_DEF_TUPLEEL
+GSH_INTERNAL_DEF_TUPLEEL(0, first);
+GSH_INTERNAL_DEF_TUPLEEL(1, second);
+GSH_INTERNAL_DEF_TUPLEEL(2, third);
+GSH_INTERNAL_DEF_TUPLEEL(3, fourth);
+GSH_INTERNAL_DEF_TUPLEEL(4, fifth);
+GSH_INTERNAL_DEF_TUPLEEL(5, sixth);
+GSH_INTERNAL_DEF_TUPLEEL(6, seventh);
+GSH_INTERNAL_DEF_TUPLEEL(7, eighth);
+GSH_INTERNAL_DEF_TUPLEEL(8, ninth);
+GSH_INTERNAL_DEF_TUPLEEL(9, tenth);
+GSH_INTERNAL_DEF_TUPLEEL(10, eleventh);
+GSH_INTERNAL_DEF_TUPLEEL(11, twelfth);
+GSH_INTERNAL_DEF_TUPLEEL(12, thirteenth);
+GSH_INTERNAL_DEF_TUPLEEL(13, fourteenth);
+GSH_INTERNAL_DEF_TUPLEEL(14, fifteenth);
+GSH_INTERNAL_DEF_TUPLEEL(15, sixteenth);
+GSH_INTERNAL_DEF_TUPLEEL(16, seventeenth);
+GSH_INTERNAL_DEF_TUPLEEL(17, eighteenth);
+GSH_INTERNAL_DEF_TUPLEEL(18, nineteenth);
+GSH_INTERNAL_DEF_TUPLEEL(19, twentieth);
     // clang-format on
     template<itype::u32 N, class... Args> class TupleImpl {};
     template<itype::u32 N, class T, class... Args> class TupleImpl<N, T, Args...> : public TupleEl<T, N>, public TupleImpl<N + 1, Args...> {
     protected:
-        template<itype::u32 M> __attributes__((noinline)) auto get_by_idx() {
+        template<itype::u32 M> GSH_INTERNAL_INLINE auto get_by_idx() {
             if constexpr (M == N) return TupleEl<T, N>::el();
-            else TupleImpl<N + 1, Args...>::typename get_by_idx<M>();
+            else TupleImpl<N + 1, Args...>::template get_by_idx<M>();
         }
-        template<itype::u32 M> __attributes__((noinline)) auto get_by_idx() const {
+        template<itype::u32 M> GSH_INTERNAL_INLINE auto get_by_idx() const {
             if constexpr (M == N) return TupleEl<T, N>::el();
-            else TupleImpl<N + 1, Args...>::typename get_by_idx<M>();
+            else TupleImpl<N + 1, Args...>::template get_by_idx<M>();
         }
     };
 }  // namespace internal
 
 template<class... Types> class Tuple : public internal::TupleImpl<0, Types...> {
+    using base = internal::TupleImpl<0, Types...>;
     template<class Tup, itype::u32... I, class... UTypes> constexpr bool enable_construction(Tup&& u, std::integer_sequence<itype::u32, I...>, Tuple<UTypes...>) {
         if (sizeof...(Types) != sizeof(UTypes)) return false;
         else if constexpr (!std::is_constructible_v<Types, decltype(get<I>(static_cast<decltype(u)>(u)))> && ...) return false;

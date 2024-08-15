@@ -10,18 +10,21 @@
 #define GSH_INTERNAL_UNROLL(n)
 #endif
 #ifdef __GNUC__
-#define GSH_INTERNAL_INLINE [[gnu::always_inline]]
-#elif _MSC_VER
-#define GSH_INTERNAL_INLINE [[msvc::forceinline]]
+#define GSH_INTERNAL_INLINE   [[gnu::always_inline]]
+#define GSH_INTERNAL_NOINLINE [[gnu::noinline]]
+#elif defined _MSC_VER
+#define GSH_INTERNAL_INLINE   [[msvc::forceinline]]
+#define GSH_INTERNAL_NOINLINE [[msvc::noinline]]
 #else
-#define GSH_INTERNAL_INLINE inline
+#define GSH_INTERNAL_INLINE
+#define GSH_INTERNAL_NOINLINE
 #endif
-#ifdef __GNUC__
-#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma("GCC push_options") _Pragma(GSH_INTERNAL_STR(GCC __VA_ARGS__))
-#define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("GCC pop_options")
-#elif defined __clang__
+#ifdef __clang__
 #define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma(GSH_INTERNAL_STR(clang attribute push(__attribute__((__VA_ARGS__)), apply_to = apply)))
 #define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("clang attribute pop")
+#elif defined __GNUC__
+#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma("GCC push_options") _Pragma(GSH_INTERNAL_STR(GCC __VA_ARGS__))
+#define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("GCC pop_options")
 #else
 #define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...)
 #define GSH_INTERNAL_POP_ATTRIBUTE

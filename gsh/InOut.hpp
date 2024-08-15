@@ -31,9 +31,9 @@ namespace internal {
         v ^= 0x30303030;
         itype::i32 tmp = std::countr_zero(v & 0xf0f0f0f0) >> 3;
         v <<= (32 - (tmp << 3));
-        stream.skip(tmp + 1);
         v = (v * 10 + (v >> 8)) & 0x00ff00ff;
         v = (v * 100 + (v >> 16)) & 0x0000ffff;
+        stream.skip(tmp + 1);
         return v;
     }
     template<class Stream> constexpr itype::u16 Parseu16(Stream& stream) {
@@ -42,10 +42,10 @@ namespace internal {
         v ^= 0x3030303030303030;
         itype::i32 tmp = std::countr_zero(v & 0xf0f0f0f0f0f0f0f0) >> 3;
         v <<= (64 - (tmp << 3));
-        stream.skip(tmp + 1);
         v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
         v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
         v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
+        stream.skip(tmp + 1);
         return v;
     }
     template<class Stream> constexpr itype::u32 Parseu32(Stream& stream) {
@@ -147,25 +147,29 @@ namespace internal {
     }
     template<class Stream> constexpr itype::u128 Parseu128(Stream& stream) {
         itype::u128 res = 0;
-        while (true) {
+        GSH_INTERNAL_UNROLL(4)
+        for (itype::u32 i = 0; i != 4; ++i) {
             itype::u64 v;
             std::memcpy(&v, stream.current(), 8);
             if (((v ^= 0x3030303030303030) & 0xf0f0f0f0f0f0f0f0) != 0) break;
             v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
             v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
             v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
-            res = res * 100000000 + v;
+            if (i == 0) res = v;
+            else res = res * 100000000 + v;
             stream.skip(8);
         }
         itype::u64 buf;
         std::memcpy(&buf, stream.current(), 8);
+        itype::u64 res2 = 0, pw = 1;
         {
             itype::u32 v = buf;
             if (!((v ^= 0x30303030) & 0xf0f0f0f0)) {
                 buf >>= 32;
                 v = (v * 10 + (v >> 8)) & 0x00ff00ff;
                 v = (v * 100 + (v >> 16)) & 0x0000ffff;
-                res = 10000 * res + v;
+                res2 = v;
+                pw = 10000;
                 stream.skip(4);
             }
         }
@@ -174,17 +178,21 @@ namespace internal {
             if (!((v ^= 0x3030) & 0xf0f0)) {
                 buf >>= 16;
                 v = (v * 10 + (v >> 8)) & 0x00ff;
-                res = 100 * res + v;
+                res2 = res2 * 100 + v;
+                pw *= 100;
                 stream.skip(2);
             }
         }
         {
             const ctype::c8 v = ctype::c8(buf) ^ 0x30;
-            const bool f = !(v & 0xf0);
-            res = f ? 10 * res + v : res;
+            const bool f = (v & 0xf0) == 0;
+            const volatile auto tmp1 = pw * 10, tmp2 = res2 * 10 + v;
+            const auto tmp3 = tmp1, tmp4 = tmp2;
+            pw = f ? tmp3 : pw;
+            res2 = f ? tmp4 : res2;
             stream.skip(f + 1);
         }
-        return res;
+        return res * pw + res2;
     }
     template<class Stream> constexpr itype::u16 Parseu4dig(Stream& stream) {
         itype::u32 v;
@@ -192,22 +200,23 @@ namespace internal {
         v ^= 0x30303030;
         itype::i32 tmp = std::countr_zero(v & 0xf0f0f0f0) >> 3;
         v <<= (32 - (tmp << 3));
-        stream.skip(tmp + 1);
         v = (v * 10 + (v >> 8)) & 0x00ff00ff;
         v = (v * 100 + (v >> 16)) & 0x0000ffff;
-        return static_cast<itype::u16>(v);
+        stream.skip(tmp + 1);
+        return v;
     }
     template<class Stream> constexpr itype::u32 Parseu8dig(Stream& stream) {
         itype::u64 v;
         std::memcpy(&v, stream.current(), 8);
         v ^= 0x3030303030303030;
-        itype::i32 tmp = std::countr_zero(v & 0xf0f0f0f0f0f0f0f0) >> 3;
+        const itype::u64 msk = v & 0xf0f0f0f0f0f0f0f0;
+        itype::i32 tmp = std::countr_zero(msk) >> 3;
         v <<= (64 - (tmp << 3));
-        stream.skip(tmp + 1);
         v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
         v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
         v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
-        return static_cast<itype::u32>(v);
+        stream.skip(tmp + 1);
+        return v;
     }
 }  // namespace internal
 
@@ -223,7 +232,7 @@ public:
     template<class Stream> constexpr itype::i8 operator()(Stream& stream) const {
         stream.reload(8);
         bool neg = *stream.current() == '-';
-        if (neg) stream.skip(1);
+        stream.skip(neg);
         itype::i8 tmp = internal::Parseu8(stream);
         if (neg) tmp = -tmp;
         return tmp;
@@ -241,7 +250,7 @@ public:
     template<class Stream> constexpr itype::i16 operator()(Stream& stream) const {
         stream.reload(8);
         bool neg = *stream.current() == '-';
-        if (neg) stream.skip(1);
+        stream.skip(neg);
         itype::i16 tmp = internal::Parseu16(stream);
         if (neg) tmp = -tmp;
         return tmp;
@@ -259,7 +268,7 @@ public:
     template<class Stream> constexpr itype::i32 operator()(Stream& stream) const {
         stream.reload(16);
         bool neg = *stream.current() == '-';
-        if (neg) stream.skip(1);
+        stream.skip(neg);
         itype::i32 tmp = internal::Parseu32(stream);
         if (neg) tmp = -tmp;
         return tmp;
@@ -277,7 +286,7 @@ public:
     template<class Stream> constexpr itype::i64 operator()(Stream& stream) const {
         stream.reload(32);
         bool neg = *stream.current() == '-';
-        if (neg) stream.skip(1);
+        stream.skip(neg);
         itype::i64 tmp = internal::Parseu64(stream);
         if (neg) tmp = -tmp;
         return tmp;
@@ -295,7 +304,7 @@ public:
     template<class Stream> constexpr itype::i128 operator()(Stream& stream) const {
         stream.reload(64);
         bool neg = *stream.current() == '-';
-        if (neg) stream.skip(1);
+        stream.skip(neg);
         itype::i128 tmp = internal::Parseu128(stream);
         if (neg) tmp = -tmp;
         return tmp;
@@ -313,7 +322,7 @@ public:
     template<class Stream> constexpr itype::i16 operator()(Stream& stream) const {
         stream.reload(8);
         bool neg = *stream.current() == '-';
-        if (neg) stream.skip(1);
+        stream.skip(neg);
         itype::i16 tmp = internal::Parseu4dig(stream);
         if (neg) tmp = -tmp;
         return tmp;
@@ -331,7 +340,7 @@ public:
     template<class Stream> constexpr itype::i32 operator()(Stream& stream) const {
         stream.reload(16);
         bool neg = *stream.current() == '-';
-        if (neg) stream.skip(1);
+        stream.skip(neg);
         itype::i32 tmp = internal::Parseu8dig(stream);
         if (neg) tmp = -tmp;
         return tmp;

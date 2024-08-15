@@ -481,12 +481,12 @@ namespace internal {
         };
         constexpr itype::u128 t = static_cast<itype::u128>(10000000000000000) * 10000000000000000;
         if (n >= t) {
-            const itype::u32 r = n / t;
-            n %= t;
-            if (r >= 10000) {
-                copy1(r / 10000);
-                copy2(r % 10000);
-            } else copy1(r);
+            const itype::u32 dv = n / t;
+            n -= dv * t;
+            if (dv >= 10000) {
+                copy1(dv / 10000);
+                copy2(dv % 10000);
+            } else copy1(dv);
             itype::u64 a, b = 0;
             a = div_1e16(b);
             const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;

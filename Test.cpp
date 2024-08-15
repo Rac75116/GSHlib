@@ -29,36 +29,6 @@ void Main() {
     using namespace gsh::ftype;
     using namespace gsh::ctype;
     /*
-    constexpr u32 N = 10000000;
-    static c8 buf[40 * N];
-    Rand64 engine;
-    StaticStrWriter w(buf);
-    u128 val = 0;
-    ClockTimer t;
-    for (u32 i = 0; i != N; ++i) {
-        i128 tmp = u128(engine()) << 64 | engine();
-        val += tmp;
-        Formatter<i128>{}(w, tmp);
-        Formatter<c8>{}(w, '\n');
-    }
-    t.print();
-    t.restart();
-    StaticStrReader r(buf);
-    u128 res = 0;
-    for (u32 i = 0; i != N; ++i) {
-        res += u128(Parser<i128>{}(r));
-    }
-    t.print();
-    if (res != val) throw Exception("");
-    */
-    u32 T = Parser<u8dig>{}(r);
-    if (T == 5) return;
-    while (T--) {
-        i128 A = Parser<i128>{}(r), B = Parser<i128>{}(r);
-        Formatter<i128>{}(w, A + B);
-        Formatter<c8>{}(w, '\n');
-    }
-    /*
     Rand64 r;
     ClockTimer t;
     u64 n = 0;

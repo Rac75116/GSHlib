@@ -50,4 +50,3 @@ if cp.returncode != 0:
     print("\033[31mExecusion failed\033[0m")
     sys.exit(2)
 print("\033[32mExecusion succeeded  [" + str(max(0, round((ed - st) * 1000) - 10)) + "ms]\033[0m")
-sys.stdin.read()

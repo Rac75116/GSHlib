@@ -11,8 +11,8 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Timer.hpp>
-#include <gsh/Random.hpp>
+#include <gsh/Algorithm.hpp>
+#include <unordered_map>
 
 #if false && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -28,9 +28,27 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    u32 n = Parser<u32>{}(r);
-    Formatter<u32>{}(w, n);
-    //Formatter<c8>{}(w, '\n');
+    u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
+    static u32 a[500000], b[500000];
+    for (u32 i = 0; i != N; ++i) a[i] = Parser<u32>{}(r);
+    Mo mo;
+    for (u32 i = 0; i != Q; ++i) {
+        u32 L = Parser<u8dig>{}(r), R = Parser<u8dig>{}(r);
+        mo.query(L, R);
+    }
+    unordered_map<itype::u32, itype::u32> m;
+    mo.solve([&](itype::u32 x) { ++m[a[x]]; }, [&](itype::u32 x) { ++m[a[x]]; },
+             [&](itype::u32 x) {
+                 if (--m[a[x]] == 0) m.erase(a[x]);
+             },
+             [&](itype::u32 x) {
+                 if (--m[a[x]] == 0) m.erase(a[x]);
+             },
+             [&](itype::u32 x) { b[x] = m.size(); });
+    for (u32 i = 0; i != Q; ++i) {
+        Formatter<u32>{}(w, b[i]);
+        Formatter<c8>{}(w, '\n');
+    }
     /*
     Rand64 r;
     ClockTimer t;

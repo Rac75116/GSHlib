@@ -99,7 +99,8 @@
     },
     "C_Cpp.errorSquiggles": "enabledIfIncludesResolve",
     "code-runner.executorMap": {
-        "cpp": "$compile=Measure-Command{g++ -g -std=gnu++20 -O2 -Wall -Wextra -mtune=native -march=native -fconstexpr-depth=2147483647 -fconstexpr-loop-limit=2147483647 -fconstexpr-ops-limit=2147483647 -I . -o a.exe $fullFileName | Out-Default} && Write-Host \"$($compile.TotalSeconds) seconds\" && $run=Measure-Command{./a.exe | Out-Default} && Write-Host \"$($run.TotalSeconds) seconds\""
+        //"cpp": "$compile=Measure-Command{g++ -g -std=gnu++20 -O2 -Wall -Wextra -mtune=native -march=native -fconstexpr-depth=2147483647 -fconstexpr-loop-limit=2147483647 -fconstexpr-ops-limit=2147483647 -I . -o a.exe $fullFileName | Out-Default} && Write-Host \"$($compile.TotalSeconds) seconds\" && $run=Measure-Command{./a.exe | Out-Default} && Write-Host \"$($run.TotalSeconds) seconds\""
+        "cpp": "python CppRunner.py $fullFileName"
     },
     "C_Cpp.intelliSenseEngineFallback": "disabled"
 }

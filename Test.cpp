@@ -28,6 +28,9 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
+    u32 n = Parser<u32>{}(r);
+    Formatter<u32>{}(w, n);
+    //Formatter<c8>{}(w, '\n');
     /*
     Rand64 r;
     ClockTimer t;

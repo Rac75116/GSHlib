@@ -179,32 +179,32 @@ public:
         len = sz;
     }
     [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
-    __attribute__((always_inline)) constexpr reference operator[](const size_type n) {
+    GSH_INTERNAL_INLINE constexpr reference operator[](const size_type n) {
 #ifndef NDEBUG
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Arr::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
         return *(ptr + n);
     }
-    __attribute__((always_inline)) constexpr const_reference operator[](const size_type n) const {
+    GSH_INTERNAL_INLINE constexpr const_reference operator[](const size_type n) const {
 #ifndef NDEBUG
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Arr::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
         return *(ptr + n);
     }
-    __attribute__((always_inline)) constexpr reference at(const size_type n) {
+    GSH_INTERNAL_INLINE constexpr reference at(const size_type n) {
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Arr::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
-    __attribute__((always_inline)) constexpr const_reference at(const size_type n) const {
+    GSH_INTERNAL_INLINE constexpr const_reference at(const size_type n) const {
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Arr::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
-    __attribute__((always_inline)) constexpr reference at_unchecked(const size_type n) { return *(ptr + n); }
-    constexpr const_reference at_unchecked(const size_type n) const { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const { return *(ptr + n); }
     constexpr pointer data() noexcept { return ptr; }
     constexpr const_pointer data() const noexcept { return ptr; }
     constexpr reference front() { return *ptr; }
@@ -362,32 +362,32 @@ public:
     constexpr size_type size() const noexcept { return N; }
     constexpr size_type max_size() const noexcept { return N; }
     [[nodiscard]] constexpr bool empty() const noexcept { return N != 0; }
-    __attribute__((always_inline)) constexpr reference operator[](const size_type n) {
+    GSH_INTERNAL_INLINE constexpr reference operator[](const size_type n) {
 #ifndef NDEBUG
         if (n >= N) [[unlikely]]
             throw gsh::Exception("gsh::StaticArr::operator[] / The index is out of range. ( n=", n, ", size=", N, " )");
 #endif
         return elems[n];
     }
-    __attribute__((always_inline)) constexpr const_reference operator[](const size_type n) const {
+    GSH_INTERNAL_INLINE constexpr const_reference operator[](const size_type n) const {
 #ifndef NDEBUG
         if (n >= N) [[unlikely]]
             throw gsh::Exception("gsh::StaticArr::operator[] / The index is out of range. ( n=", n, ", size=", N, " )");
 #endif
         return elems[n];
     }
-    __attribute__((always_inline)) constexpr reference at(const size_type n) {
+    GSH_INTERNAL_INLINE constexpr reference at(const size_type n) {
         if (n >= N) [[unlikely]]
             throw gsh::Exception("gsh::StaticArr::at / The index is out of range. ( n=", n, ", size=", N, " )");
         return elems[n];
     }
-    __attribute__((always_inline)) constexpr const_reference at(const size_type n) const {
+    GSH_INTERNAL_INLINE constexpr const_reference at(const size_type n) const {
         if (n >= N) [[unlikely]]
             throw gsh::Exception("gsh::StaticArr::at / The index is out of range. ( n=", n, ", size=", N, " )");
         return elems[n];
     }
-    __attribute__((always_inline)) constexpr reference at_unchecked(const size_type n) { return elems[n]; }
-    constexpr const_reference at_unchecked(const size_type n) const { return elems[n]; }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) { return elems[n]; }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const { return elems[n]; }
     constexpr pointer data() noexcept { return elems; }
     constexpr const_pointer data() const noexcept { return elems; }
     constexpr reference front() { return elems[0]; }

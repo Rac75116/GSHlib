@@ -3,6 +3,7 @@
 #include <cstring>             // std::memset
 #include <cstdlib>             // std::malloc, std::free
 #include <algorithm>           // std::lower_bound
+#include <cmath>               // std::sqrt
 #include <gsh/TypeDef.hpp>     // gsh::itype
 #include <gsh/Arr.hpp>         // gsh::Arr
 #include <gsh/Vec.hpp>         // gsh::Vec
@@ -221,29 +222,56 @@ public:
     constexpr Mo() {}
     constexpr void reserve(itype::u32 q) { qu.reserve(q); }
     constexpr void query(itype::u32 l, itype::u32 r) { qu.emplace_back(l, r); }
-    template<class F1, class F2, class F3> void solve(F1&& add, F2&& del, F3&& slv) const { solve(add, add, del, del, slv); }
-    template<class F1, class F2, class F3, class F4, class F5> void solve(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
+    template<class F1, class F2, class F3> void run(F1&& add, F2&& del, F3&& slv) const { solve(add, add, del, del, slv); }
+    template<class F1, class F2, class F3, class F4, class F5> void run(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
         const itype::u32 Q = qu.size();
         itype::u32 N = 0;
         for (itype::u32 i = 0; i != Q; ++i) N = N < qu[i].r ? qu[i].r : N;
-        auto hilbertorder = [maxn = (std::bit_floor(N) << 1) - 1](itype::u32 x, itype::u32 y) {
-            itype::u64 rx, ry, d = 0;
-            for (itype::u64 s = (maxn + 1) >> 1; s; s >>= 1) {
-                rx = (x & s) != 0, ry = (y & s) != 0;
-                d += s * s * ((rx * 3) ^ ry);
-                if (ry) continue;
-                if (rx) {
-                    x = maxn - x;
-                    y = maxn - y;
-                }
-                itype::u32 t = x;
-                x = y, y = t;
+        itype::u32 width = 1.1 * std::sqrt(static_cast<ftype::f64>(3ull * N * N) / (2 * Q));
+        width += width == 0;
+        Arr<itype::u32> cnt(N + 1), buf(Q), block(Q), idx(Q);
+        for (itype::u32 i = 0; i != Q; ++i) ++cnt[qu[i].r];
+        for (itype::u32 i = 0; i != N; ++i) cnt[i + 1] += cnt[i];
+        for (itype::u32 i = 0; i != Q; ++i) buf[--cnt[qu[i].r]] = i;
+        cnt.assign(N / width + 2, 0);
+        for (itype::u32 i = 0; i != Q; ++i) block[i] = qu[i].l / width;
+        for (itype::u32 i = 0; i != Q; ++i) ++cnt[block[i]];
+        for (itype::u32 i = 0; i != cnt.size() - 1; ++i) cnt[i + 1] += cnt[i];
+        for (itype::u32 i = 0; i != Q; ++i) idx[--cnt[block[buf[i]]]] = buf[i];
+        for (itype::u32 i = 0; i < cnt.size() - 1; i += 2) {
+            const itype::u32 l = cnt[i], r = cnt[i + 1];
+            for (itype::u32 j = 0; j != (r - l) / 2; ++j) {
+                const itype::u32 t = idx[l + j];
+                idx[l + j] = idx[r - j - 1], idx[r - j - 1] = t;
             }
-            return d;
-        };
+        }
+        itype::u32 nl = 0, nr = 0;
+        for (itype::u32 i : idx) {
+            while (nl > qu[i].l) addl(--nl);
+            while (nr < qu[i].r) addr(nr++);
+            while (nl < qu[i].l) dell(nl++);
+            while (nr > qu[i].r) delr(--nr);
+            slv(i);
+        }
+        /*
         Arr<itype::u32> idx(Q);
         for (itype::u32 i = 0; i != Q; ++i) idx[i] = i;
         {
+            auto hilbertorder = [maxn = (std::bit_floor(N) << 1) - 1](itype::u32 x, itype::u32 y) {
+                itype::u64 rx, ry, d = 0;
+                for (itype::u64 s = (maxn + 1) >> 1; s; s >>= 1) {
+                    rx = (x & s) != 0, ry = (y & s) != 0;
+                    d += s * s * ((rx * 3) ^ ry);
+                    if (ry) continue;
+                    if (rx) {
+                        x = maxn - x;
+                        y = maxn - y;
+                    }
+                    itype::u32 t = x;
+                    x = y, y = t;
+                }
+                return d;
+            };
             Arr<itype::u64> eval(Q);
             for (itype::u32 i = 0; i != Q; ++i) eval[i] = hilbertorder(qu[i].l, qu[i].r);
             std::sort(idx.begin(), idx.end(), [&](itype::u32 a, itype::u32 b) { return eval[a] < eval[b]; });
@@ -256,6 +284,7 @@ public:
             while (nr > qu[i].r) delr(--nr);
             slv(i);
         }
+        */
     }
 };
 

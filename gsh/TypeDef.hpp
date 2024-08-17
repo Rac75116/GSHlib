@@ -161,5 +161,14 @@ GSH_INTERNAL_INLINE constexpr bool Unpredictable(const bool f) {
     return f;
 #endif
 }
+template<class T>
+    requires std::is_scalar_v<T>
+GSH_INTERNAL_INLINE constexpr void ForceCalc(T&& v) {
+    if (!std::is_constant_evaluated()) __asm__ volatile("" ::"r"(v));
+}
+template<class T, class... Args> GSH_INTERNAL_INLINE constexpr void ForceCalc(T&& v, Args&&... args) {
+    ForceCalc(std::forward<T>(v));
+    ForceCalc(std::forward<Args>(args)...);
+}
 
 }  // namespace gsh

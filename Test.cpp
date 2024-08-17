@@ -11,9 +11,11 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Algorithm.hpp>
+#include <gsh/Modint.hpp>
+#include <gsh/Timer.hpp>
+#include <cassert>
 
-#if false && !defined ONLINE_JUDGE
+#if 1 && !defined ONLINE_JUDGE
 #include <fcntl.h>
 gsh::BasicReader r(open("in.txt", O_RDONLY));
 gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
@@ -27,32 +29,6 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
-    static u64 a[500000];
-    static u32 b[500000], c[500000];
-    if (N == 0) r.skip(1);
-    else {
-        for (u32 i = 0; i != N; ++i) a[i] = Parser<u32>{}(r) | (u64(i) << 32);
-        internal::SortUnsigned32(a, N);
-        c[a[0] >> 32] = 0;
-        u32 cnt = 0;
-        for (u32 i = 1; i != N; ++i) {
-            cnt += u32(a[i - 1]) != u32(a[i]);
-            c[a[i] >> 32] = cnt;
-        }
-    }
-    Mo mo;
-    for (u32 i = 0; i != Q; ++i) {
-        u32 L = Parser<u8dig>{}(r), R = Parser<u8dig>{}(r);
-        mo.query(L, R);
-    }
-    Arr<u32> cnt(N);
-    u32 res = 0;
-    mo.solve([&](u32 x) { res += (cnt[c[x]]++ == 0); }, [&](u32 x) { res -= (--cnt[c[x]] == 0); }, [&](u32 x) { b[x] = res; });
-    for (u32 i = 0; i != Q; ++i) {
-        Formatter<u32>{}(w, b[i]);
-        Formatter<c8>{}(w, '\n');
-    }
     /*
     Rand64 r;
     ClockTimer t;
@@ -74,11 +50,10 @@ void Main() {
         Formatter<c8>{}(w, '\n');
     }
     */
-    /*
-    //internal::StaticModint32Impl<998244353> mint;
-    internal::DynamicModint64Impl mint;
+    internal::StaticModint32Impl<998244353> mint;
+    //internal::DynamicModint64Impl mint;
     //mint.set(998244353);
-    mint.set((51ull << 53) + 1);
+    //mint.set((51ull << 53) + 1);
     //mint.set(4 * 123456789ull + 3);
     auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);
     ClockTimer t;
@@ -109,7 +84,6 @@ void Main() {
     Formatter<c8>{}(w, '\n');
     Formatter<u64>{}(w, mint.val(c));
     Formatter<c8>{}(w, '\n');
-    */
 }
 int main() {
 #ifdef ONLINE_JUDGE

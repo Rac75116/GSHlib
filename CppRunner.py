@@ -27,26 +27,28 @@ clang_option = [
     "-fuse-ld=lld",
     "-I."
 ]
-path = sys.argv[1]
-exepath = os.path.splitext(path)[0] + ".exe"
-option = [compiler]
-if compiler == "g++": option += gcc_option
-elif compiler == "clang++": option += clang_option
-else: assert False
-option += ["-o", exepath, path]
-st = time.perf_counter()
-cp = subprocess.run(option)
-ed = time.perf_counter()
-if cp.returncode != 0:
-    print("\033[31mCompilation failed\033[0m")
-    sys.exit(1)
-print("\033[32mCompilation succeeded  [" + str(max(0, round((ed - st) * 1000) - 10)) + "ms]\033[0m")
-try: subprocess.run(exepath, timeout=0)
+try:
+    path = sys.argv[1]
+    exepath = os.path.splitext(path)[0] + ".exe"
+    option = [compiler]
+    if compiler == "g++": option += gcc_option
+    elif compiler == "clang++": option += clang_option
+    else: assert False
+    option += ["-o", exepath, path]
+    st = time.perf_counter()
+    cp = subprocess.run(option)
+    ed = time.perf_counter()
+    if cp.returncode != 0:
+        print("\033[31mCompilation failed\033[0m")
+        sys.exit(1)
+    print("\033[32mCompilation succeeded  [" + str(max(0, round((ed - st) * 1000) - 10)) + "ms]\033[0m")
+    try: subprocess.run(exepath, timeout=0)
+    except: pass
+    st = time.perf_counter()
+    cp = subprocess.run(exepath)
+    ed = time.perf_counter()
+    if cp.returncode != 0:
+        print("\033[31mExecusion failed\033[0m")
+        sys.exit(2)
+    print("\033[32mExecusion succeeded  [" + str(max(0, round((ed - st) * 1000) - 10)) + "ms]\033[0m")
 except: pass
-st = time.perf_counter()
-cp = subprocess.run(exepath, universal_newlines=True)
-ed = time.perf_counter()
-if cp.returncode != 0:
-    print("\033[31mExecusion failed\033[0m")
-    sys.exit(2)
-print("\033[32mExecusion succeeded  [" + str(max(0, round((ed - st) * 1000) - 10)) + "ms]\033[0m")

@@ -221,28 +221,33 @@ public:
     constexpr Mo() {}
     constexpr void reserve(itype::u32 q) { qu.reserve(q); }
     constexpr void query(itype::u32 l, itype::u32 r) { qu.emplace_back(l, r); }
+    template<class F1, class F2, class F3> void solve(F1&& add, F2&& del, F3&& slv) const { solve(add, add, del, del, slv); }
     template<class F1, class F2, class F3, class F4, class F5> void solve(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
-        auto hilbertorder = [](itype::u32 x, itype::u32 y) {
-            const itype::u64 logn = (std::bit_width((x < y ? y : x) * 2 + 1) - 1) | 1;
-            const itype::u64 maxn = (1ull << logn) - 1;
-            itype::u64 res = 0;
-            for (itype::u64 s = 1ull << (logn - 1); s; s >>= 1) {
-                bool rx = x & s, ry = y & s;
-                res = (res << 2) | (rx ? (ry ? 2 : 1) : (ry ? 3 : 0));
-                if (!rx) {
-                    if (ry) x ^= maxn, y ^= maxn;
-                    itype::u32 t = x;
-                    x = y, y = t;
-                }
-            }
-            return res;
-        };
         const itype::u32 Q = qu.size();
+        itype::u32 N = 0;
+        for (itype::u32 i = 0; i != Q; ++i) N = N < qu[i].r ? qu[i].r : N;
+        auto hilbertorder = [maxn = (std::bit_floor(N) << 1) - 1](itype::u32 x, itype::u32 y) {
+            itype::u64 rx, ry, d = 0;
+            for (itype::u64 s = (maxn + 1) >> 1; s; s >>= 1) {
+                rx = (x & s) != 0, ry = (y & s) != 0;
+                d += s * s * ((rx * 3) ^ ry);
+                if (ry) continue;
+                if (rx) {
+                    x = maxn - x;
+                    y = maxn - y;
+                }
+                itype::u32 t = x;
+                x = y, y = t;
+            }
+            return d;
+        };
         Arr<itype::u32> idx(Q);
         for (itype::u32 i = 0; i != Q; ++i) idx[i] = i;
-        Arr<itype::u64> eval(Q);
-        for (itype::u32 i = 0; i != Q; ++i) eval[i] = hilbertorder(qu[i].l, qu[i].r);
-        std::sort(idx.begin(), idx.end(), [&](itype::u32 a, itype::u32 b) { return eval[a] < eval[b]; });
+        {
+            Arr<itype::u64> eval(Q);
+            for (itype::u32 i = 0; i != Q; ++i) eval[i] = hilbertorder(qu[i].l, qu[i].r);
+            std::sort(idx.begin(), idx.end(), [&](itype::u32 a, itype::u32 b) { return eval[a] < eval[b]; });
+        }
         itype::u32 nl = 0, nr = 0;
         for (itype::u32 i : idx) {
             while (nl > qu[i].l) addl(--nl);

@@ -12,7 +12,6 @@
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
 #include <gsh/Algorithm.hpp>
-#include <unordered_map>
 
 #if false && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -29,22 +28,27 @@ void Main() {
     using namespace gsh::ftype;
     using namespace gsh::ctype;
     u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
-    static u32 a[500000], b[500000];
-    for (u32 i = 0; i != N; ++i) a[i] = Parser<u32>{}(r);
+    static u64 a[500000];
+    static u32 b[500000], c[500000];
+    if (N == 0) r.skip(1);
+    else {
+        for (u32 i = 0; i != N; ++i) a[i] = Parser<u32>{}(r) | (u64(i) << 32);
+        internal::SortUnsigned32(a, N);
+        c[a[0] >> 32] = 0;
+        u32 cnt = 0;
+        for (u32 i = 1; i != N; ++i) {
+            cnt += u32(a[i - 1]) != u32(a[i]);
+            c[a[i] >> 32] = cnt;
+        }
+    }
     Mo mo;
     for (u32 i = 0; i != Q; ++i) {
         u32 L = Parser<u8dig>{}(r), R = Parser<u8dig>{}(r);
         mo.query(L, R);
     }
-    unordered_map<itype::u32, itype::u32> m;
-    mo.solve([&](itype::u32 x) { ++m[a[x]]; }, [&](itype::u32 x) { ++m[a[x]]; },
-             [&](itype::u32 x) {
-                 if (--m[a[x]] == 0) m.erase(a[x]);
-             },
-             [&](itype::u32 x) {
-                 if (--m[a[x]] == 0) m.erase(a[x]);
-             },
-             [&](itype::u32 x) { b[x] = m.size(); });
+    Arr<u32> cnt(N);
+    u32 res = 0;
+    mo.solve([&](u32 x) { res += (cnt[c[x]]++ == 0); }, [&](u32 x) { res -= (--cnt[c[x]] == 0); }, [&](u32 x) { b[x] = res; });
     for (u32 i = 0; i != Q; ++i) {
         Formatter<u32>{}(w, b[i]);
         Formatter<c8>{}(w, '\n');

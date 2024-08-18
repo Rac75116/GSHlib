@@ -11,9 +11,10 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Modint.hpp>
+#include <gsh/Random.hpp>
+#include <gsh/Numeric.hpp>
 #include <gsh/Timer.hpp>
-#include <cassert>
+#include <gsh/Macro.hpp>
 
 #if 1 && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -29,7 +30,6 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    /*
     Rand64 r;
     ClockTimer t;
     u64 n = 0;
@@ -39,7 +39,6 @@ void Main() {
     Formatter<u64>{}(w, n);
     Formatter<c8>{}(w, '\n');
     t.print();
-    */
     /*
     u32 T = Parser<u8dig>{}(r).val;
     if (T == 10) return;
@@ -50,9 +49,10 @@ void Main() {
         Formatter<c8>{}(w, '\n');
     }
     */
-    internal::StaticModint32Impl<998244353> mint;
-    //internal::DynamicModint64Impl mint;
-    //mint.set(998244353);
+    /*
+    //internal::StaticModint32Impl<998244353> mint;
+    internal::DynamicModint32Impl mint;
+    mint.set(998244353);
     //mint.set((51ull << 53) + 1);
     //mint.set(4 * 123456789ull + 3);
     auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);
@@ -64,6 +64,7 @@ void Main() {
             auto f = mint.neg(mint.inc(mint.sub(mint.dec(mint.add(mint.mul(c, c), a)), b)));
             a = d, b = e, c = f;
         }
+        R"(
         for (u32 i = 0; i != 200000; ++i) {
             auto tmp_a = mint.sqrt(a);
             auto tmp_b = mint.sqrt(b);
@@ -75,6 +76,7 @@ void Main() {
             b = mint.mul(tmp_b ? tmp_b.val() : b, b);
             c = mint.mul(tmp_c ? tmp_c.val() : c, c);
         }
+        )";
     }
     ();
     t.print();
@@ -84,6 +86,7 @@ void Main() {
     Formatter<c8>{}(w, '\n');
     Formatter<u64>{}(w, mint.val(c));
     Formatter<c8>{}(w, '\n');
+    */
 }
 int main() {
 #ifdef ONLINE_JUDGE

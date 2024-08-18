@@ -1,34 +1,4 @@
 #pragma once
-#include <type_traits>  // std::is_constant_evaluated
-
-#define GSH_INTERNAL_STR(s) #s
-#if defined __clang__ || defined __INTEL_COMPILER
-#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(unroll n))
-#elif defined __GNUC__
-#define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(GCC unroll n))
-#else
-#define GSH_INTERNAL_UNROLL(n)
-#endif
-#ifdef __GNUC__
-#define GSH_INTERNAL_INLINE   [[gnu::always_inline]]
-#define GSH_INTERNAL_NOINLINE [[gnu::noinline]]
-#elif defined _MSC_VER
-#define GSH_INTERNAL_INLINE   [[msvc::forceinline]]
-#define GSH_INTERNAL_NOINLINE [[msvc::noinline]]
-#else
-#define GSH_INTERNAL_INLINE
-#define GSH_INTERNAL_NOINLINE
-#endif
-#ifdef __clang__
-#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma(GSH_INTERNAL_STR(clang attribute push(__attribute__((__VA_ARGS__)), apply_to = apply)))
-#define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("clang attribute pop")
-#elif defined __GNUC__
-#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma("GCC push_options") _Pragma(GSH_INTERNAL_STR(GCC __VA_ARGS__))
-#define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("GCC pop_options")
-#else
-#define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...)
-#define GSH_INTERNAL_POP_ATTRIBUTE
-#endif
 
 namespace gsh {
 
@@ -113,62 +83,5 @@ namespace simd {
 #endif
 
 }  // namespace simd
-
-[[noreturn]] void Unreachable() {
-#if defined __GNUC__ || defined __clang__
-    __builtin_unreachable();
-#elif _MSC_VER
-    __assume(false);
-#else
-    [[maybe_unused]] itype::u32 n = 1 / 0;
-#endif
-};
-GSH_INTERNAL_INLINE constexpr void Assume(const bool f) {
-    if (std::is_constant_evaluated()) return;
-#if defined __clang__
-    __builtin_assume(f);
-#elif defined __GNUC__
-    if (!f) __builtin_unreachable();
-#elif _MSC_VER
-    __assume(f);
-#else
-    if (!f) Unreachable();
-#endif
-}
-template<bool Likely = true> GSH_INTERNAL_INLINE constexpr bool Expect(const bool f) {
-    if (std::is_constant_evaluated()) return f;
-#if defined __GNUC__ || defined __clang__
-    return __builtin_expect(f, Likely);
-#else
-    if constexpr (Likely) {
-        if (f) [[likely]]
-            return true;
-        else return false;
-    } else {
-        if (f) [[unlikely]]
-            return false;
-        else return true;
-    }
-#endif
-}
-GSH_INTERNAL_INLINE constexpr bool Unpredictable(const bool f) {
-    if (std::is_constant_evaluated()) return f;
-#if defined __clang__
-    return __builtin_unpredictable(f);
-#elif defined __GNUC__
-    return __builtin_expect_with_probability(f, 1, 0.5);
-#else
-    return f;
-#endif
-}
-template<class T>
-    requires std::is_scalar_v<T>
-GSH_INTERNAL_INLINE constexpr void ForceCalc(T&& v) {
-    if (!std::is_constant_evaluated()) __asm__ volatile("" ::"r"(v));
-}
-template<class T, class... Args> GSH_INTERNAL_INLINE constexpr void ForceCalc(T&& v, Args&&... args) {
-    ForceCalc(std::forward<T>(v));
-    ForceCalc(std::forward<Args>(args)...);
-}
 
 }  // namespace gsh

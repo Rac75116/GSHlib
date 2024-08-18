@@ -9,6 +9,7 @@
 #include <gsh/Exception.hpp>  // gsh::Exception
 #include <gsh/Range.hpp>      // gsh::ViewInterface
 #include <gsh/Memory.hpp>     // gsh::Allocator, gsh::AllocatorTraits
+#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 

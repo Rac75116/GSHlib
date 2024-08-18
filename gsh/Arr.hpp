@@ -11,6 +11,7 @@
 #include <gsh/Exception.hpp>  // gsh::Exception
 #include <gsh/Range.hpp>      // gsh::ViewInterface
 #include <gsh/Memory.hpp>     // gsh::Allocator, gsh::AllocatorTraits, gsh::ConstructAt, gsh::DestroyAt
+#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 

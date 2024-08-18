@@ -10,6 +10,7 @@
 #include <sys/stat.h>  // stat, fstat
 #endif
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ctype
+#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 
@@ -697,8 +698,7 @@ public:
     }
 };
 
-class BasicReader {
-    constexpr static itype::u32 Bufsize = 1 << 18;
+template<itype::u32 Bufsize = (1 << 18)> class BasicReader {
     itype::i32 fd = 0;
     ctype::c8 buf[Bufsize + 1];
     ctype::c8 *cur = buf, *eof = buf;
@@ -773,8 +773,7 @@ public:
     constexpr void skip(itype::u32 n) { cur += n; }
 };
 
-class BasicWriter {
-    constexpr static itype::u32 Bufsize = 1 << 18;
+template<itype::u32 Bufsize = (1 << 18)> class BasicWriter {
     itype::i32 fd = 1;
     ctype::c8 buf[Bufsize];
     ctype::c8 *cur = buf, *eof = buf + Bufsize;

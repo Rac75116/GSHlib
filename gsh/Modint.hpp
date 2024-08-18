@@ -145,18 +145,22 @@ namespace internal {
         }
         constexpr value_type inc(value_type x) const noexcept {
             Assume(x < derived().mod());
+            ForceCalc(x + 1);
             return x + 1 == derived().mod() ? 0 : x + 1;
         }
         constexpr value_type dec(value_type x) const noexcept {
             Assume(x < derived().mod());
+            ForceCalc(x - 1);
             return x == 0 ? derived().mod() - 1 : x - 1;
         }
         constexpr value_type add(value_type x, value_type y) const noexcept {
             Assume(x < derived().mod() && y < derived().mod());
+            ForceCalc(x + y, y - (derived().mod() - x));
             return derived().mod() - x > y ? x + y : y - (derived().mod() - x);
         }
         constexpr value_type sub(value_type x, value_type y) const noexcept {
             Assume(x < derived().mod() && y < derived().mod());
+            ForceCalc(x - y, derived().mod() - (y - x));
             return x >= y ? x - y : derived().mod() - (y - x);
         }
         constexpr value_type fma(value_type x, value_type y, value_type z) const noexcept { return derived().add(derived().mul(x, y), z); }

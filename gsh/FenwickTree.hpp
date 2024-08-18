@@ -6,6 +6,7 @@
 #include <gsh/Memory.hpp>    // gsh::Allocator, gsh::AllocatorTraits
 #include <gsh/Arr.hpp>       // gsh::Arr
 #include <gsh/TypeDef.hpp>   // gsh::itype
+#include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
 

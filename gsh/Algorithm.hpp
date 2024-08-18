@@ -253,38 +253,6 @@ public:
             while (nr > qu[i].r) delr(--nr);
             slv(i);
         }
-        /*
-        Arr<itype::u32> idx(Q);
-        for (itype::u32 i = 0; i != Q; ++i) idx[i] = i;
-        {
-            auto hilbertorder = [maxn = (std::bit_floor(N) << 1) - 1](itype::u32 x, itype::u32 y) {
-                itype::u64 rx, ry, d = 0;
-                for (itype::u64 s = (maxn + 1) >> 1; s; s >>= 1) {
-                    rx = (x & s) != 0, ry = (y & s) != 0;
-                    d += s * s * ((rx * 3) ^ ry);
-                    if (ry) continue;
-                    if (rx) {
-                        x = maxn - x;
-                        y = maxn - y;
-                    }
-                    itype::u32 t = x;
-                    x = y, y = t;
-                }
-                return d;
-            };
-            Arr<itype::u64> eval(Q);
-            for (itype::u32 i = 0; i != Q; ++i) eval[i] = hilbertorder(qu[i].l, qu[i].r);
-            std::sort(idx.begin(), idx.end(), [&](itype::u32 a, itype::u32 b) { return eval[a] < eval[b]; });
-        }
-        itype::u32 nl = 0, nr = 0;
-        for (itype::u32 i : idx) {
-            while (nl > qu[i].l) addl(--nl);
-            while (nr < qu[i].r) addr(nr++);
-            while (nl < qu[i].l) dell(nl++);
-            while (nr > qu[i].r) delr(--nr);
-            slv(i);
-        }
-        */
     }
 };
 

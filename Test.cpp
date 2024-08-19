@@ -29,8 +29,9 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    static BitTree24<(1ull << 24)> a, b;
-    a &= b;
+    u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
+    static c8 T[10000064];
+    Parser<ctype::c8*>{}(r, T);
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

@@ -356,7 +356,6 @@ public:
         return tmp;
     }
 };
-/*
 template<> class Parser<ctype::c8*> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, ctype::c8* s) const {
@@ -369,7 +368,6 @@ public:
         *s = '\0';
     }
 };
-*/
 
 template<class T> class Formatter;
 

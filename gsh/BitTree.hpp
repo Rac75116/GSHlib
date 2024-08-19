@@ -1,9 +1,11 @@
 #pragma once
-#include <bit>          // std::popcount
-#include <cstring>      // std::memset
-#include <type_traits>  // std::is_constant_evaluated
+#include <bit>              // std::popcount
+#include <cstring>          // std::memset
+#include <type_traits>      // std::is_constant_evaluated
+#include <gsh/TypeDef.hpp>  // gsh::itype
+#include <gsh/Util.hpp>     // gsh::Assume
 #include <immintrin.h>
-#include <gsh/TypeDef.hpp>
+
 
 namespace gsh {
 
@@ -12,7 +14,26 @@ template<itype::u32 Size>
 class BitTree24 {
     constexpr static itype::u32 s1 = ((Size + 262143) / 262144 + 7) / 8 * 8, s2 = ((Size + 4095) / 4096 + 7) / 8 * 8, s3 = ((Size + 63) / 64 + 7) / 8 * 8;
     alignas(32) itype::u64 v0, v1[s1], v2[s2], v3[s3];
-    constexpr void build() noexcept {}
+    constexpr void build() noexcept {
+        GSH_INTERNAL_UNROLL(16)
+        for (itype::u32 i = 0; i < s3; i += 4) {
+            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v3[i])), _mm256_setzero_pd())));
+            v2[i / 64] |= static_cast<itype::u64>(t) << (i % 64);
+        }
+        for (itype::u32 i = s3 / 4 * 4; i < s3; ++i) v2[i / 64] |= ((v3[i] != 0) << (i % 64));
+        GSH_INTERNAL_UNROLL(16)
+        for (itype::u32 i = 0; i < s2; i += 4) {
+            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v2[i])), _mm256_setzero_pd())));
+            v1[i / 64] |= static_cast<itype::u64>(t) << (i % 64);
+        }
+        for (itype::u32 i = s2 / 4 * 4; i < s2; ++i) v1[i / 64] |= ((v2[i] != 0) << (i % 64));
+        GSH_INTERNAL_UNROLL(16)
+        for (itype::u32 i = 0; i < s1; i += 4) {
+            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v1[i])), _mm256_setzero_pd())));
+            v0 |= static_cast<itype::u64>(t) << (i % 64);
+        }
+        for (itype::u32 i = s1 / 4 * 4; i < s1; ++i) v0 |= ((v1[i] != 0) << (i % 64));
+    }
 public:
     constexpr BitTree24() noexcept : v0{}, v1{}, v2{}, v3{} {}
     constexpr BitTree24(itype::u64 val) noexcept : v0{}, v1{}, v2{}, v3{} {
@@ -20,6 +41,22 @@ public:
             v0 = v1[0] = v2[0] = 1ull;
             v3[0] = val;
         }
+    }
+    constexpr BitTree24(const ctype::c8* p) : BitTree24(p, std::strlen(p)) {}
+    constexpr BitTree24(const ctype::c8* p, itype::u32 sz) {
+        sz = sz < Size ? sz : Size;
+        if (std::is_constant_evaluated()) {
+            for (itype::u32 i = 0; i < sz; ++i) v3[i / 64] |= static_cast<itype::u64>(p[i] - '0') << (i % 64);
+            build();
+            return;
+        }
+        for (itype::u32 i = 0; i < sz; i += 8) {
+            const itype::u32 a = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i)), _mm256_set1_epi8('1')));
+            const itype::u32 b = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i + 4)), _mm256_set1_epi8('1')));
+            v3[i] = static_cast<itype::u64>(a) << 32 | b;
+        }
+        for (itype::u32 i = sz / 8 * 8; i < sz; ++i) v3[i / 64] |= static_cast<itype::u64>(p[i] - '0') << (i % 64);
+        build();
     }
     constexpr ~BitTree24() noexcept = default;
     constexpr BitTree24& operator=(const BitTree24&) noexcept = default;
@@ -93,7 +130,7 @@ public:
             ref.set(idx, x);
             return *this;
         }
-        constexpr refernece& operator=(const reference& x) {
+        constexpr reference& operator=(const reference& x) {
             ref.set(idx, x);
             return *this;
         }
@@ -134,15 +171,15 @@ public:
             return true;
         }
         for (itype::u32 i = 0; i != s1; i += 4) {
-            unsigned t = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_load_si256((const __m256i*) &v1[i]), _mm256_load_si256((const __m256i*) &rhs.v1[i])));
+            const itype::u32 t = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_load_si256((const __m256i*) &v1[i]), _mm256_load_si256((const __m256i*) &rhs.v1[i])));
             if (t != 0xffffffff) return false;
         }
         for (itype::u32 i = 0; i != s2; i += 4) {
-            unsigned t = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_load_si256((const __m256i*) &v2[i]), _mm256_load_si256((const __m256i*) &rhs.v2[i])));
+            const itype::u32 t = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_load_si256((const __m256i*) &v2[i]), _mm256_load_si256((const __m256i*) &rhs.v2[i])));
             if (t != 0xffffffff) return false;
         }
         for (itype::u32 i = 0; i != s3; i += 4) {
-            unsigned t = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_load_si256((const __m256i*) &v3[i]), _mm256_load_si256((const __m256i*) &rhs.v3[i])));
+            const itype::u32 t = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_load_si256((const __m256i*) &v3[i]), _mm256_load_si256((const __m256i*) &rhs.v3[i])));
             if (t != 0xffffffff) return false;
         }
         return true;
@@ -153,9 +190,56 @@ public:
     friend constexpr BitTree24 operator&(const BitTree24& lhs, const BitTree24& rhs) noexcept { return BitTree24(lhs) &= rhs; }
     friend constexpr BitTree24 operator|(const BitTree24& lhs, const BitTree24& rhs) noexcept { return BitTree24(lhs) |= rhs; }
     friend constexpr BitTree24 operator^(const BitTree24& lhs, const BitTree24& rhs) noexcept { return BitTree24(lhs) ^= rhs; }
-    constexpr itype::u32 find_next(itype::u32 pos) {
-        if (itype::u64 tmp = v3[pos / 64] & -(1ull << (pos % 64)); tmp != 0) return pos / 64 * 64 + std::countr_zero(tmp);
-        // TODO
+    constexpr static itype::u32 npos = -1;
+    constexpr itype::u32 find_next(itype::u32 pos) const {
+        if (const itype::u64 tmp = v3[pos / 64] & -(1ull << (pos % 64)); tmp != 0) return pos / 64 * 64 + std::countr_zero(tmp);
+        if (const itype::u64 tmp = v2[pos / 4096] & -(2ull << (pos / 64 % 64)); tmp != 0) {
+            const itype::u64 a = pos / 4096 * 64 + std::countr_zero(tmp), b = v3[a];
+            Assume(b != 0);
+            return a * 64 + std::countr_zero(b);
+        }
+        if (const itype::u64 tmp = v1[pos / 262144] & -(2ull << (pos / 4096 % 64)); tmp != 0) {
+            const itype::u64 a = pos / 262144 * 64 + std::countr_zero(tmp), b = v2[a];
+            Assume(b != 0);
+            const itype::u64 c = a * 64 + std::countr_zero(b), d = v3[c];
+            Assume(d != 0);
+            return c * 64 + std::countr_zero(d);
+        }
+        if (const itype::u64 tmp = v0 & -(2ull << (pos / 262144 % 64)); tmp != 0) {
+            const itype::u64 a = std::countr_zero(tmp), b = v1[a];
+            Assume(b != 0);
+            const itype::u64 c = a * 64 + std::countr_zero(b), d = v2[c];
+            Assume(d != 0);
+            const itype::u64 e = c * 64 + std::countr_zero(d), f = v3[e];
+            Assume(f != 0);
+            return e * 64 + std::countr_zero(f);
+        }
+        return npos;
+    }
+    constexpr itype::u32 find_prev(itype::u32 pos) const {
+        if (const itype::u64 tmp = v3[pos / 64] & ((2ull << (pos % 64)) - 1); tmp != 0) return pos / 64 * 64 + std::bit_width(tmp) - 1;
+        if (const itype::u64 tmp = v2[pos / 4096] & ((1ull << (pos / 64 % 64)) - 1); tmp != 0) {
+            const itype::u64 a = pos / 4096 * 64 + std::bit_width(tmp) - 1, b = v3[a];
+            Assume(b != 0);
+            return a * 64 + std::bit_width(b) - 1;
+        }
+        if (const itype::u64 tmp = v1[pos / 262144] & ((1ull << (pos / 4096 % 64)) - 1); tmp != 0) {
+            const itype::u64 a = pos / 262144 * 64 + std::bit_width(tmp) - 1, b = v2[a];
+            Assume(b != 0);
+            const itype::u64 c = a * 64 + std::bit_width(b) - 1, d = v3[c];
+            Assume(d != 0);
+            return c * 64 + std::bit_width(d) - 1;
+        }
+        if (const itype::u64 tmp = v0 & ((1ull << (pos / 262144 % 64)) - 1); tmp != 0) {
+            const itype::u64 a = std::bit_width(tmp) - 1, b = v1[a];
+            Assume(b != 0);
+            const itype::u64 c = a * 64 + std::bit_width(b) - 1, d = v2[c];
+            Assume(d != 0);
+            const itype::u64 e = c * 64 + std::bit_width(d) - 1, f = v3[e];
+            Assume(f != 0);
+            return e * 64 + std::bit_width(f) - 1;
+        }
+        return npos;
     }
 };
 

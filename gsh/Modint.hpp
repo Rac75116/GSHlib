@@ -244,7 +244,7 @@ namespace internal {
             } else {
                 const itype::u32 S = std::countr_zero(md - 1);
                 const itype::u32 W = std::bit_width(md);
-                if (false && S * S <= 12 * W) {
+                if (S * S <= 12 * W) {
                     const auto Q = (md - 1) >> S;
                     const auto tmp = derived().pow(n, Q / 2);
                     auto R = derived().mul(tmp, n), t = derived().mul(tmp, R);

@@ -21,8 +21,9 @@ enum class RangeKind { Sized, Unsized };
 namespace internal {
     template<class T, class U> concept same_ncvr = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 }
-template<Range R> class RangeTraits {
+template<class R> class RangeTraits {
 public:
+    static_assert(Range<R>);
     using value_type = std::ranges::range_value_t<R>;
     using iterator = std::ranges::iterator_t<R>;
     using sentinel = std::ranges::sentinel_t<R>;

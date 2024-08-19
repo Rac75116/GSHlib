@@ -11,12 +11,11 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Random.hpp>
-#include <gsh/Numeric.hpp>
-#include <gsh/Timer.hpp>
-#include <gsh/Macro.hpp>
+#include <gsh/BitTree.hpp>
+//#include <gsh/Numeric.hpp>
+//#include <gsh/Timer.hpp>
 
-#if 1 && !defined ONLINE_JUDGE
+#if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
 gsh::BasicReader r(open("in.txt", O_RDONLY));
 gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
@@ -30,25 +29,8 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    Rand64 r;
-    ClockTimer t;
-    u64 n = 0;
-    for (u32 i = 0; i != 10000000; ++i) {
-        n += KthRoot(r(), 3);
-    }
-    Formatter<u64>{}(w, n);
-    Formatter<c8>{}(w, '\n');
-    t.print();
-    /*
-    u32 T = Parser<u8dig>{}(r).val;
-    if (T == 10) return;
-    while (T--) {
-        u64 A = Parser<u64>{}(r);
-        u8 K = Parser<u8>{}(r);
-        Formatter<u64>{}(w, KthRoot(A, K));
-        Formatter<c8>{}(w, '\n');
-    }
-    */
+    static BitTree24<(1ull << 24)> a, b;
+    a &= b;
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

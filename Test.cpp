@@ -30,8 +30,43 @@ void Main() {
     using namespace gsh::ftype;
     using namespace gsh::ctype;
     u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
+    Formatter<u32>{}(w, Q);
     static c8 T[10000064];
-    Parser<ctype::c8*>{}(r, T);
+    Parser<c8*>{ T }(r);
+    static BitTree24<10000000> b;
+    //b = { T, N };
+    for (u32 i = 0; i != Q; ++i) {
+        ctype::c8 t = Parser<c8>{}(r);
+        itype::u32 k = Parser<u8dig>{}(r);
+        /*
+        if (t == '0') {
+            b.set(k);
+        } else if (t == '1') {
+            b.reset(k);
+        } else if (t == '2') {
+            Formatter<c8>{}(w, '0' + b.test(k));
+            Formatter<c8>{}(w, '\n');
+        } else if (t == '3') {
+            u32 n = b.find_next(k);
+            if (n == b.npos) {
+                Formatter<c8>{}(w, '-');
+                Formatter<c8>{}(w, '1');
+            } else {
+                Formatter<u32>{}(w, n);
+            }
+            Formatter<c8>{}(w, '\n');
+        } else if (t == '4') {
+            u32 n = b.find_prev(k);
+            if (n == b.npos) {
+                Formatter<c8>{}(w, '-');
+                Formatter<c8>{}(w, '1');
+            } else {
+                Formatter<u32>{}(w, n);
+            }
+            Formatter<c8>{}(w, '\n');
+        }
+        */
+    }
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

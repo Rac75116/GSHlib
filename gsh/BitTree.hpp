@@ -17,19 +17,19 @@ class BitTree24 {
     constexpr void build() noexcept {
         GSH_INTERNAL_UNROLL(16)
         for (itype::u32 i = 0; i < s3; i += 4) {
-            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v3[i])), _mm256_setzero_pd())));
+            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v3[i])), _mm256_setzero_si256())));
             v2[i / 64] |= static_cast<itype::u64>(t) << (i % 64);
         }
         for (itype::u32 i = s3 / 4 * 4; i < s3; ++i) v2[i / 64] |= ((v3[i] != 0) << (i % 64));
         GSH_INTERNAL_UNROLL(16)
         for (itype::u32 i = 0; i < s2; i += 4) {
-            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v2[i])), _mm256_setzero_pd())));
+            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v2[i])), _mm256_setzero_si256())));
             v1[i / 64] |= static_cast<itype::u64>(t) << (i % 64);
         }
         for (itype::u32 i = s2 / 4 * 4; i < s2; ++i) v1[i / 64] |= ((v2[i] != 0) << (i % 64));
         GSH_INTERNAL_UNROLL(16)
         for (itype::u32 i = 0; i < s1; i += 4) {
-            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v1[i])), _mm256_setzero_pd())));
+            const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v1[i])), _mm256_setzero_si256())));
             v0 |= static_cast<itype::u64>(t) << (i % 64);
         }
         for (itype::u32 i = s1 / 4 * 4; i < s1; ++i) v0 |= ((v1[i] != 0) << (i % 64));

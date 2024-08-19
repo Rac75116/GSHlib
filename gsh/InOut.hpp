@@ -357,15 +357,24 @@ public:
     }
 };
 template<> class Parser<ctype::c8*> {
+    ctype::c8* s;
 public:
-    template<class Stream> constexpr void operator()(Stream& stream, ctype::c8* s) const {
+    constexpr Parser(ctype::c8* s_) noexcept : s(s_) {}
+    template<class Stream> constexpr void operator()(Stream& stream) const {
+        const ctype::c8* e = stream.current();
+        ctype::c8* c = s;
         while (true) {
-            while (*stream.current() > ' ' && stream.avail() != 0) *(s++) = *stream.current(), stream.skip(1);
-            if (stream.avail() == 0) stream.reload();
-            else break;
+            while (*e > ' ') ++e;
+            itype::u32 len = e - stream.current();
+            std::memcpy(c, stream.current(), len);
+            c += len;
+            if (len == stream.avail()) {
+                stream.skip(len);
+                stream.reload();
+            } else break;
         }
         stream.skip(1);
-        *s = '\0';
+        *c = '\0';
     }
 };
 

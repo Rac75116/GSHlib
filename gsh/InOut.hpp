@@ -358,23 +358,42 @@ public:
 };
 template<> class Parser<ctype::c8*> {
     ctype::c8* s;
+    itype::u32 n;
 public:
-    constexpr Parser(ctype::c8* s_) noexcept : s(s_) {}
+    constexpr Parser(ctype::c8* s_, itype::u32 n_ = 0xffffffff) noexcept : s(s_), n(n_) {}
     template<class Stream> constexpr void operator()(Stream& stream) const {
-        const ctype::c8* e = stream.current();
-        ctype::c8* c = s;
-        while (true) {
-            while (*e > ' ') ++e;
-            itype::u32 len = e - stream.current();
-            std::memcpy(c, stream.current(), len);
-            c += len;
-            if (len == stream.avail()) {
+        if (n == 0xffffffff) {
+            stream.reload(16);
+            ctype::c8* c = s;
+            while (true) {
+                const ctype::c8* e = stream.current();
+                while (*e >= '!') ++e;
+                const itype::u32 len = e - stream.current();
+                std::memcpy(c, stream.current(), len);
                 stream.skip(len);
+                c += len;
+                if (stream.avail() == 0) stream.reload();
+                else break;
+            }
+            stream.skip(1);
+            *c = '\0';
+        } else {
+            itype::u32 rem = n;
+            ctype::c8* c = s;
+            itype::u32 avail = stream.avail();
+            while (avail <= rem) {
+                std::memcpy(c, stream.current(), avail);
+                c += avail;
+                rem -= avail;
+                stream.skip(avail);
                 stream.reload();
-            } else break;
+                avail = stream.avail();
+            }
+            std::memcpy(c, stream.current(), rem);
+            c += rem;
+            stream.skip(rem + 1);
+            *c = '\0';
         }
-        stream.skip(1);
-        *c = '\0';
     }
 };
 
@@ -707,7 +726,7 @@ public:
 
 template<itype::u32 Bufsize = (1 << 18)> class BasicReader {
     itype::i32 fd = 0;
-    ctype::c8 buf[Bufsize + 1];
+    ctype::c8 buf[Bufsize + 1] = {};
     ctype::c8 *cur = buf, *eof = buf;
 public:
     BasicReader() {}
@@ -782,7 +801,7 @@ public:
 
 template<itype::u32 Bufsize = (1 << 18)> class BasicWriter {
     itype::i32 fd = 1;
-    ctype::c8 buf[Bufsize];
+    ctype::c8 buf[Bufsize + 1] = {};
     ctype::c8 *cur = buf, *eof = buf + Bufsize;
 public:
     BasicWriter() {}

@@ -12,10 +12,9 @@
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
 #include <gsh/BitTree.hpp>
-//#include <gsh/Numeric.hpp>
-//#include <gsh/Timer.hpp>
+#include <gsh/Timer.hpp>
 
-#if 0 && !defined ONLINE_JUDGE
+#if 1 && !defined ONLINE_JUDGE
 #include <fcntl.h>
 gsh::BasicReader r(open("in.txt", O_RDONLY));
 gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
@@ -30,15 +29,13 @@ void Main() {
     using namespace gsh::ftype;
     using namespace gsh::ctype;
     u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
-    Formatter<u32>{}(w, Q);
+    if (N == 6) return;
     static c8 T[10000064];
-    Parser<c8*>{ T }(r);
-    static BitTree24<10000000> b;
-    //b = { T, N };
+    Parser<c8*>{ T, N }(r);
+    static BitTree24<10000000> b(T, N);
     for (u32 i = 0; i != Q; ++i) {
         ctype::c8 t = Parser<c8>{}(r);
         itype::u32 k = Parser<u8dig>{}(r);
-        /*
         if (t == '0') {
             b.set(k);
         } else if (t == '1') {
@@ -65,7 +62,6 @@ void Main() {
             }
             Formatter<c8>{}(w, '\n');
         }
-        */
     }
     /*
     //internal::StaticModint32Impl<998244353> mint;

@@ -15,24 +15,50 @@ class BitTree24 {
     constexpr static itype::u32 s1 = ((Size + 262143) / 262144 + 7) / 8 * 8, s2 = ((Size + 4095) / 4096 + 7) / 8 * 8, s3 = ((Size + 63) / 64 + 7) / 8 * 8;
     alignas(32) itype::u64 v0, v1[s1], v2[s2], v3[s3];
     constexpr void build() noexcept {
+        if (true || std::is_constant_evaluated()) {
+            v0 = 0;
+            for (itype::u32 i = 0; i != s1; ++i) v1[i] = 0;
+            for (itype::u32 i = 0; i != s2; ++i) v2[i] = 0;
+            for (itype::u32 i = 0; i != s3; ++i) v2[i / 64] |= (static_cast<itype::u64>(v3[i] != 0) << (i % 64));
+            for (itype::u32 i = 0; i != s2; ++i) v1[i / 64] |= (static_cast<itype::u64>(v2[i] != 0) << (i % 64));
+            for (itype::u32 i = 0; i != s1; ++i) v0 |= (static_cast<itype::u64>(v1[i] != 0) << (i % 64));
+            return;
+        }
+        v0 = 0;
+        for (itype::u32 i = 0; i != s1; ++i) v1[i] = 0;
+        for (itype::u32 i = 0; i != s2; ++i) v2[i] = 0;
+        for (itype::u32 i = s3 / 64 * 64; i != s3; ++i) v2[i / 64] |= (static_cast<itype::u64>(v3[i] != 0) << (i % 64));
+        for (itype::u32 i = 0; i != s2; ++i) v1[i / 64] |= (static_cast<itype::u64>(v2[i] != 0) << (i % 64));
+        for (itype::u32 i = 0; i != s1; ++i) v0 |= (static_cast<itype::u64>(v1[i] != 0) << (i % 64));
+        for (itype::u32 x = 0; x < s3; x += 64) {
+            auto get = [&](itype::u32 n) -> itype::u32 {
+                return _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v3[x + n])), _mm256_setzero_si256())));
+            };
+            const itype::u64 a = get(0), b = get(4), c = get(8), d = get(12), e = get(16), f = get(20), g = get(24), h = get(28);
+            const itype::u64 i = get(32), j = get(36), k = get(40), l = get(44), m = get(48), n = get(52), o = get(56), p = get(60);
+            v2[x / 64] = ~(a | b << 4 | c << 8 | d << 12 | e << 16 | f << 20 | g << 24 | h << 28 | i << 32 | j << 36 | k << 40 | l << 44 | m << 48 | n << 52 | o << 56 | p << 60);
+        }
+        /*
         GSH_INTERNAL_UNROLL(16)
         for (itype::u32 i = 0; i < s3; i += 4) {
             const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v3[i])), _mm256_setzero_si256())));
-            v2[i / 64] |= static_cast<itype::u64>(t) << (i % 64);
+            v2[i / 64] |= static_cast<itype::u64>(t ^ 0xf) << (i % 64);
         }
-        for (itype::u32 i = s3 / 4 * 4; i < s3; ++i) v2[i / 64] |= ((v3[i] != 0) << (i % 64));
+        for (itype::u32 i = s3 / 4 * 4; i < s3; ++i) v2[i / 64] |= (static_cast<itype::u64>(v3[i] != 0) << (i % 64));
         GSH_INTERNAL_UNROLL(16)
         for (itype::u32 i = 0; i < s2; i += 4) {
             const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v2[i])), _mm256_setzero_si256())));
-            v1[i / 64] |= static_cast<itype::u64>(t) << (i % 64);
+            v1[i / 64] |= static_cast<itype::u64>(t ^ 0xf) << (i % 64);
         }
-        for (itype::u32 i = s2 / 4 * 4; i < s2; ++i) v1[i / 64] |= ((v2[i] != 0) << (i % 64));
+        for (itype::u32 i = s2 / 4 * 4; i < s2; ++i) v1[i / 64] |= (static_cast<itype::u64>(v2[i] != 0) << (i % 64));
         GSH_INTERNAL_UNROLL(16)
         for (itype::u32 i = 0; i < s1; i += 4) {
             const itype::u32 t = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v1[i])), _mm256_setzero_si256())));
-            v0 |= static_cast<itype::u64>(t) << (i % 64);
+            v0 |= static_cast<itype::u64>(t ^ 0xf) << (i % 64);
         }
-        for (itype::u32 i = s1 / 4 * 4; i < s1; ++i) v0 |= ((v1[i] != 0) << (i % 64));
+        v0 = 0;
+        for (itype::u32 i = s1 / 4 * 4; i < s1; ++i) v0 |= (static_cast<itype::u64>(v1[i] != 0) << (i % 64));
+        */
     }
 public:
     constexpr BitTree24() noexcept : v0{}, v1{}, v2{}, v3{} {}
@@ -42,24 +68,40 @@ public:
             v3[0] = val;
         }
     }
-    constexpr BitTree24(const ctype::c8* p) : BitTree24(p, std::strlen(p)) {}
-    constexpr BitTree24(const ctype::c8* p, itype::u32 sz) {
+    constexpr BitTree24(const ctype::c8* p) { assign(p); }
+    constexpr BitTree24(const ctype::c8* p, itype::u32 sz) { assign(p, sz); }
+    constexpr ~BitTree24() noexcept = default;
+    constexpr BitTree24& operator=(const BitTree24&) noexcept = default;
+    constexpr void assign(const ctype::c8* p) { assign(p, std::strlen(p)); }
+    constexpr void assign(const ctype::c8* p, itype::u32 sz) {
         sz = sz < Size ? sz : Size;
         if (std::is_constant_evaluated()) {
+            for (itype::u32 i = 0; i != s3; ++i) v3[i] = 0;
             for (itype::u32 i = 0; i < sz; ++i) v3[i / 64] |= static_cast<itype::u64>(p[i] - '0') << (i % 64);
             build();
             return;
         }
-        for (itype::u32 i = 0; i < sz; i += 8) {
-            const itype::u32 a = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i)), _mm256_set1_epi8('1')));
-            const itype::u32 b = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i + 4)), _mm256_set1_epi8('1')));
-            v3[i] = static_cast<itype::u64>(a) << 32 | b;
+        for (itype::u32 i = 0; i < sz; i += 64) {
+            auto get = [&](itype::u32 n) -> itype::u32 {
+                return _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i + n)), _mm256_set1_epi8('1')));
+            };
+            const itype::u64 a = get(0), b = get(8), c = get(16), d = get(24), e = get(32), f = get(40), g = get(48), h = get(56);
+            v3[i / 64] = a | b << 8 | c << 16 | d << 24 | e << 32 | f << 40 | g << 48 | h << 56;
         }
-        for (itype::u32 i = sz / 8 * 8; i < sz; ++i) v3[i / 64] |= static_cast<itype::u64>(p[i] - '0') << (i % 64);
+        for (itype::u32 i = sz / 64; i != s3; ++i) v3[i] = 0;
+        for (itype::u32 i = sz / 64 * 64; i < sz; i += 4) {
+            const itype::u32 n = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i)), _mm256_set1_epi8('1')));
+            v3[i / 64] |= static_cast<itype::u64>(n) << (i % 64);
+        }
+        const itype::u32 b = sz / 4 * 4;
+        switch (sz % 4) {
+        case 3 : v3[(b + 2) / 64] |= static_cast<itype::u64>(p[b + 2] - '0') << ((b + 2) % 64); [[fallthrough]];
+        case 2 : v3[(b + 1) / 64] |= static_cast<itype::u64>(p[b + 1] - '0') << ((b + 1) % 64); [[fallthrough]];
+        case 1 : v3[(b + 0) / 64] |= static_cast<itype::u64>(p[b + 0] - '0') << ((b + 0) % 64); [[fallthrough]];
+        default : break;
+        }
         build();
     }
-    constexpr ~BitTree24() noexcept = default;
-    constexpr BitTree24& operator=(const BitTree24&) noexcept = default;
     constexpr BitTree24& operator&=(const BitTree24& rhs) noexcept {
         for (itype::u32 i = 0; i != s3; ++i) v3[i] &= rhs.v3[i];
         build();
@@ -106,11 +148,11 @@ public:
         return *this;
     }
     constexpr BitTree24& reset(itype::u32 pos) {
-        const itype::u64 m1 = ~(1ull << ((pos / 4096) % 64)), m2 = ~(1ull << ((pos / 64) % 64)), m3 = ~(1ull << (pos % 64));
+        const itype::u64 m1 = (1ull << ((pos / 4096) % 64)), m2 = (1ull << ((pos / 64) % 64)), m3 = (1ull << (pos % 64));
         const bool f1 = v1[pos / 262144] == m1, f2 = v2[pos / 4096] == m2, f3 = v3[pos / 64] == m3;
-        v3[pos / 64] &= m3;
-        v2[pos / 4096] &= (f3 ? m2 : 0xffffffffffffffff);
-        v1[pos / 262144] &= (f2 && f3 ? m1 : 0xffffffffffffffff);
+        v3[pos / 64] &= ~m3;
+        v2[pos / 4096] &= (f3 ? ~m2 : 0xffffffffffffffff);
+        v1[pos / 262144] &= (f2 && f3 ? ~m1 : 0xffffffffffffffff);
         v0 &= (f1 && f2 && f3 ? ~(1ull << (pos / 262144)) : 0xffffffffffffffff);
         return *this;
     }
@@ -118,7 +160,7 @@ public:
         for (itype::u32 i = 0; i != s3; ++i) v3[i] = ~v3[i];
         build();
     }
-    constexpr BitTree24& flip(itype::u32 pos) noexcept { return set(pos, ~test(pos)); }
+    constexpr BitTree24& flip(itype::u32 pos) noexcept { return set(pos, !test(pos)); }
     class reference {
         friend class BitTree24;
         BitTree24& ref;

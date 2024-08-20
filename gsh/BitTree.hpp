@@ -6,7 +6,6 @@
 #include <gsh/Util.hpp>     // gsh::Assume
 #include <immintrin.h>
 
-
 namespace gsh {
 
 template<itype::u32 Size>
@@ -179,7 +178,29 @@ public:
     }
     constexpr itype::u32 size() const noexcept { return Size; }
     constexpr bool test(itype::u32 pos) const { return v3[pos / 64] >> (pos % 64) & 1; }
-    constexpr bool all() const noexcept;
+    constexpr bool all() const noexcept {
+        if constexpr (Size + 262143 >= (1ull << 24)) {
+            if (v0 != 0xffffffffffffffff) return false;
+        } else {
+            if (v0 != (1ull << ((Size + 262143) / 262144)) - 1) return false;
+        }
+        for (itype::u32 i = 0; i != (Size + 4095) / 262144; ++i)
+            if (v1[i] != 0xffffffffffffffff) return false;
+        if constexpr (constexpr itype::u32 x = (Size + 4095) / 4096; x % 64 != 0) {
+            if (v1[x / 64] != (1ull << (x % 64)) - 1) return false;
+        }
+        for (itype::u32 i = 0; i != (Size + 63) / 4096; ++i)
+            if (v2[i] != 0xffffffffffffffff) return false;
+        if constexpr (constexpr itype::u32 x = (Size + 63) / 64; x % 64 != 0) {
+            if (v2[x / 64] != (1ull << (x % 64)) - 1) return false;
+        }
+        for (itype::u32 i = 0; i != Size / 64; ++i)
+            if (v3[i] != 0xffffffffffffffff) return false;
+        if constexpr (Size % 64 != 0) {
+            if (v3[Size / 64] != (1ull << (Size % 64)) - 1) return false;
+        }
+        return true;
+    }
     constexpr bool any() const noexcept { return v0 != 0; }
     constexpr bool none() const noexcept { return v0 == 0; }
     constexpr itype::u64 to_u64() const {

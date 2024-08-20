@@ -18,7 +18,7 @@
 gsh::BasicReader r(open("in.txt", O_RDONLY));
 gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
 #else
-gsh::MmapReader r;
+gsh::BasicReader r;
 gsh::BasicWriter w;
 #endif
 void Main() {

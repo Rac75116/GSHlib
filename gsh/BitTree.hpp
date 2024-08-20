@@ -245,6 +245,7 @@ public:
         }
         return npos;
     }
+    constexpr itype::u32 find_first() const noexcept { return find_next(0); }
     constexpr itype::u32 find_prev(itype::u32 pos) const {
         if (const itype::u64 tmp = v3[pos / 64] & ((2ull << (pos % 64)) - 1); tmp != 0) return pos / 64 * 64 + std::bit_width(tmp) - 1;
         if (const itype::u64 tmp = v2[pos / 4096] & ((1ull << (pos / 64 % 64)) - 1); tmp != 0) {
@@ -270,6 +271,7 @@ public:
         }
         return npos;
     }
+    constexpr itype::u32 find_last() const noexcept { return find_prev(Size - 1); }
 };
 
 }  // namespace gsh

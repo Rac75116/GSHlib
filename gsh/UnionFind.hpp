@@ -79,6 +79,13 @@ public:
 #endif
         return -parent[root(n)];
     }
+    constexpr itype::u32 max_group_size() const noexcept {
+        itype::i32 res = 1;
+        for (itype::u32 i = 0; i != size(); ++i) {
+            res = -parent[i] < res ? res : -parent[i];
+        }
+        return res;
+    }
     constexpr itype::u32 count_groups() const noexcept { return cnt; }
     constexpr Arr<itype::u32> extract(itype::u32 n) {
 #ifndef NDEBUG
@@ -195,6 +202,13 @@ public:
         if (n >= size()) throw gsh::Exception("gsh::RollbackUnionFind::size(itype::u32) / The index is out of range. ( n=", n, ", size=", size(), " )");
 #endif
         return -parent[root(n)];
+    }
+    constexpr itype::u32 max_group_size() const noexcept {
+        itype::i32 res = 1;
+        for (itype::u32 i = 0; i != size(); ++i) {
+            res = -parent[i] < res ? res : -parent[i];
+        }
+        return res;
     }
     constexpr itype::u32 count_groups() const noexcept { return cnt; }
     constexpr Arr<itype::u32> extract(itype::u32 n) const {
@@ -361,6 +375,13 @@ public:
         if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::size(itype::u32) / The index is out of range. ( n=", n, ", size=", size(), " )");
 #endif
         return -parent[root(n)];
+    }
+    constexpr itype::u32 max_group_size() const noexcept {
+        itype::i32 res = 1;
+        for (itype::u32 i = 0; i != size(); ++i) {
+            res = -parent[i] < res ? res : -parent[i];
+        }
+        return res;
     }
     constexpr itype::u32 count_groups() const noexcept { return cnt; }
     constexpr Arr<itype::u32> extract(itype::u32 n) {

@@ -12,14 +12,13 @@
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
 #include <gsh/BitTree.hpp>
-#include <gsh/Timer.hpp>
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
 gsh::BasicReader r(open("in.txt", O_RDONLY));
 gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
 #else
-gsh::BasicReader r;
+gsh::MmapReader r;
 gsh::BasicWriter w;
 #endif
 void Main() {
@@ -28,6 +27,29 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
+    u32 Q = Parser<u32>{}(r);
+    static BitTree24<(1 << 20)> A;
+    static u64 B[1 << 20];
+    A.set();
+    while (Q--) {
+        c8 t = Parser<c8>{}(r);
+        u64 x = Parser<u64>{}(r);
+        if (t == '1') {
+            u32 y = A.find_next(x % (1 << 20));
+            if (y == A.npos) y = A.find_first();
+            A.reset(y);
+            B[y] = x;
+        } else {
+            if (!A.test(x % (1 << 20))) {
+                Formatter<u64>{}(w, B[x % (1 << 20)]);
+                Formatter<c8>{}(w, '\n');
+            } else {
+                Formatter<c8>{}(w, '-');
+                Formatter<c8>{}(w, '1');
+                Formatter<c8>{}(w, '\n');
+            }
+        }
+    }
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

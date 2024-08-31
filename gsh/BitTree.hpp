@@ -55,35 +55,36 @@ public:
         }
     }
     constexpr BitTree24(const ctype::c8* p) { assign(p); }
-    constexpr BitTree24(const ctype::c8* p, itype::u32 sz) { assign(p, sz); }
+    constexpr BitTree24(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') { assign(p, sz, one); }
     constexpr ~BitTree24() noexcept = default;
     constexpr BitTree24& operator=(const BitTree24&) noexcept = default;
     constexpr void assign(const ctype::c8* p) { assign(p, std::strlen(p)); }
-    constexpr void assign(const ctype::c8* p, itype::u32 sz) {
+    constexpr void assign(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') {
         sz = sz < Size ? sz : Size;
         if (std::is_constant_evaluated()) {
             for (itype::u32 i = 0; i != s3; ++i) v3[i] = 0;
-            for (itype::u32 i = 0; i < sz; ++i) v3[i / 64] |= static_cast<itype::u64>(p[i] - '0') << (i % 64);
+            for (itype::u32 i = 0; i < sz; ++i) v3[i / 64] |= static_cast<itype::u64>(p[i] == one) << (i % 64);
             build();
             return;
         }
+        const __m256i ones = _mm256_set1_epi8(one);
         for (itype::u32 i = 0; i < sz; i += 64) {
             auto get = [&](itype::u32 n) -> itype::u32 {
-                return _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i + n)), _mm256_set1_epi8('1')));
+                return _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i + n)), ones));
             };
             const itype::u64 a = get(0), b = get(8), c = get(16), d = get(24), e = get(32), f = get(40), g = get(48), h = get(56);
             v3[i / 64] = a | b << 8 | c << 16 | d << 24 | e << 32 | f << 40 | g << 48 | h << 56;
         }
         for (itype::u32 i = sz / 64; i != s3; ++i) v3[i] = 0;
         for (itype::u32 i = sz / 64 * 64; i < sz; i += 4) {
-            const itype::u32 n = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i)), _mm256_set1_epi8('1')));
+            const itype::u32 n = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i)), ones));
             v3[i / 64] |= static_cast<itype::u64>(n) << (i % 64);
         }
         const itype::u32 b = sz / 4 * 4;
         switch (sz % 4) {
-        case 3 : v3[(b + 2) / 64] |= static_cast<itype::u64>(p[b + 2] - '0') << ((b + 2) % 64); [[fallthrough]];
-        case 2 : v3[(b + 1) / 64] |= static_cast<itype::u64>(p[b + 1] - '0') << ((b + 1) % 64); [[fallthrough]];
-        case 1 : v3[(b + 0) / 64] |= static_cast<itype::u64>(p[b + 0] - '0') << ((b + 0) % 64); [[fallthrough]];
+        case 3 : v3[(b + 2) / 64] |= static_cast<itype::u64>(p[b + 2] == one) << ((b + 2) % 64); [[fallthrough]];
+        case 2 : v3[(b + 1) / 64] |= static_cast<itype::u64>(p[b + 1] == one) << ((b + 1) % 64); [[fallthrough]];
+        case 1 : v3[(b + 0) / 64] |= static_cast<itype::u64>(p[b + 0] == one) << ((b + 0) % 64); [[fallthrough]];
         default : break;
         }
         build();

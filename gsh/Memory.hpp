@@ -144,21 +144,29 @@ public:
     template<class U> using rebind_alloc = typename internal::RebindAlloc<Alloc, U>::type;
     template<class U> using rebind_traits = AllocatorTraits<typename internal::RebindAlloc<Alloc, U>::type>;
     [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n) { return a.allocate(n); }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type align, size_type n) { return a.allocate(align, n); }
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, size_type align) { return a.allocate(align, n); }
     [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, const_void_pointer hint) {
         if constexpr (requires { a.allocate(n, hint); }) return a.allocate(n, hint);
         else return a.allocate(n);
     }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type align, size_type n, const_void_pointer hint) {
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, size_type align, const_void_pointer hint) {
         if constexpr (requires { a.allocate(align, n, hint); }) return a.allocate(align, n, hint);
         else return a.allocate(align, n);
     }
     static constexpr void deallocate(Alloc& a, pointer p, size_type n) { a.deallocate(p, n); }
+    static constexpr void deallocate(Alloc& a, pointer p, size_type n, size_type align) { a.deallocate(p, n, align); }
     [[nodiscard]] static constexpr pointer reallocate(Alloc& a, pointer p, size_type prev_size, size_type new_size) {
         if constexpr (requires { a.reallocate(p, prev_size, new_size); }) return a.reallocate(p, prev_size, new_size);
         else {
             deallocate(a, p, prev_size);
             return allocate(a, new_size, p);
+        }
+    }
+    [[nodiscard]] static constexpr pointer reallocate(Alloc& a, pointer p, size_type prev_size, size_type new_size, size_type align) {
+        if constexpr (requires { a.reallocate(p, prev_size, new_size, align); }) return a.reallocate(p, prev_size, new_size, align);
+        else {
+            deallocate(a, p, prev_size, align);
+            return allocate(a, new_size, p, align);
         }
     }
     static constexpr size_type max_size(const Alloc& a) noexcept {
@@ -189,12 +197,11 @@ public:
     constexpr Allocator() noexcept = default;
     constexpr Allocator(const Allocator&) noexcept = default;
     template<class U> constexpr Allocator(const Allocator<U>&) noexcept {}
-    constexpr ~Allocator() = default;
     [[nodiscard]] constexpr T* allocate(size_type n) {
         if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
         else return static_cast<T*>(::operator new(sizeof(T) * n));
     }
-    [[nodiscard]] constexpr T* allocate(size_type align, size_type n) { return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(align))); }
+    [[nodiscard]] constexpr T* allocate(size_type n, size_type align) { return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(align))); }
     constexpr void deallocate(T* p, [[maybe_unused]] size_type n) {
 #ifdef __cpp_sized_deallocation
         if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
@@ -204,7 +211,13 @@ public:
         else ::operator delete(p);
 #endif
     }
-    //[[nodiscard]] constexpr T* reallocate(T* p, size_type, size_type n) { return reinterpret_cast<T*>(std::realloc(p, sizeof(T) * n)); }
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, size_type align) {
+#ifdef __cpp_sized_deallocation
+        ::operator delete(p, n, static_cast<std::align_val_t>(align));
+#else
+        ::operator delete(p, static_cast<std::align_val_t>(align));
+#endif
+    }
     constexpr Allocator& operator=(const Allocator&) = default;
     template<class U> friend constexpr bool operator==(const Allocator&, const Allocator<U>&) noexcept { return true; }
 };
@@ -223,7 +236,7 @@ template<class T> class PoolAllocator {
     template<class U> friend class PoolAllocator;
     itype::u32* cnt;
     itype::u32* ref;
-    ctype::c8* buf;
+    ctype::c8 *buf, *end;
 public:
     using value_type = T;
     using propagate_on_container_copy_assignmant = std::true_type;
@@ -232,26 +245,70 @@ public:
     using size_type = itype::u32;
     using difference_type = itype::i32;
     using is_always_equal = std::false_type;
-    constexpr PoolAllocator() noexcept : cnt(nullptr), ref(nullptr), buf(nullptr) {}
-    constexpr PoolAllocator(const PoolAllocator& a) : cnt(a.cnt), ref(a.ref), buf(a.buf) { ++*ref; }
-    template<class U> constexpr PoolAllocator(const PoolAllocator<U>& a) : cnt(a.cnt), ref(a.ref), buf(a.buf) { ++*ref; }
-    template<itype::u32 Size> constexpr PoolAllocator(MemoryPool<Size>& p) noexcept : cnt(&p.cnt), ref(&p.ref), buf(p.buf) { ++*ref; }
+    constexpr PoolAllocator() noexcept : cnt(nullptr), ref(nullptr), buf(nullptr), end(nullptr) {}
+    constexpr PoolAllocator(const PoolAllocator& a) noexcept : cnt(a.cnt), ref(a.ref), buf(a.buf), end(a.end) { ++*ref; }
+    template<class U> constexpr PoolAllocator(const PoolAllocator<U>& a) noexcept : cnt(a.cnt), ref(a.ref), buf(a.buf), end(a.end) { ++*ref; }
+    template<itype::u32 Size> constexpr PoolAllocator(MemoryPool<Size>& p) noexcept : cnt(&p.cnt), ref(&p.ref), buf(p.buf), end(p.buf + Size) { ++*ref; }
     constexpr ~PoolAllocator() noexcept {
         if (ref != nullptr) --*ref;
     }
-    constexpr T* allocate(size_type n) {
-        auto res = reinterpret_cast<T*>(buf + *cnt);
-        *cnt += sizeof(T) * n;
+    [[nodiscard]] constexpr T* allocate(size_type n) {
+        if (std::is_constant_evaluated()) {
+            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
+            else return static_cast<T*>(::operator new(sizeof(T) * n));
+        }
+        constexpr itype::u32 align = __STDCPP_DEFAULT_NEW_ALIGNMENT__ < alignof(T) ? alignof(T) : __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+        void* ptr = static_cast<void*>(buf + *cnt);
+        std::size_t space = end - static_cast<ctype::c8*>(ptr);
+        std::align(align, sizeof(T) * n, ptr, space);
+        if (ptr == nullptr) throw Exception("gsh::PoolAllocator::allocate / Failed to allocate memory.");
+        T* res = static_cast<T*>(ptr);
+        *cnt = static_cast<ctype::c8*>(ptr) - buf;
         return res;
     }
-    constexpr void deallocate(T*, size_type) {}
-    constexpr PoolAllocator& operator=(const PoolAllocator& a) {
+    [[nodiscard]] constexpr T* allocate(size_type n, size_type align) {
+        if (std::is_constant_evaluated()) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(align)));
+        void* ptr = static_cast<void*>(buf + *cnt);
+        std::size_t space = end - static_cast<ctype::c8*>(ptr);
+        std::align(align, sizeof(T) * n, ptr, space);
+        if (ptr == nullptr) throw Exception("gsh::PoolAllocator::allocate / Failed to allocate memory.");
+        T* res = static_cast<T*>(ptr);
+        *cnt = static_cast<ctype::c8*>(ptr) - buf;
+        return res;
+    }
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) {
+        if (std::is_constant_evaluated()) {
+#ifdef __cpp_sized_deallocation
+            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
+            else ::operator delete(p, n);
+#else
+            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, static_cast<std::align_val_t>(alignof(T)));
+            else ::operator delete(p);
+#endif
+        }
+    }
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, size_type align) {
+        if (std::is_constant_evaluated()) {
+#ifdef __cpp_sized_deallocation
+            ::operator delete(p, n, static_cast<std::align_val_t>(align));
+#else
+            ::operator delete(p, static_cast<std::align_val_t>(align));
+#endif
+        }
+    }
+    constexpr PoolAllocator& operator=(const PoolAllocator& a) noexcept {
         if (ref != nullptr) --*ref;
-        cnt = a.cnt, ref = a.ref, buf = a.buf;
+        cnt = a.cnt, ref = a.ref, buf = a.buf, end = a.end;
         ++*ref;
         return *this;
     }
-    template<class U> friend constexpr bool operator==(const PoolAllocator& a, const PoolAllocator<U>& b) { return a.cnt == b.cnt && a.ref == b.ref && a.buf == b.buf; }
+    template<itype::u32 Size> constexpr PoolAllocator& operator=(MemoryPool<Size>& p) noexcept {
+        if (ref != nullptr) --*ref;
+        cnt = &p.cnt, ref = &p.ref, buf = p.buf, end = p.buf + Size;
+        ++*ref;
+        return *this;
+    }
+    template<class U> friend constexpr bool operator==(const PoolAllocator& a, const PoolAllocator<U>& b) noexcept { return a.cnt == b.cnt && a.ref == b.ref && a.buf == b.buf && a.end == b.end; }
 };
 
 }  // namespace gsh

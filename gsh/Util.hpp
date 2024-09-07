@@ -1,5 +1,7 @@
 #pragma once
 #include <type_traits>  // std::is_constant_evaluated
+#include <cstring>      // std::memset
+#include <bit>          //std::bit_cast
 #include <gsh/TypeDef.hpp>
 #include <gsh/internal/UtilMacro.hpp>
 
@@ -67,5 +69,83 @@ template<class T, class... Args> GSH_INTERNAL_INLINE constexpr void ForceCalc(co
 class InPlaceTag {};
 constexpr InPlaceTag InPlace;
 
+template<class T>
+    requires std::is_trivially_copyable_v<T>
+GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, ctype::c8 byte, itype::u32 len) {
+    if (std::is_constant_evaluated()) {
+        struct mem {
+            ctype::c8 buf[sizeof(T)] = {};
+        };
+        mem init;
+        for (itype::u32 i = 0; i != sizeof(T); ++i) init.buf[i] = byte;
+        for (itype::u32 i = 0; i != len / sizeof(T); ++i) p[i] = std::bit_cast<T>(init);
+        if (len % sizeof(T) != 0) {
+            auto& ref = p[len / sizeof(T)];
+            mem tmp = std::bit_cast<mem>(ref);
+            for (itype::u32 i = 0; i != len % sizeof(T); ++i) tmp.buf[i] = byte;
+            ref = std::bit_cast<T>(tmp);
+        }
+    } else std::memset(p, byte, len);
+}
+template<class T>
+    requires std::is_trivially_copyable_v<T>
+GSH_INTERNAL_INLINE constexpr itype::u32 MemoryChar(T* p, ctype::c8 byte, itype::u32 len) {
+    if (std::is_constant_evaluated()) {
+        struct mem {
+            ctype::c8 buf[sizeof(T)] = {};
+        };
+        for (itype::u32 i = 0; i != len / sizeof(T); ++i) {
+            mem tmp = std::bit_cast<mem>(p[i]);
+            for (itype::u32 j = 0; j != sizeof(T); ++j) {
+                if (tmp.buf[j] == byte) return i * sizeof(T) + j;
+            }
+        }
+        if (len % sizeof(T) != 0) {
+            mem tmp = std::bit_cast<mem>(p[len / sizeof(T)]);
+            for (itype::u32 i = 0; i != len % sizeof(T); ++i) {
+                if (tmp.buf[i] == byte) return len / sizeof(T) * sizeof(T) + i;
+            }
+        }
+        return 0xffffffff;
+    } else {
+        void* tmp = std::memchr(p, byte, len);
+        return (tmp == nullptr ? 0xffffffff : tmp - static_cast<void*>(p));
+    }
+}
+template<class T, class U>
+    requires std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>
+GSH_INTERNAL_INLINE constexpr void MemoryCopy(T* GSH_INTERNAL_RESTRICT dst, U* GSH_INTERNAL_RESTRICT src, itype::u32 len) {
+    if (std::is_constant_evaluated()) {
+        struct mem1 {
+            ctype::c8 buf[sizeof(T)] = {};
+        };
+        struct mem2 {
+            ctype::c8 buf[sizeof(U)] = {};
+        };
+        mem1 tmp1;
+        mem2 tmp2;
+        for (itype::u32 i = 0; i != len; ++i) {
+            if (i % sizeof(U) == 0) tmp2 = std::bit_cast<mem2>(src[i / sizeof(U)]);
+            tmp1.buf[i % sizeof(T)] = tmp2.buf[i % sizeof(U)];
+            if ((i + 1) % sizeof(T) == 0) {
+                dst[i / sizeof(T)] = std::bit_cast<T>(tmp1);
+                tmp1 = mem1{};
+            }
+        }
+        if (len % sizeof(T) != 0) {
+            mem1 tmp3 = std::bit_cast<mem1>(dst[len / sizeof(T)]);
+            for (itype::u32 i = 0; i != len % sizeof(T); ++i) tmp3.buf[i] = tmp1.buf[i];
+            dst[len / sizeof(T)] = std::bit_cast<T>(tmp3);
+        }
+    } else std::memcpy(dst, src, len);
+}
+/*
+template<class T, class U>
+    requires std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>
+GSH_INTERNAL_INLINE constexpr void MemoryMove(T* dst, U* src, itype::u32 len) {
+    if (std::is_constant_evaluated()) {
+    } else std::memmove(dst, src, len);
+}
+*/
 
 }  // namespace gsh

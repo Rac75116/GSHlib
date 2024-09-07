@@ -29,6 +29,13 @@
 #define GSH_INTERNAL_INLINE
 #define GSH_INTERNAL_NOINLINE
 #endif
+#ifdef __GNUC__
+#define GSH_INTERNAL_RESTRICT __restrict__
+#elif defined _MSC_VER
+#define GSH_INTERNAL_RESTRICT __restrict
+#else
+#define GSH_INTERNAL_RESTRICT
+#endif
 #ifdef __clang__
 #define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...) _Pragma(GSH_INTERNAL_STR(clang attribute push(__attribute__((__VA_ARGS__)), apply_to = apply)))
 #define GSH_INTERNAL_POP_ATTRIBUTE              _Pragma("clang attribute pop")

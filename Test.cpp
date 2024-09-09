@@ -12,6 +12,8 @@
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
 #include <gsh/Algorithm.hpp>
+#include <gsh/Random.hpp>
+#include <gsh/Timer.hpp>
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -27,26 +29,6 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
-    static u64 A[7813];
-    for (u32 i = 0; i != N; ++i) {
-        A[i / 64] = u64(Parser<c8>{}(r) - '0') << (i % 64);
-    }
-    for (u32 i = 0; i != Q; ++i) {
-        for (u32 i = 0; i != N; ++i) {
-            Formatter<c8>{}(w, (A[i / 64] >> (i % 64) & 1) + '0');
-            Formatter<c8>{}(w, ' ');
-        }
-        Formatter<c8>{}(w, '\n');
-        u32 L = Parser<u8dig>{}(r) -1, R = Parser<u8dig>{}(r);
-        if (L / 64 == R / 64) {
-            for (u32 j = L; j != R; ++j) A[j / 64] ^= (1ull << (j % 64));
-        } else {
-            for (u32 j = L / 64 + 1; j < R / 64; ++j) A[j] ^= 0xffffffffffffffff;
-            for (u32 j = L; j < (L / 64 + 1) * 64; ++j) A[j / 64] ^= (1ull << (j % 64));
-            for (u32 j = (R / 64) * 64; j < R; ++j) A[j / 64] ^= (1ull << (j % 64));
-        }
-    }
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

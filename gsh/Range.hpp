@@ -21,9 +21,8 @@ enum class RangeKind { Sized, Unsized };
 namespace internal {
     template<class T, class U> concept same_ncvr = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 }
-template<class R> class RangeTraits {
+template<Range R> class RangeTraits {
 public:
-    static_assert(Range<R>);
     using value_type = std::ranges::range_value_t<R>;
     using iterator = std::ranges::iterator_t<R>;
     using sentinel = std::ranges::sentinel_t<R>;
@@ -37,10 +36,11 @@ public:
     using range_type = std::remove_cvref_t<R>;
     constexpr static RangeKind range_kind = std::ranges::sized_range<R> ? RangeKind::Sized : RangeKind::Unsized;
     constexpr static bool pointer_obtainable = requires(R r) { std::ranges::data(r); };
+    constexpr static bool is_borrowed_range = std::ranges::borrowed_range<R>;
 
-    template<internal::same_ncvr<R> T> static constexpr auto size(T&& r) { return std::ranges::size(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto ssize(T&& r) { return std::ranges::ssize(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto empty(T&& r) { return std::ranges::empty(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr itype::u32 size(T&& r) { return std::ranges::size(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr itype::u32 ssize(T&& r) { return std::ranges::ssize(std::forward<T>(r)); }
+    template<internal::same_ncvr<R> T> static constexpr bool empty(T&& r) { return std::ranges::empty(std::forward<T>(r)); }
 
     template<internal::same_ncvr<R> T> static constexpr auto begin(T&& r) { return std::ranges::begin(std::forward<T>(r)); }
     template<internal::same_ncvr<R> T> static constexpr auto end(T&& r) { return std::ranges::end(std::forward<T>(r)); }

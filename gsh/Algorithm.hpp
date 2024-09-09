@@ -111,6 +111,19 @@ constexpr void Sort(R&& r, Comp comp = {}, Proj proj = {}) {
 }
 */
 
+template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp comp = {}, Proj proj = {}) {
+    using traits = RangeTraits<R>;
+    auto st = traits::begin(r);
+    for (auto len = traits::size(r) + 1; len > 1;) {
+        auto half = len / 2;
+        len -= half;
+        auto tmp = std::next(st, half);
+        auto md = std::next(tmp, -1);
+        st = comp(proj(*md), value) ? tmp : st;
+    }
+    return st;
+}
+
 template<Range R> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r) {
     using T = typename RangeTraits<R>::value_type;
     Arr<T> dp(RangeTraits<R>::size(r));

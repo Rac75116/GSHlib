@@ -2,8 +2,7 @@
 #include <iterator>           // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
 #include <algorithm>          // std::lexicographical_compare_three_way
 #include <initializer_list>   // std::initializer_list
-#include <type_traits>        // std::is_same_v, std::is_const_v, std::is_trivially_(***), std::is_constant_evaluated
-#include <cstring>            // std::memset
+#include <type_traits>        // std::is_same_v, std::is_const_v, std::is_constant_evaluated
 #include <utility>            // std::move, std::forward, std::swap
 #include <gsh/TypeDef.hpp>    // gsh::itype
 #include <gsh/Exception.hpp>  // gsh::Exception
@@ -42,9 +41,7 @@ public:
             return;
         ptr = traits::allocate(alloc, n);
         len = n, cap = n;
-        if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-            for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
-        else std::memset(ptr, 0, sizeof(value_type) * n);
+        for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
     }
     constexpr explicit Vec(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
         if (n == 0) [[unlikely]]
@@ -85,18 +82,18 @@ public:
         }
     }
     constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Vec(il.begin(), il.end(), a) {}
-    template<Rangeof<value_type> R> constexpr Vec(R&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<R>::fbegin(r), RangeTraits<R>::fend(r), a) {}
+    template<ForwardRange R>
+        requires(!std::same_as<Vec, std::remove_cvref_t<R>>)
+    constexpr Vec(R&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<R>::begin(r), RangeTraits<R>::end(r), a) {}
     constexpr ~Vec() {
         if (cap != 0) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
         }
     }
     constexpr Vec& operator=(const Vec& x) {
         if (&x == this) return *this;
-        if constexpr (!std::is_trivially_destructible_v<value_type>)
-            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         if (traits::propagate_on_container_copy_assignment::value || cap < x.len) {
             if (cap != 0) traits::deallocate(alloc, ptr, cap);
             if constexpr (traits::propagate_on_container_copy_assignment::value) alloc = x.alloc;
@@ -110,8 +107,7 @@ public:
     constexpr Vec& operator=(Vec&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
         if (&x == this) return *this;
         if (cap != 0) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
         }
         if constexpr (traits::propagate_on_container_move_assignment::value) alloc = std::move(x.alloc);
@@ -145,23 +141,17 @@ public:
             const pointer new_ptr = traits::allocate(alloc, sz);
             if (cap != 0) {
                 for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-                if constexpr (!std::is_trivially_destructible_v<value_type>)
-                    for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
                 traits::deallocate(alloc, ptr, cap);
             }
             ptr = new_ptr;
-            if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-                for (size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
-            else std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
+            for (size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
             len = sz, cap = sz;
         } else if (len < sz) {
-            if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-                for (size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
-            else std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
+            for (size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
             len = sz;
         } else {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
             len = sz;
         }
     }
@@ -170,8 +160,7 @@ public:
             const pointer new_ptr = traits::allocate(sz);
             if (cap != 0) {
                 for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-                if constexpr (!std::is_trivially_destructible_v<value_type>)
-                    for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
                 traits::deallocate(alloc, ptr, cap);
             }
             ptr = new_ptr;
@@ -181,8 +170,7 @@ public:
             for (size_type i = len; i != sz; ++i) traits::construct(alloc, *(ptr + i), c);
             len = sz;
         } else {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
             len = sz;
         }
     }
@@ -192,13 +180,8 @@ public:
         if (n > cap) {
             const pointer new_ptr = traits::allocate(alloc, n);
             if (cap != 0) {
-                if constexpr (std::is_trivially_move_constructible_v<value_type>) {
-                    for (size_type i = 0; i != len; ++i) new_ptr[i] = ptr[i];
-                } else {
-                    for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-                }
-                if constexpr (!std::is_trivially_destructible_v<value_type>)
-                    for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+                for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
                 traits::deallocate(alloc, ptr, cap);
             }
             ptr = new_ptr, cap = n;
@@ -213,8 +196,7 @@ public:
         if (len != cap) {
             const pointer new_ptr = traits::allocate(alloc, len);
             for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
             ptr = new_ptr, cap = len;
         }
@@ -254,8 +236,7 @@ public:
     template<std::input_iterator InputIter> constexpr void assign(const InputIter first, const InputIter last) {
         const size_type n = std::distance(first, last);
         if (n > cap) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
             ptr = traits::allocate(alloc, n);
             cap = n;
@@ -275,8 +256,7 @@ public:
     }
     constexpr void assign(const size_type n, const value_type& t) {
         if (n > cap) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
             ptr = traits::allocate(alloc, n);
             cap = n;
@@ -286,8 +266,7 @@ public:
             for (; i != len; ++i) *(ptr + i) = t;
             for (; i != n; ++i) traits::construct(alloc, ptr + i, t);
         } else {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
             for (size_type i = 0; i != n; ++i) *(ptr + i) = t;
         }
         len = n;
@@ -299,8 +278,7 @@ private:
             const pointer new_ptr = traits::allocate(alloc, cap * 2 + 8);
             if (cap != 0) {
                 for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-                if constexpr (!std::is_trivially_destructible_v<value_type>)
-                    for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
                 traits::deallocate(alloc, ptr, cap);
             }
             ptr = new_ptr, cap = cap * 2 + 8;
@@ -325,8 +303,7 @@ public:
         if (len == 0) [[unlikely]]
             throw gsh::Exception("gsh::Vec::pop_back / The container is empty.");
 #endif
-        if constexpr (std::is_trivially_destructible_v<value_type>) --len;
-        else traits::destroy(alloc, ptr + (--len));
+        traits::destroy(alloc, ptr + (--len));
     }
     /*
     constexpr iterator insert(const const_iterator position, const value_type& x);
@@ -346,8 +323,7 @@ public:
         if constexpr (traits::propagate_on_container_swap::value) swap(alloc, x.alloc);
     }
     constexpr void clear() {
-        if constexpr (!std::is_trivially_destructible_v<value_type>)
-            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         len = 0;
     }
     constexpr allocator_type get_allocator() const noexcept { return alloc; }

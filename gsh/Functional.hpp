@@ -6,7 +6,37 @@
 #include <bit>              // std::bit_cast
 #include <gsh/TypeDef.hpp>  // gsh::itype
 
+namespace std {
+template<class T> class reference_wrapper;
+}
+
 namespace gsh {
+
+namespace internal {
+    template<class T> constexpr bool IsReferenceWrapper = false;
+    template<class U> constexpr bool IsReferenceWrapper<std::reference_wrapper<U>> = true;
+    // https://en.cppreference.com/w/cpp/utility/functional/invoke
+    template<class C, class Pointed, class Object, class... Args> GSH_INTERNAL_INLINE constexpr decltype(auto) InvokeMemPtr(Pointed C::*member, Object&& object, Args&&... args) {
+        using object_t = std::remove_cvref_t<Object>;
+        constexpr bool is_member_function = std::is_function_v<Pointed>;
+        constexpr bool is_wrapped = IsReferenceWrapper<object_t>;
+        constexpr bool is_derived_object = std::is_same_v<C, object_t> || std::is_base_of_v<C, object_t>;
+        if constexpr (is_member_function) {
+            if constexpr (is_derived_object) return (std::forward<Object>(object).*member)(std::forward<Args>(args)...);
+            else if constexpr (is_wrapped) return (object.get().*member)(std::forward<Args>(args)...);
+            else return ((*std::forward<Object>(object)).*member)(std::forward<Args>(args)...);
+        } else {
+            static_assert(std::is_object_v<Pointed> && sizeof...(args) == 0);
+            if constexpr (is_derived_object) return std::forward<Object>(object).*member;
+            else if constexpr (is_wrapped) return object.get().*member;
+            else return (*std::forward<Object>(object)).*member;
+        }
+    }
+}  // namespace internal
+template<class F, class... Args> GSH_INTERNAL_INLINE constexpr std::invoke_result_t<F, Args...> Invoke(F&& f, Args&&... args) noexcept(std::is_nothrow_invocable_v<F, Args...>) {
+    if constexpr (std::is_member_function_pointer_v<std::remove_cvref_t<F>>) return internal::InvokeMemPtr(f, std::forward<Args>(args)...);
+    else return std::forward<F>(f)(std::forward<Args>(args)...);
+}
 
 namespace internal {
     template<typename T, typename U> concept LessPtrCmp = requires(T&& t, U&& u) {
@@ -17,7 +47,7 @@ class Less {
 public:
     template<class T, class U>
         requires std::totally_ordered_with<T, U>
-    constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<T>() < std::declval<U>())) {
+    GSH_INTERNAL_INLINE constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<T>() < std::declval<U>())) {
         if constexpr (internal::LessPtrCmp<T, U>) {
             if (std::is_constant_evaluated()) return t < u;
             auto x = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<T>(t)));
@@ -31,7 +61,7 @@ class Greater {
 public:
     template<class T, class U>
         requires std::totally_ordered_with<T, U>
-    constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<U>() < std::declval<T>())) {
+    GSH_INTERNAL_INLINE constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<U>() < std::declval<T>())) {
         if constexpr (internal::LessPtrCmp<U, T>) {
             if (std::is_constant_evaluated()) return u < t;
             auto x = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<T>(t)));
@@ -45,7 +75,7 @@ class EqualTo {
 public:
     template<class T, class U>
         requires std::equality_comparable_with<T, U>
-    constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<T>() == std::declval<U>())) {
+    GSH_INTERNAL_INLINE constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<T>() == std::declval<U>())) {
         return std::forward<T>(t) == std::forward<U>(u);
     }
     using is_transparent = void;
@@ -54,10 +84,30 @@ public:
 class Identity {
 public:
     template<class T> [[nodiscard]]
-    constexpr T&& operator()(T&& t) const noexcept {
+    GSH_INTERNAL_INLINE constexpr T&& operator()(T&& t) const noexcept {
         return std::forward<T>(t);
     }
     using is_transparent = void;
+};
+
+namespace internal {
+    template<class F> struct TransParent {};
+    template<class F>
+        requires requires { typename F::is_transparent; }
+    struct TransParent<F> {
+        using is_transparent = void;
+    };
+}  // namespace internal
+template<class F> class SwapArgs : public internal::TransParent<F> {
+    [[no_unique_address]] F func;
+public:
+    constexpr SwapArgs() noexcept(std::is_nothrow_default_constructible_v<F>) : func() {}
+    constexpr SwapArgs(const F& f) noexcept(std::is_nothrow_copy_constructible_v<F>) : func(f) {}
+    constexpr SwapArgs(F&& f) noexcept(std::is_nothrow_move_constructible_v<F>) : func(std::move(f)) {}
+    constexpr F& operator=(const F&) noexcept(std::is_nothrow_copy_assignable_v<F>) = default;
+    constexpr F& operator=(F&&) noexcept(std::is_nothrow_move_assignable_v<F>) = default;
+    template<class T, class U> GSH_INTERNAL_INLINE constexpr operator()(T&& x, U&& y) noexcept(noexcept(func(std::declval<U>(), std::declval<T>()))) { return func(std::forward<U>(y), std::forward<T>(x)); }
+    template<class T, class U> GSH_INTERNAL_INLINE constexpr operator()(T&& x, U&& y) const noexcept(noexcept(func(std::declval<U>(), std::declval<T>()))) { return func(std::forward<U>(y), std::forward<T>(x)); }
 };
 
 }  // namespace gsh

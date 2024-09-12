@@ -2,7 +2,7 @@
 #include <iterator>           // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
 #include <algorithm>          // std::lexicographical_compare_three_way
 #include <initializer_list>   // std::initializer_list
-#include <type_traits>        // std::remove_cv_t, std::is_trivially_(***), std::is_constant_evaluated, std::common_type_t, std::conditional_t, std::is_void_v, std::integral_constant
+#include <type_traits>        // std::remove_cv_t, std::is_constant_evaluated, std::common_type_t, std::conditional_t, std::is_void_v, std::integral_constant
 #include <concepts>           // std::same_as
 #include <cstring>            // std::memset
 #include <utility>            // std::move, std::forward, std::swap
@@ -14,6 +14,13 @@
 #include <gsh/internal/UtilMacro.hpp>
 
 namespace gsh {
+
+template<class T>
+    requires std::same_as<T, std::remove_cv_t<T>>
+class ArrInitTag {};
+template<class T = void> constexpr ArrInitTag<T> ArrInit;
+class ArrNoInitTag {};
+constexpr ArrNoInitTag ArrNoInit;
 
 template<class T, class Allocator = Allocator<T>>
     requires std::same_as<T, typename AllocatorTraits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
@@ -39,14 +46,18 @@ private:
 public:
     constexpr Arr() noexcept(noexcept(Allocator())) : Arr(Allocator()) {}
     constexpr explicit Arr(const allocator_type& a) noexcept : alloc(a) {}
-    constexpr explicit Arr(size_type n, const Allocator& a = Allocator()) : alloc(a) {
+    constexpr explicit Arr(size_type n, const allocator_type& a = Allocator()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n;
-        if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-            for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
-        else std::memset(ptr, 0, sizeof(value_type) * n);
+        for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
+    }
+    constexpr explicit Arr(ArrNoInitTag, size_type n, const allocator_type& a = Allocator()) : alloc(a) {
+        if (n == 0) [[unlikely]]
+            return;
+        ptr = traits::allocate(alloc, n);
+        len = n;
     }
     constexpr explicit Arr(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
         if (n == 0) [[unlikely]]
@@ -55,7 +66,7 @@ public:
         len = n;
         for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
     }
-    template<std::input_iterator InputIter> constexpr Arr(const InputIter first, const InputIter last, const allocator_type& a = Allocator()) : alloc(a) {
+    template<std::input_iterator InputIter> constexpr Arr(InputIter first, InputIter last, const allocator_type& a = Allocator()) : alloc(a) {
         const size_type n = std::distance(first, last);
         if (n == 0) [[unlikely]]
             return;
@@ -87,18 +98,18 @@ public:
         }
     }
     constexpr Arr(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Arr(il.begin(), il.end(), a) {}
-    template<Rangeof<value_type> R> constexpr Arr(R&& r, const allocator_type& a = Allocator()) : Arr(RangeTraits<R>::fbegin(r), RangeTraits<R>::fend(r), a) {}
+    template<ForwardRange R>
+        requires(!std::same_as<Arr, std::remove_cvref_t<R>>)
+    constexpr Arr(R&& r, const allocator_type& a = Allocator()) : Arr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r), a) {}
     constexpr ~Arr() {
         if (len != 0) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
         }
     }
     constexpr Arr& operator=(const Arr& x) {
         if (&x == this) return *this;
-        if constexpr (!std::is_trivially_destructible_v<value_type>)
-            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         if (traits::propagate_on_container_copy_assignment::value || len != x.len) {
             if (len != 0) traits::deallocate(alloc, ptr, len);
             if constexpr (traits::propagate_on_container_copy_assignment::value) alloc = x.alloc;
@@ -111,8 +122,7 @@ public:
     constexpr Arr& operator=(Arr&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
         if (&x == this) return *this;
         if (len != 0) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
         }
         if constexpr (traits::propagate_on_container_move_assignment::value) alloc = std::move(x.alloc);
@@ -151,14 +161,11 @@ public:
         const size_type mn = len < sz ? len : sz;
         if (len != 0) {
             for (size_type i = 0; i != mn; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
         }
         ptr = new_ptr;
-        if constexpr (!std::is_trivially_default_constructible_v<value_type>)
-            for (size_type i = len; i < sz; ++i) traits::construct(alloc, ptr + i);
-        else if (len < sz) std::memset(ptr + len, 0, sizeof(value_type) * (sz - len));
+        for (size_type i = len; i < sz; ++i) traits::construct(alloc, ptr + i);
         len = sz;
     }
     constexpr void resize(const size_type sz, const value_type& c) {
@@ -171,12 +178,27 @@ public:
         const size_type mn = len < sz ? len : sz;
         if (len != 0) {
             for (size_type i = 0; i != mn; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
         }
         ptr = new_ptr;
         for (size_type i = len; i < sz; ++i) traits::construct(alloc, ptr + i, c);
+        len = sz;
+    }
+    constexpr void resize(const size_type sz, ArrNoInitTag) {
+        if (len == sz) return;
+        if (sz == 0) {
+            clear();
+            return;
+        }
+        const pointer new_ptr = traits::allocate(alloc, sz);
+        const size_type mn = len < sz ? len : sz;
+        if (len != 0) {
+            for (size_type i = 0; i != mn; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            traits::deallocate(alloc, ptr, len);
+        }
+        ptr = new_ptr;
         len = sz;
     }
     [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
@@ -220,8 +242,7 @@ public:
             InputIter itr = first;
             for (size_type i = 0; i != len; ++itr, ++i) *(ptr + i) = *itr;
         } else {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
             ptr = traits::allocate(alloc, n);
             len = n;
@@ -234,13 +255,19 @@ public:
             clear();
         } else if (len == n) {
             for (size_type i = 0; i != len; ++i) *(ptr + i) = t;
-        } else if (n != 0) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        } else {
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
             ptr = traits::allocate(alloc, n);
             len = n;
             for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, t);
+        }
+    }
+    constexpr void assign(const size_type n, ArrNoInitTag) {
+        clear();
+        if (n != 0) {
+            ptr = traits::allocator(alloc, n);
+            len = n;
         }
     }
     constexpr void assign(std::initializer_list<value_type> il) { assign(il.begin(), il.end()); }
@@ -252,8 +279,7 @@ public:
     }
     constexpr void clear() {
         if (len != 0) {
-            if constexpr (!std::is_trivially_destructible_v<value_type>)
-                for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
             ptr = nullptr, len = 0;
         }
@@ -274,13 +300,6 @@ public:
 };
 template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
 template<Range R, class Alloc = Allocator<typename RangeTraits<R>::value_type>> Arr(R, Alloc = Alloc()) -> Arr<typename RangeTraits<R>::value_type, Alloc>;
-
-template<class T>
-    requires std::same_as<T, std::remove_cv_t<T>>
-class ArrInitTag {};
-template<class T = void> constexpr ArrInitTag<T> ArrInit;
-class ArrNoInitTag {};
-constexpr ArrNoInitTag ArrNoInit;
 
 template<class T, itype::u32 N>
     requires std::same_as<T, std::remove_cv_t<T>>
@@ -313,12 +332,12 @@ public:
     template<std::input_iterator InputIter> constexpr explicit StaticArr(InputIter first) {
         for (itype::u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
     }
-    template<std::input_iterator InputIter> constexpr StaticArr(InputIter first, const InputIter last) {
+    template<std::input_iterator InputIter> constexpr StaticArr(InputIter first, InputIter last) {
         const itype::u32 n = std::distance(first, last);
         if (n != N) throw gsh::Exception("gsh::StaticArr::StaticArr / The size of the given range differs from the size of the array.");
         for (itype::u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
     }
-    template<Rangeof<value_type> R> constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::fbegin(r), RangeTraits<R>::fend(r)) {}
+    template<Rangeof<value_type> R> constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r)) {}
     constexpr StaticArr(const value_type (&a)[N]) {
         for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, a[i]);
     }
@@ -332,6 +351,9 @@ public:
         for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, std::move(y.elems[i]));
     }
     constexpr StaticArr(std::initializer_list<value_type> il) : StaticArr(il.begin(), il.end()) {}
+    template<ForwardRange R>
+        requires(!std::same_as<StaticArr, std::remove_cvref_t<R>>)
+    constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r)) {}
     constexpr ~StaticArr() noexcept {
         if constexpr (!std::is_trivially_destructible_v<value_type>)
             for (itype::u32 i = 0; i != N; ++i) std::destroy_at(elems + i);

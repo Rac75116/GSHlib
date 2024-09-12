@@ -193,6 +193,7 @@ template<Rangeof<Point2<itype::i32>> T> auto FurthestPair(T&& r) {
     return ConvexDiameter(ConvexHull(r));
 }
 
+/*
 template<RandomAccessRange T>
     requires Rangeof<T, Point2<itype::i32>>
 constexpr auto ClosestPair(T&& r) {
@@ -236,5 +237,6 @@ constexpr auto ClosestPair(T&& r) {
         i = j;
     }
 }
+*/
 
 }  // namespace gsh

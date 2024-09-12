@@ -267,7 +267,7 @@ template<class T = itype::i64, class F = Plus, class I = Negate> class Potential
     constexpr itype::i32 root(itype::i32 n) noexcept {
         if (parent[n] < 0) return n;
         const itype::i32 r = root(parent[n]);
-        diff[n] = func(diff[parent[n]], diff[n]);
+        diff[n] = Invoke(func, diff[parent[n]], diff[n]);
         return parent[n] = r;
     }
 public:
@@ -320,7 +320,7 @@ public:
 #endif
         root(a);
         root(b);
-        return func(inv(diff[b]), diff[a]);
+        return Invoke(func, Invoke(inv, diff[b]), diff[a]);
     }
     // A[a] = func(A[b], w) return leader(a)
     constexpr itype::u32 merge(const itype::u32 a, const itype::u32 b, const T& w) {
@@ -334,7 +334,7 @@ public:
         const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
-        diff[tmp2] = func(diff[f ? a : b], inv(func(diff[f ? b : a], f ? w : inv(w))));
+        diff[tmp2] = func(diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
         --cnt;
         return tmp1;
     }
@@ -350,7 +350,7 @@ public:
         const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
-        diff[tmp2] = func(diff[f ? a : b], inv(func(diff[f ? b : a], f ? w : inv(w))));
+        diff[tmp2] = func(diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
         --cnt;
         return false;
     }
@@ -360,13 +360,13 @@ public:
         if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge_valid / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
-        if (ar == br) return diff[a] == func(diff[b], w);
+        if (ar == br) return diff[a] == Invoke(func, diff[b], w);
         const itype::i32 sa = parent[ar], sb = parent[br];
         const bool f = sa < sb;
         const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
-        diff[tmp2] = func(diff[f ? a : b], inv(func(diff[f ? b : a], f ? w : inv(w))));
+        diff[tmp2] = func(diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
         --cnt;
         return true;
     }

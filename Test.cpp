@@ -1,5 +1,5 @@
 #if !defined(__clang__) && defined(__GNUC__)
-#pragma GCC optimize("Ofast")
+#pragma GCC optimize("O3")
 #pragma GCC optimize("unroll-loops")
 #pragma GCC target("avx2")
 #endif
@@ -29,6 +29,7 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
+    std::ranges::min;
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

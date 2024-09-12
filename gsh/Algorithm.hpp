@@ -41,13 +41,28 @@ template<class T, class... Args> constexpr bool Chmax(T& a, const Args&... b) {
     return Chmax(a, Max(b...));
 }
 
+template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
+    requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>
+constexpr typename RangeTraits<R>::value_type Min(R&& r, Comp comp = {}, Proj proj = {}) {
+    using traits = RangeTraits<R>;
+    auto first = traits::begin(r), last = traits::end(r);
+    if (first == last) throw Exception("gsh::Min / The input is empty.");
+}
+template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
+    requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>
+constexpr typename RangeTraits<R>::value_type Max(R&& r, Comp comp = {}, Proj proj = {}) {
+    if constexpr (std::same_as<Comp, Less>) return Min(std::forward<R>(r), Greater(), std::move(proj));
+    else if constexpr (std::same_as<Comp, Greater>) return Min(std::forward<R>(r), Less(), std::move(proj));
+    else return Min(std::forward<R>(r), SwapArgs(std::move(comp)), std::move(proj));
+}
+
 namespace internal {
     template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const itype::u32 n, Proj proj = {}) {
         static itype::u32 cnt1[1 << 16], cnt2[1 << 16];
         std::memset(cnt1, 0, sizeof(cnt1));
         std::memset(cnt2, 0, sizeof(cnt2));
         for (itype::u32 i = 0; i != n; ++i) {
-            auto tmp = proj(p[i]);
+            auto tmp = Invoke(proj, p[i]);
             const itype::u16 a = tmp & 0xffff;
             const itype::u16 b = tmp >> 16 & 0xffff;
             ++cnt1[a];
@@ -58,8 +73,8 @@ namespace internal {
             cnt2[i + 1] += cnt2[i];
         }
         T* const tmp = reinterpret_cast<T*>(std::malloc(sizeof(T) * n));
-        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt1[proj(p[i]) & 0xffff]] = std::move(p[i]);
-        for (itype::u32 i = n; i != 0;) --i, p[--cnt2[proj(tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
+        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = n; i != 0;) --i, p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
         std::free(tmp);
     }
     template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const itype::u32 n, Proj proj = {}) {
@@ -69,7 +84,7 @@ namespace internal {
         std::memset(cnt3, 0, sizeof(cnt3));
         std::memset(cnt4, 0, sizeof(cnt4));
         for (itype::u32 i = 0; i != n; ++i) {
-            auto tmp = proj(p[i]);
+            auto tmp = Invoke(proj, p[i]);
             const itype::u16 a = tmp & 0xffff;
             const itype::u16 b = tmp >> 16 & 0xffff;
             const itype::u16 c = tmp >> 32 & 0xffff;
@@ -86,10 +101,10 @@ namespace internal {
             cnt4[i + 1] += cnt4[i];
         }
         T* const tmp = reinterpret_cast<T*>(std::malloc(sizeof(T) * n));
-        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt1[proj(p[i]) & 0xffff]] = std::move(p[i]);
-        for (itype::u32 i = n; i != 0;) --i, p[--cnt2[proj(tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
-        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt3[proj(p[i]) >> 32 & 0xffff]] = std::move(p[i]);
-        for (itype::u32 i = n; i != 0;) --i, p[--cnt4[proj(tmp[i]) >> 48 & 0xffff]] = std::move(tmp[i]);
+        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = n; i != 0;) --i, p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
+        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt3[Invoke(proj, p[i]) >> 32 & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = n; i != 0;) --i, p[--cnt4[Invoke(proj, tmp[i]) >> 48 & 0xffff]] = std::move(tmp[i]);
         std::free(tmp);
     }
 }  // namespace internal
@@ -110,28 +125,47 @@ constexpr void Sort(R&& r, Comp comp = {}, Proj proj = {}) {
     }
 }
 */
-
-template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp comp = {}, Proj proj = {}) {
-    using traits = RangeTraits<R>;
-    auto st = traits::begin(r);
-    for (auto len = traits::size(r) + 1; len > 1;) {
-        auto half = len / 2;
-        len -= half;
-        auto tmp = std::next(st, half);
-        auto md = std::next(tmp, -1);
-        st = comp(proj(*md), value) ? tmp : st;
+namespace internal {
+    template<class R, class T, class Proj, class Comp> constexpr auto LowerBoundImpl(R&& r, const T& value, Comp&& comp, Proj&& proj) {
+        using traits = RangeTraits<R>;
+        auto st = traits::begin(r);
+        for (auto len = traits::size(r) + 1; len > 1;) {
+            auto half = len / 2;
+            len -= half;
+            auto tmp = std::next(st, half);
+            auto md = std::next(tmp, -1);
+            st = Invoke(comp, Invoke(proj, *md), value) ? tmp : st;
+        }
+        return st;
     }
-    return st;
+    template<class R, class T, class Proj, class Comp> constexpr auto UpperBoundImpl(R&& r, const T& value, Comp&& comp, Proj&& proj) {
+        using traits = RangeTraits<R>;
+        auto st = traits::begin(r);
+        for (auto len = traits::size(r) + 1; len > 1;) {
+            auto half = len / 2;
+            len -= half;
+            auto tmp = std::next(st, half);
+            auto md = std::next(tmp, -1);
+            st = !static_cast<bool>(Invoke(comp, value, Invoke(proj, *md))) ? tmp : st;
+        }
+        return st;
+    }
+}  // namespace internal
+template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp comp = {}, Proj proj = {}) {
+    return internal::LowerBoundImpl(std::forward<R>(r), value, comp, proj);
+}
+template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less> constexpr auto UpperBound(R&& r, const T& value, Comp comp = {}, Proj proj = {}) {
+    return internal::UpperBoundImpl(std::forward<R>(r), value, comp, proj);
 }
 
-template<Range R> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r) {
+template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r, Comp comp = {}, Proj proj = {}) {
     using T = typename RangeTraits<R>::value_type;
     Arr<T> dp(RangeTraits<R>::size(r));
     Arr<itype::u32> idx(dp.size());
     itype::u32 i = 0;
     T *begin = dp.data(), *last = dp.data();
     for (const T& x : r) {
-        T* loc = std::lower_bound(begin, last, x);
+        T* loc = internal::LowerBoundImpl(Subrange{ begin, last }, x, comp, proj);
         idx[i++] = loc - begin;
         last += (loc == last);
         *loc = x;
@@ -223,8 +257,8 @@ public:
     constexpr Mo() {}
     constexpr void reserve(itype::u32 q) { qu.reserve(q); }
     constexpr void query(itype::u32 l, itype::u32 r) { qu.emplace_back(l, r); }
-    template<class F1, class F2, class F3> void run(F1&& add, F2&& del, F3&& slv) const { solve(add, add, del, del, slv); }
-    template<class F1, class F2, class F3, class F4, class F5> void run(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
+    template<class F1, class F2, class F3> void run(F1&& add, F2&& del, F3&& slv) const { solve(add, add, del, del, std::forward<F3>(slv)); }
+    template<class F1, class F2, class F3, class F4, class F5> void run(F1 addl, F2 addr, F3 dell, F4 delr, F5 slv) const {
         const itype::u32 Q = qu.size();
         itype::u32 N = 0;
         for (itype::u32 i = 0; i != Q; ++i) N = N < qu[i].r ? qu[i].r : N;
@@ -248,11 +282,11 @@ public:
         }
         itype::u32 nl = 0, nr = 0;
         for (itype::u32 i : idx) {
-            while (nl > qu[i].l) addl(--nl);
-            while (nr < qu[i].r) addr(nr++);
-            while (nl < qu[i].l) dell(nl++);
-            while (nr > qu[i].r) delr(--nr);
-            slv(i);
+            while (nl > qu[i].l) Invoke(addl, --nl);
+            while (nr < qu[i].r) Invoke(addr, nr++);
+            while (nl < qu[i].l) Invoke(dell, nl++);
+            while (nr > qu[i].r) Invoke(delr, --nr);
+            Invoke(slv, i);
         }
     }
 };

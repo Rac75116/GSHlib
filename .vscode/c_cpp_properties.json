@@ -1,21 +1,26 @@
 {
-    "configurations": [
-        {
-            "name": "Win32",
-            "includePath": [
-                "${workspaceFolder}/"
-            ],
-            "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
-            ],
-            "windowsSdkVersion": "10.0.22000.0",
-            "compilerPath": "C:/Program Files/mingw64/bin/g++.exe",
-            "cStandard": "c11",
-            "cppStandard": "c++20",
-            "intelliSenseMode": "windows-gcc-x64"
-        }
-    ],
-    "version": 4
+  "configurations": [
+    {
+      "name": "Win32",
+      "includePath": ["${workspaceFolder}/"],
+      "defines": ["_DEBUG", "UNICODE", "_UNICODE"],
+      "windowsSdkVersion": "10.0.22000.0",
+      "compilerPath": "C:/Program Files/mingw64/bin/g++.exe",
+      "cStandard": "c11",
+      "cppStandard": "c++20",
+      "intelliSenseMode": "windows-gcc-x64",
+      "compilerArgs": [
+        "-std=gnu++20",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-march=native",
+        "-mtune=native",
+        "-fconstexpr-depth=2147483647",
+        "-fconstexpr-loop-limit=2147483647",
+        "-fconstexpr-ops-limit=2147483647"
+      ]
+    }
+  ],
+  "version": 4
 }

@@ -4,6 +4,7 @@
 #include <cstdlib>             // std::malloc, std::free
 #include <algorithm>           // std::lower_bound
 #include <cmath>               // std::sqrt
+#include <limits>              // std::numeric_limits
 #include <gsh/TypeDef.hpp>     // gsh::itype
 #include <gsh/Arr.hpp>         // gsh::Arr
 #include <gsh/Vec.hpp>         // gsh::Vec
@@ -41,19 +42,37 @@ template<class T, class... Args> constexpr bool Chmax(T& a, const Args&... b) {
     return Chmax(a, Max(b...));
 }
 
-template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
-    requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>
-constexpr typename RangeTraits<R>::value_type Min(R&& r, Comp comp = {}, Proj proj = {}) {
-    using traits = RangeTraits<R>;
-    auto first = traits::begin(r), last = traits::end(r);
-    if (first == last) throw Exception("gsh::Min / The input is empty.");
+namespace internal {
+    template<class R, class T> concept PointerRange = std::same_as<std::remove_cvref_t<typename RangeTraits<R>::iterator>, T*> && std::same_as<std::remove_cvref_t<typename RangeTraits<R>::sentinel>, T*>;
 }
 template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
     requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>
-constexpr typename RangeTraits<R>::value_type Max(R&& r, Comp comp = {}, Proj proj = {}) {
-    if constexpr (std::same_as<Comp, Less>) return Min(std::forward<R>(r), Greater(), std::move(proj));
-    else if constexpr (std::same_as<Comp, Greater>) return Min(std::forward<R>(r), Less(), std::move(proj));
-    else return Min(std::forward<R>(r), SwapArgs(std::move(comp)), std::move(proj));
+constexpr typename RangeTraits<R>::value_type MinValue(R&& r, Comp comp = {}, Proj proj = {}) {
+    using traits = RangeTraits<R>;
+    auto first = traits::begin(r);
+    auto last = traits::end(r);
+    if (first == last) throw Exception("gsh::Min / The input is empty.");
+#if defined(__AVX512VL__) || defined(__AVX2__)
+    if constexpr (std::same_as<Comp, Greater> && std::same_as<Proj, Identity> && internal::PointerRange<R, itype::u32>) {
+    } else {
+#else
+    {
+#endif
+        auto res = *(first++);
+        for (; first != last; ++first) {
+            const bool f = Invoke(comp, Invoke(proj, static_cast<const decltype(res)&>(*first)), Invoke(proj, res));
+            if constexpr (std::is_trivial_v<decltype(res)>) res = f ? *first : res;
+            else if (f) res = *first;
+        }
+        return res;
+    }
+}
+template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
+    requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>
+constexpr typename RangeTraits<R>::value_type MaxValue(R&& r, Comp comp = {}, Proj proj = {}) {
+    if constexpr (std::same_as<Comp, Less>) return MinValue(std::forward<R>(r), Greater(), std::move(proj));
+    else if constexpr (std::same_as<Comp, Greater>) return MinValue(std::forward<R>(r), Less(), std::move(proj));
+    else return MinValue(std::forward<R>(r), SwapArgs(std::move(comp)), std::move(proj));
 }
 
 namespace internal {
@@ -236,7 +255,8 @@ template<Range R> constexpr auto Majority(R&& r) {
     using traits = RangeTraits<R>;
     itype::u32 c = 0;
     itype::u32 len = 0;
-    auto i = traits::begin(r), j = traits::end(r), k = j;
+    auto i = traits::begin(r);
+    auto j = traits::end(r), k = j;
     for (; i != j; ++i) {
         ++len;
         if (c == 0) k = i, c = 1;

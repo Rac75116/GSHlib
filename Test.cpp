@@ -14,6 +14,7 @@
 #include <gsh/Algorithm.hpp>
 #include <gsh/Random.hpp>
 #include <gsh/Timer.hpp>
+#include <immintrin.h>
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -29,7 +30,19 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    std::ranges::min;
+    u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
+    static u32 A[100000];
+    while (Q--) {
+        c8 c = Parser<c8>{}(r);
+        if (c == '1') {
+            u32 pos = Parser<u8dig>{}(r), x = Parser<u32>{}(r);
+            A[pos - 1] = x;
+        } else {
+            u32 L = Parser<u8dig>{}(r), R = Parser<u8dig>{}(r);
+            Formatter<u32>{}(w, MaxValue(Subrange{ A + L - 1, A + R - 1 }));
+            Formatter<c8>{}(w, '\n');
+        }
+    }
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

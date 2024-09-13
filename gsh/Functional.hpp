@@ -90,24 +90,23 @@ public:
     using is_transparent = void;
 };
 
-namespace internal {
-    template<class F> struct TransParent {};
-    template<class F>
-        requires requires { typename F::is_transparent; }
-    struct TransParent<F> {
-        using is_transparent = void;
-    };
-}  // namespace internal
-template<class F> class SwapArgs : public internal::TransParent<F> {
-    [[no_unique_address]] F func;
+template<class F> class SwapArgs : public F {
 public:
-    constexpr SwapArgs() noexcept(std::is_nothrow_default_constructible_v<F>) : func() {}
-    constexpr SwapArgs(const F& f) noexcept(std::is_nothrow_copy_constructible_v<F>) : func(f) {}
-    constexpr SwapArgs(F&& f) noexcept(std::is_nothrow_move_constructible_v<F>) : func(std::move(f)) {}
-    constexpr F& operator=(const F&) noexcept(std::is_nothrow_copy_assignable_v<F>) = default;
-    constexpr F& operator=(F&&) noexcept(std::is_nothrow_move_assignable_v<F>) = default;
-    template<class T, class U> GSH_INTERNAL_INLINE constexpr operator()(T&& x, U&& y) noexcept(noexcept(func(std::declval<U>(), std::declval<T>()))) { return func(std::forward<U>(y), std::forward<T>(x)); }
-    template<class T, class U> GSH_INTERNAL_INLINE constexpr operator()(T&& x, U&& y) const noexcept(noexcept(func(std::declval<U>(), std::declval<T>()))) { return func(std::forward<U>(y), std::forward<T>(x)); }
+    constexpr SwapArgs() noexcept(std::is_nothrow_default_constructible_v<F>) : F() {}
+    constexpr SwapArgs(const F& f) noexcept(std::is_nothrow_copy_constructible_v<F>) : F(f) {}
+    constexpr SwapArgs(F&& f) noexcept(std::is_nothrow_move_constructible_v<F>) : F(std::move(f)) {}
+    constexpr SwapArgs& operator=(const F& f) noexcept(std::is_nothrow_copy_assignable_v<F>) {
+        F::operator=(f);
+        return *this;
+    }
+    constexpr SwapArgs& operator=(F&& f) noexcept(std::is_nothrow_move_assignable_v<F>) {
+        F::operator=(std::move(f));
+        return *this;
+    }
+    constexpr SwapArgs& operator=(const SwapArgs&) noexcept(std::is_nothrow_copy_assignable_v<F>) = default;
+    constexpr SwapArgs& operator=(SwapArgs&&) noexcept(std::is_nothrow_move_assignable_v<F>) = default;
+    template<class T, class U> GSH_INTERNAL_INLINE constexpr decltype(auto) operator()(T&& x, U&& y) noexcept(noexcept(F::operator()(std::declval<U>(), std::declval<T>()))) { return F::operator()(std::forward<U>(y), std::forward<T>(x)); }
+    template<class T, class U> GSH_INTERNAL_INLINE constexpr decltype(auto) operator()(T&& x, U&& y) const noexcept(noexcept(F::operator()(std::declval<U>(), std::declval<T>()))) { return F::operator()(std::forward<U>(y), std::forward<T>(x)); }
 };
 
 }  // namespace gsh

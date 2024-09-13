@@ -10,6 +10,7 @@
 #include <gsh/Vec.hpp>         // gsh::Vec
 #include <gsh/Range.hpp>       // gsh::Range
 #include <gsh/Functional.hpp>  // gsh::Less, gsh::Greater
+#include <immintrin.h>
 
 namespace gsh {
 
@@ -52,20 +53,52 @@ constexpr typename RangeTraits<R>::value_type MinValue(R&& r, Comp comp = {}, Pr
     auto first = traits::begin(r);
     auto last = traits::end(r);
     if (first == last) throw Exception("gsh::Min / The input is empty.");
-#if defined(__AVX512VL__) || defined(__AVX2__)
+#if defined(__AVX2__)
     if constexpr (std::same_as<Comp, Greater> && std::same_as<Proj, Identity> && internal::PointerRange<R, itype::u32>) {
-    } else {
+        if (!std::is_constant_evaluated()) {
+#if defined(__AVX512F__)
+            /*
+            const itype::u32 len = last - first;
+            __m512i a = _mm512_setzero_si512(), b = _mm512_setzero_si512(), c = _mm512_setzero_si512(), d = _mm512_setzero_si512();
+            for (itype::u32 i = 0; i + 64 <= len; i += 64) {
+                a = _mm512_max_epu32(a, _mm512_loadu_si512(first + i));
+                b = _mm512_max_epu32(b, _mm512_loadu_si512(first + i + 16));
+                c = _mm512_max_epu32(c, _mm512_loadu_si512(first + i + 32));
+                d = _mm512_max_epu32(d, _mm512_loadu_si512(first + i + 48));
+            }
+            alignas(32) itype::u32 tmp[16];
+            _mm512_store_si512(reinterpret_cast<__m512i*>(tmp), _mm512_max_epu32(_mm512_max_epu32(a, b), _mm512_max_epu32(c, d)));
+            auto res = std::numeric_limits<typename traits::value_type>::min();
+            for (itype::u32 i = 0, j = len % 64, k = len - j; i != j; ++i) res = res < first[k + i] ? first[k + i] : res;
+            for (itype::u32 i = 0; i != 16; ++i) res = res < tmp[i] ? tmp[i] : res;
+            return res;
+            */
 #else
-    {
+            const itype::u32 len = last - first;
+            __m256i a = _mm256_setzero_si256(), b = _mm256_setzero_si256(), c, d;
+            for (itype::u32 i = 0; i + 32 <= len; i += 32) {
+                c = _mm256_max_epu32(a, _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(first + i)));
+                d = _mm256_max_epu32(b, _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(first + i + 8)));
+                a = _mm256_max_epu32(c, _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(first + i + 16)));
+                b = _mm256_max_epu32(d, _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(first + i + 24)));
+            }
+            alignas(32) itype::u32 tmp[8];
+            _mm256_store_si256(reinterpret_cast<__m256i*>(tmp), _mm256_max_epu32(a, b));
+            auto res = std::numeric_limits<typename traits::value_type>::min();
+            for (itype::u32 i = 0, j = len % 32, k = len - j; i != j; ++i) res = res < first[k + i] ? first[k + i] : res;
+            for (itype::u32 i = 0; i != 8; ++i) res = res < tmp[i] ? tmp[i] : res;
+            return res;
 #endif
-        auto res = *(first++);
-        for (; first != last; ++first) {
-            const bool f = Invoke(comp, Invoke(proj, static_cast<const decltype(res)&>(*first)), Invoke(proj, res));
-            if constexpr (std::is_trivial_v<decltype(res)>) res = f ? *first : res;
-            else if (f) res = *first;
         }
-        return res;
     }
+#endif
+    auto res = *(first++);
+    for (; first != last; ++first) {
+        const bool f = Invoke(comp, Invoke(proj, static_cast<const decltype(res)&>(*first)), Invoke(proj, res));
+        if constexpr (std::is_trivial_v<decltype(res)>) res = f ? *first : res;
+        else if (f) res = *first;
+    }
+    return res;
 }
 template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
     requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>

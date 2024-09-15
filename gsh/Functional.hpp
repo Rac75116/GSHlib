@@ -5,6 +5,7 @@
 #include <cstddef>          // std::nullptr_t
 #include <bit>              // std::bit_cast
 #include <gsh/TypeDef.hpp>  // gsh::itype
+#include <gsh/Util.hpp>     // GSH_INTERNAL_INLINE
 
 namespace std {
 template<class T> class reference_wrapper;
@@ -255,12 +256,12 @@ public:
 
 class Plus {
 public:
-    template<class T, class U> constexpr auto operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) + std::forward<U>(u))) -> decltype(std::forward<T>(t) + std::forward<U>(u)) { return std::forward<T>(t) + std::forward<U>(u); }
+    template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) + std::forward<U>(u))) { return std::forward<T>(t) + std::forward<U>(u); }
     using is_transparent = void;
 };
 class Negate {
 public:
-    template<class T> constexpr auto operator()(T&& t) const noexcept(noexcept(-std::forward<T>(t))) -> decltype(-std::forward<T>(t)) { return -std::forward<T>(t); }
+    template<class T> constexpr decltype(auto) operator()(T&& t) const noexcept(noexcept(-std::forward<T>(t))) { return -std::forward<T>(t); }
     using is_transparent = void;
 };
 

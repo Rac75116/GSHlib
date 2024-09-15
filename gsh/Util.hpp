@@ -108,8 +108,8 @@ GSH_INTERNAL_INLINE constexpr itype::u32 MemoryChar(T* p, ctype::c8 byte, itype:
         }
         return 0xffffffff;
     } else {
-        void* tmp = std::memchr(p, byte, len);
-        return (tmp == nullptr ? 0xffffffff : tmp - static_cast<void*>(p));
+        const void* tmp = std::memchr(p, byte, len);
+        return (tmp == nullptr ? 0xffffffff : static_cast<const ctype::c8*>(tmp) - reinterpret_cast<const ctype::c8*>(p));
     }
 }
 template<class T, class U>

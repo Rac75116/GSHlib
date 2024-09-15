@@ -12,16 +12,17 @@
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
 #include <gsh/Algorithm.hpp>
-#include <gsh/Random.hpp>
-#include <gsh/Timer.hpp>
-#include <immintrin.h>
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
 gsh::BasicReader r(open("in.txt", O_RDONLY));
 gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
 #else
+#ifdef ONLINE_JUDGE
+gsh::MmapReader r;
+#else
 gsh::BasicReader r;
+#endif
 gsh::BasicWriter w;
 #endif
 void Main() {
@@ -30,19 +31,7 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    u32 N = Parser<u8dig>{}(r), Q = Parser<u8dig>{}(r);
-    static u32 A[100000];
-    while (Q--) {
-        c8 c = Parser<c8>{}(r);
-        if (c == '1') {
-            u32 pos = Parser<u8dig>{}(r), x = Parser<u32>{}(r);
-            A[pos - 1] = x;
-        } else {
-            u32 L = Parser<u8dig>{}(r), R = Parser<u8dig>{}(r);
-            Formatter<u32>{}(w, MaxValue(Subrange{ A + L - 1, A + R - 1 }));
-            Formatter<c8>{}(w, '\n');
-        }
-    }
+    std::ranges::reverse;
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

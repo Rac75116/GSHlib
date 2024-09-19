@@ -322,8 +322,8 @@ public:
     constexpr StaticArr() noexcept(noexcept(value_type{})) : elems{} {}
     constexpr StaticArr(ArrNoInitTag) noexcept {}
     template<class U, class... Args> constexpr StaticArr(ArrInitTag<U>, Args&&... args) : elems{ static_cast<U>(std::forward<Args>(args))... } {
-        static_assert(std::is_same_v<T, U>, "gsh::StaticArr::StaticArr / The type specified in gsh::ArrInitTag is different from value_type.");
-        static_assert(sizeof...(Args) <= N, "gsh::StaticArr::StaticArr / The number of arguments is greater than the length of the array.");
+        static_assert(std::same_as<T, U>, "gsh::StaticArr::StaticArr / The type specified in gsh::ArrInitTag is different from value_type.");
+        static_assert(sizeof...(Args) == N, "gsh::StaticArr::StaticArr / The number of arguments is greater than the length of the array.");
     }
     template<class... Args> constexpr StaticArr(ArrInitTag<void>, Args&&... args) : elems{ static_cast<T>(std::forward<Args>(args))... } { static_assert(sizeof...(Args) <= N, "gsh::StaticArr::StaticArr / The number of arguments is greater than the length of the array."); }
     constexpr explicit StaticArr(const value_type& value) {

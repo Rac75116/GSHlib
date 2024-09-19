@@ -20,8 +20,8 @@
 #define GSH_INTERNAL_UNROLL(n)
 #endif
 #ifdef __GNUC__
-#define GSH_INTERNAL_INLINE   [[gnu::always_inline]]
-#define GSH_INTERNAL_NOINLINE [[gnu::noinline]]
+#define GSH_INTERNAL_INLINE   __attribute__((always_inline))
+#define GSH_INTERNAL_NOINLINE __attribute__((noinline))
 #elif defined _MSC_VER
 #define GSH_INTERNAL_INLINE   [[msvc::forceinline]]
 #define GSH_INTERNAL_NOINLINE [[msvc::noinline]]

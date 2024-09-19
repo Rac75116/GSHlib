@@ -699,9 +699,12 @@ public:
     }
 };
 template<> class Formatter<const ctype::c8*> {
+    itype::u32 n;
 public:
+    constexpr Formatter() : n(0xffffffff) {}
+    constexpr Formatter(itype::u32 len) : n(len) {}
     template<class Stream> constexpr void operator()(Stream& stream, const ctype::c8* s) const {
-        itype::u32 len = std::strlen(s);
+        itype::u32 len = n == 0xffffffff ? std::strlen(s) : n;
         itype::u32 avail = stream.avail();
         if (avail >= len) [[likely]] {
             std::memcpy(stream.current(), s, len);

@@ -31,7 +31,19 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    std::ranges::reverse;
+    u32 N = Parser<u8dig>{}(r), M = Parser<u8dig>{}(r);
+    i32 K = Parser<u32>{}(r);
+    static u32 A[250000];
+    for (u32 i = 0; i != N; ++i) A[i] = Parser<u32>{}(r);
+    for (u32 i = 0; i != M; ++i) {
+        u32 B = Parser<u32>{}(r);
+        u32* p = LowerBound(Subrange{ A, A + N }, B);
+        i32 res = 0;
+        if (p != A + N) Chmax(res, K - (i32) (*p - B));
+        if (p != A) Chmax(res, K - (i32) (B - *(p - 1)));
+        Formatter<u32>{}(w, res);
+        Formatter<c8>{}(w, '\n');
+    }
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;
@@ -84,6 +96,7 @@ int main() {
         gsh::Formatter<const gsh::ctype::c8*>{}(w, e.what());
         gsh::Formatter<gsh::ctype::c8>{}(w, '\n');
         w.reload();
+        return 1;
     }
 #endif
 }

@@ -386,12 +386,16 @@ public:
                 c += avail;
                 rem -= avail;
                 stream.skip(avail);
+                if (rem == 0) {
+                    *c = '\0';
+                    return;
+                }
                 stream.reload();
                 avail = stream.avail();
             }
             std::memcpy(c, stream.current(), rem);
             c += rem;
-            stream.skip(rem + 1);
+            stream.skip(rem);
             *c = '\0';
         }
     }
@@ -545,6 +549,11 @@ namespace internal {
             }
         }
     }
+    template<class Stream> constexpr void Formatu4dig(Stream& stream, itype::u16 x) {
+        itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+        std::memcpy(stream.current(), InttoStr<0>.table + (4 * x + off), 4);
+        stream.skip(4 - off);
+    }
     template<class Stream> constexpr void Formatu8dig(Stream& stream, itype::u32 x) {
         const itype::u32 n = x;
         auto copy1 = [&](itype::u32 x) {
@@ -656,6 +665,22 @@ public:
         *stream.current() = '-';
         stream.skip(n < 0);
         internal::Formatu128(stream, n < 0 ? -n : n);
+    }
+};
+template<> class Formatter<itype::u4dig> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::u16 n) const {
+        stream.reload(4);
+        internal::Formatu4dig(stream, n);
+    }
+};
+template<> class Formatter<itype::i4dig> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, itype::i16 n) const {
+        stream.reload(5);
+        *stream.current() = '-';
+        stream.skip(n < 0);
+        internal::Formatu4dig(stream, static_cast<itype::u16>(n < 0 ? -n : n));
     }
 };
 template<> class Formatter<itype::u8dig> {

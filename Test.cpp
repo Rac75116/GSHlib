@@ -31,19 +31,36 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    u32 N = Parser<u8dig>{}(r), M = Parser<u8dig>{}(r);
-    i32 K = Parser<u32>{}(r);
-    static u32 A[250000];
-    for (u32 i = 0; i != N; ++i) A[i] = Parser<u32>{}(r);
-    for (u32 i = 0; i != M; ++i) {
-        u32 B = Parser<u32>{}(r);
-        u32* p = LowerBound(Subrange{ A, A + N }, B);
-        i32 res = 0;
-        if (p != A + N) Chmax(res, K - (i32) (*p - B));
-        if (p != A) Chmax(res, K - (i32) (B - *(p - 1)));
-        Formatter<u32>{}(w, res);
-        Formatter<c8>{}(w, '\n');
+    u32 N = Parser<u4dig>{}(r), M = Parser<u4dig>{}(r), D = Parser<u4dig>{}(r);
+    static c8 S[10101];
+    for (u32 i = 0; i != N; ++i) Parser<c8*>{ S + (M + 1) * i, M + 1 }(r);
+    u32 res = 0;
+    for (u32 i = 0; i != N; ++i) {
+        u32 last = 0;
+        for (u32 j = 0; j != M; ++j) {
+            if (S[(M + 1) * i + j] == '#') {
+                i32 tmp = j - last + 1 - D;
+                res += tmp < 0 ? 0 : tmp;
+                last = j + 1;
+            }
+        }
+        i32 tmp = M - last + 1 - D;
+        res += tmp < 0 ? 0 : tmp;
     }
+    for (u32 i = 0; i != M; ++i) {
+        u32 last = 0;
+        for (u32 j = 0; j != N; ++j) {
+            if (S[(M + 1) * j + i] == '#') {
+                i32 tmp = j - last + 1 - D;
+                res += tmp < 0 ? 0 : tmp;
+                last = j + 1;
+            }
+        }
+        i32 tmp = N - last + 1 - D;
+        res += tmp < 0 ? 0 : tmp;
+    }
+    Formatter<u32>{}(w, res);
+    Formatter<c8>{}(w, '\n');
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

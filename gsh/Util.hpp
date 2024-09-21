@@ -147,5 +147,12 @@ GSH_INTERNAL_INLINE constexpr void MemoryMove(T* dst, U* src, itype::u32 len) {
     } else std::memmove(dst, src, len);
 }
 */
+GSH_INTERNAL_INLINE constexpr itype::u32 StrLen(const ctype::c8* p) {
+    if (std::is_constant_evaluated()) {
+        auto q = p;
+        while (*q != '\0') ++q;
+        return q - p;
+    } else return std::strlen(p);
+}
 
 }  // namespace gsh

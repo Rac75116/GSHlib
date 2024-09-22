@@ -18,6 +18,23 @@ template<class R> concept BidirectionalRange = std::ranges::bidirectional_range<
 template<class R> concept RandomAccessRange = std::ranges::random_access_range<R>;
 enum class RangeKind { Sized, Unsized };
 
+template<class T> class Formatter;
+template<ForwardRange R> class Formatter<R> {
+public:
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R&& r, Args&&... args) {
+        auto first = std::ranges::begin(r);
+        auto last = std::ranges::end(r);
+        Formatter<std::ranges::range_value_t<R>> formatter{ std::forward<Args>(args)... };
+        while (true) {
+            formatter(stream, *first);
+            ++first;
+            if (first != last) {
+                Formatter<ctype::c8>{}(stream, ' ');
+            } else break;
+        }
+    }
+};
+
 namespace internal {
     template<class T, class U> concept same_ncvr = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 }
@@ -119,22 +136,22 @@ public:
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
 class ViewInterface {
-    constexpr D& get_ref() { return *reinterpret_cast<D*>(this); }
-    constexpr const D& get_ref() const { return *reinterpret_cast<const D*>(this); }
-    constexpr auto get_begin() { return get_ref().begin(); }
-    constexpr auto get_begin() const { return get_ref().cbegin(); }
-    constexpr auto get_end() { return get_ref().end(); }
-    constexpr auto get_end() const { return get_ref().cend(); }
-    constexpr auto get_rbegin() { return get_ref().rbegin(); }
-    constexpr auto get_rbegin() const { return get_ref().crbegin(); }
-    constexpr auto get_rend() { return get_ref().rend(); }
-    constexpr auto get_rend() const { return get_ref().crend(); }
+    constexpr D& derived() { return *static_cast<D*>(this); }
+    constexpr const D& derived() const { return *static_cast<const D*>(this); }
+    constexpr auto get_begin() { return derived().begin(); }
+    constexpr auto get_begin() const { return derived().cbegin(); }
+    constexpr auto get_end() { return derived().end(); }
+    constexpr auto get_end() const { return derived().cend(); }
+    constexpr auto get_rbegin() { return derived().rbegin(); }
+    constexpr auto get_rbegin() const { return derived().crbegin(); }
+    constexpr auto get_rend() { return derived().rend(); }
+    constexpr auto get_rend() const { return derived().crend(); }
 public:
     using derived_type = D;
     using value_type = V;
-    constexpr derived_type copy() const& { return get_ref(); }
-    constexpr derived_type copy() & { return get_ref(); }
-    constexpr derived_type copy() && { return std::move(get_ref()); }
+    constexpr derived_type copy() const& { return derived(); }
+    constexpr derived_type copy() & { return derived(); }
+    constexpr derived_type copy() && { return std::move(derived()); }
     constexpr auto slice(itype::u32 a, itype::u32 b) {
         auto beg = std::next(get_begin(), a);
         auto end = std::next(beg, b - a);
@@ -148,37 +165,37 @@ public:
     constexpr auto slice(itype::u32 a) { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
     constexpr auto slice(itype::u32 a) const { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
     template<std::predicate<value_type> Pred> constexpr bool all_of(Pred f) const {
-        for (const auto& el : get_ref())
+        for (const auto& el : derived())
             if (!f(el)) return false;
         return true;
     }
     constexpr bool all_of(const value_type& x) const {
-        for (const auto& el : get_ref())
+        for (const auto& el : derived())
             if (!(el == x)) return false;
         return true;
     }
     template<std::predicate<value_type> Pred> constexpr bool any_of(Pred f) const {
-        for (const auto& el : get_ref())
+        for (const auto& el : derived())
             if (f(el)) return true;
         return false;
     }
     constexpr bool any_of(const value_type& x) const {
-        for (const auto& el : get_ref())
+        for (const auto& el : derived())
             if (el == x) return true;
         return false;
     }
     template<std::predicate<value_type> Pred> constexpr bool none_of(Pred f) const {
-        for (const auto& el : get_ref())
+        for (const auto& el : derived())
             if (f(el)) return false;
         return true;
     }
     constexpr bool none_of(const value_type& x) const {
-        for (const auto& el : get_ref())
+        for (const auto& el : derived())
             if (el == x) return false;
         return true;
     }
     constexpr bool contains(const value_type& x) const {
-        for (const auto& el : get_ref())
+        for (const auto& el : derived())
             if (el == x) return true;
         return false;
     }
@@ -190,7 +207,7 @@ public:
     }
     constexpr itype::u32 count(const value_type& x) const {
         itype::u32 res = 0;
-        for (const auto& el : get_ref()) res += (el == x);
+        for (const auto& el : derived()) res += (el == x);
         return res;
     }
 };

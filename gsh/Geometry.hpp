@@ -2,7 +2,6 @@
 #include <type_traits>                 // std::is_arithmetic_v
 #include <bit>                         // std::bit_cast
 #include <cmath>                       // std::hypot, std::sqrt
-#include <unordered_map>               // std::unordered_multimap
 #include <gsh/Range.hpp>               // gsh::Rangeof
 #include <gsh/Arr.hpp>                 // gsh::Arr
 #include <gsh/TypeDef.hpp>             // gsh::itype

@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdlib>  // std::exit
 #include <cstring>  // std::memcpy, std::memmove
+#include <utility>  // std::forward
+#include <tuple>    // std::tuple, std::tuple_cat
 #if __has_include(<unistd.h>)
 #include <unistd.h>  // read, write
 #endif
@@ -8,13 +10,46 @@
 #include <sys/mman.h>  // mmap
 #include <sys/stat.h>  // stat, fstat
 #endif
-#include <gsh/TypeDef.hpp>    // gsh::itype, gsh::ctype
-#include <gsh/Parser.hpp>     // gsh::Parser
-#include <gsh/Formatter.hpp>  // gsh::Formatter
+#include <gsh/TypeDef.hpp>     // gsh::itype, gsh::ctype
+#include <gsh/Parser.hpp>      // gsh::Parser
+#include <gsh/Formatter.hpp>   // gsh::Formatter
+#include <gsh/Functional.hpp>  // gsh::Invoke
 
 namespace gsh {
 
-template<itype::u32 Bufsize = (1 << 18)> class BasicReader {
+namespace internal {
+    template<class D> class IstreamInterface {
+        constexpr D& derived() { return *static_cast<D*>(this); }
+        constexpr const D& derived() const { return *static_cast<const D*>(this); }
+    public:
+        constexpr auto read() { return std::tuple{}; }
+        template<class T, class... Types> constexpr auto read() {
+            if constexpr (sizeof...(Types) == 0) return std::tuple(Parser<T>{}(derived()));
+            else {
+                auto res = Parser<T>{}(derived());
+                return std::tuple_cat(std::tuple(std::move(res)), read<Types...>());
+            }
+        }
+    };
+    template<class D> class OstreamInterface {
+        constexpr D& derived() { return *static_cast<D*>(this); }
+        constexpr const D& derived() const { return *static_cast<const D*>(this); }
+    public:
+        constexpr void write_sep(ctype::c8) {}
+        template<class Sep, class T, class... Args> constexpr void write_sep(Sep&& sep, T&& x, Args&&... args) {
+            Formatter<std::remove_cvref_t<T>>{}(derived(), std::forward<T>(x));
+            if constexpr (sizeof...(Args) != 0) {
+                Formatter<std::remove_cvref_t<Sep>>{}(derived(), std::forward<Sep>(sep));
+                write(std::forward<Args>(args)...);
+            }
+        }
+        template<class... Args> constexpr void write(Args&&... args) { write_sep(' ', std::forward<Args>(args)...); }
+        template<class Sep, class... Args> constexpr void writeln_sep(Sep&& sep, Args&&... args) { write_sep(std::forward<Sep>(sep), std::forward<Args>(args)..., '\n'); }
+        template<class... Args> constexpr void writeln(Args&&... args) { write_sep(' ', std::forward<Args>(args)..., '\n'); }
+    };
+}  // namespace internal
+
+template<itype::u32 Bufsize = (1 << 17)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
     itype::i32 fd = 0;
     ctype::c8 buf[Bufsize + 1] = {};
     ctype::c8 *cur = buf, *eof = buf;
@@ -54,7 +89,7 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
-class MmapReader {
+class MmapReader : public internal::IstreamInterface<MmapReader> {
     const itype::i32 fh;
     ctype::c8* buf;
     ctype::c8 *cur, *eof;
@@ -77,7 +112,7 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
-class StaticStrReader {
+class StaticStrReader : public internal::IstreamInterface<StaticStrReader> {
     const ctype::c8* cur;
 public:
     constexpr StaticStrReader() {}
@@ -89,7 +124,7 @@ public:
     constexpr void skip(itype::u32 n) { cur += n; }
 };
 
-template<itype::u32 Bufsize = (1 << 18)> class BasicWriter {
+template<itype::u32 Bufsize = (1 << 17)> class BasicWriter : public internal::OstreamInterface<BasicWriter<Bufsize>> {
     itype::i32 fd = 1;
     ctype::c8 buf[Bufsize + 1] = {};
     ctype::c8 *cur = buf, *eof = buf + Bufsize;
@@ -119,7 +154,7 @@ public:
     ctype::c8* current() { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
-class StaticStrWriter {
+class StaticStrWriter : public internal::OstreamInterface<StaticStrWriter> {
     ctype::c8* cur;
 public:
     constexpr StaticStrWriter() {}

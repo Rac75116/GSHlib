@@ -18,11 +18,11 @@ gsh::BasicReader r(open("in.txt", O_RDONLY));
 gsh::BasicWriter w(open("out.txt", O_WRONLY | O_TRUNC));
 #else
 #ifdef ONLINE_JUDGE
-gsh::MmapReader r;
+gsh::MmapReader rd;
 #else
-gsh::BasicReader r;
+gsh::BasicReader rd;
 #endif
-gsh::BasicWriter w;
+gsh::BasicWriter wt;
 #endif
 void Main() {
     using namespace std;
@@ -72,16 +72,16 @@ void Main() {
 int main() {
 #ifdef ONLINE_JUDGE
     Main();
-    w.reload();
+    wt.reload();
 #else
     try {
         Main();
-        w.reload();
+        wt.reload();
     } catch (gsh::Exception& e) {
-        gsh::Formatter<const gsh::ctype::c8*>{}(w, "gsh::Exception was throwed: ");
-        gsh::Formatter<const gsh::ctype::c8*>{}(w, e.what());
-        gsh::Formatter<gsh::ctype::c8>{}(w, '\n');
-        w.reload();
+        gsh::Formatter<const gsh::ctype::c8*>{}(wt, "gsh::Exception was throwed: ");
+        gsh::Formatter<const gsh::ctype::c8*>{}(wt, e.what());
+        gsh::Formatter<gsh::ctype::c8>{}(wt, '\n');
+        wt.reload();
         return 1;
     }
 #endif

@@ -6,23 +6,23 @@ namespace gsh {
 
 namespace internal {
     template<class D> class ArithmeticInterface {
-        constexpr D& get_ref() { return *reinterpret_cast<D*>(this); }
-        constexpr const D& get_ref() const { return *reinterpret_cast<const D*>(this); }
+        constexpr D& derived() { return *reinterpret_cast<D*>(this); }
+        constexpr const D& derived() const { return *reinterpret_cast<const D*>(this); }
     public:
         constexpr D operator++(int) {
-            D copy = get_ref();
-            ++get_ref();
+            D copy = derived();
+            ++derived();
             return copy;
         }
         constexpr D operator--(int) {
-            D copy = get_ref();
-            --get_ref();
+            D copy = derived();
+            --derived();
             return copy;
         }
         constexpr D operator+() const
             requires requires(D x) { -x; }
         {
-            return get_ref();
+            return derived();
         }
         friend constexpr auto operator*(const D& t1, const D& t2) { return D(t1) *= t2; }
         friend constexpr auto operator/(const D& t1, const D& t2) { return D(t1) /= t2; }

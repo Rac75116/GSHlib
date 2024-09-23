@@ -1,7 +1,7 @@
 #pragma once
-#include <bit>              // std::countr_zero
-#include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ctype
-#include <gsh/Util.hpp>     // gsh::MemoryCopy
+#include <bit>          // std::countr_zero
+#include "TypeDef.hpp"  // gsh::itype, gsh::ctype
+#include "Util.hpp"     // gsh::MemoryCopy
 
 namespace gsh {
 

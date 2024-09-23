@@ -2,8 +2,8 @@
 #include <type_traits>  // std::is_constant_evaluated
 #include <cstring>      // std::memset
 #include <bit>          //std::bit_cast
-#include <gsh/TypeDef.hpp>
-#include <gsh/internal/UtilMacro.hpp>
+#include "TypeDef.hpp"
+#include "internal/UtilMacro.hpp"
 
 namespace gsh {
 

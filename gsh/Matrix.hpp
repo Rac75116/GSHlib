@@ -1,5 +1,5 @@
 #pragma once
-#include <gsh/TypeDef.hpp>
+#include "TypeDef.hpp"
 
 namespace gsh {
 

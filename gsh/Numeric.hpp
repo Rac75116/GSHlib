@@ -2,10 +2,10 @@
 #include <type_traits>
 #include <cmath>
 #include <new>
-#include <gsh/Modint.hpp>
-#include <gsh/TypeDef.hpp>
-#include <gsh/Arr.hpp>
-#include <gsh/Option.hpp>
+#include "TypeDef.hpp"
+#include "Modint.hpp"
+#include "Arr.hpp"
+#include "Option.hpp"
 
 namespace gsh {
 

@@ -1,11 +1,11 @@
 #pragma once
-#include <concepts>         // std::totally_ordered_with, std::same_as, std::integral, std::floating_point
-#include <type_traits>      // std::remove_cv_t, std::remove_cvref_t
-#include <utility>          // std::forward
-#include <cstddef>          // std::nullptr_t
-#include <bit>              // std::bit_cast
-#include <gsh/TypeDef.hpp>  // gsh::itype
-#include <gsh/Util.hpp>     // GSH_INTERNAL_INLINE
+#include <concepts>                // std::totally_ordered_with, std::same_as, std::integral, std::floating_point
+#include <type_traits>             // std::remove_cv_t, std::remove_cvref_t
+#include <utility>                 // std::forward
+#include <cstddef>                 // std::nullptr_t
+#include <bit>                     // std::bit_cast
+#include "TypeDef.hpp"             // gsh::itype
+#include "internal/UtilMacro.hpp"  // GSH_INTERNAL_INLINE
 
 namespace std {
 template<class T> class reference_wrapper;

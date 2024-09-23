@@ -1,6 +1,6 @@
 #pragma once
-#include <gsh/TypeDef.hpp>
-#include <gsh/Arr.hpp>
+#include "TypeDef.hpp"  // gsh::itype
+#include "Arr.hpp"      // gsh::Arr
 
 namespace gsh {
 

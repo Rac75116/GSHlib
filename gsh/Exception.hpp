@@ -1,4 +1,5 @@
 #pragma once
+#include "TypeDef.hpp"
 
 namespace gsh {
 

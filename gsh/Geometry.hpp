@@ -1,14 +1,14 @@
 #pragma once
-#include <type_traits>                 // std::is_arithmetic_v
-#include <bit>                         // std::bit_cast
-#include <cmath>                       // std::hypot, std::sqrt
-#include <gsh/Range.hpp>               // gsh::Rangeof
-#include <gsh/Arr.hpp>                 // gsh::Arr
-#include <gsh/TypeDef.hpp>             // gsh::itype
-#include <gsh/Range.hpp>               // gsh::Rangeof, gsh::RangeTraits
-#include <gsh/Algorithm.hpp>           // gsh::internal::SortUnsigned64
-#include <gsh/Random.hpp>              // gsh::RandBuffer32
-#include <gsh/internal/Operation.hpp>  // gsh::internal::ArithmeticInterface
+#include <type_traits>             // std::is_arithmetic_v
+#include <bit>                     // std::bit_cast
+#include <cmath>                   // std::hypot, std::sqrt
+#include "TypeDef.hpp"             // gsh::itype
+#include "Range.hpp"               // gsh::Rangeof
+#include "Arr.hpp"                 // gsh::Arr
+#include "Range.hpp"               // gsh::Rangeof, gsh::RangeTraits
+#include "Algorithm.hpp"           // gsh::internal::SortUnsigned64
+#include "Random.hpp"              // gsh::RandBuffer32
+#include "internal/Operation.hpp"  // gsh::internal::ArithmeticInterface
 
 namespace gsh {
 

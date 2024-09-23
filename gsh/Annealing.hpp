@@ -1,7 +1,7 @@
 #pragma once
 #include <chrono>
-#include <gsh/TypeDef.hpp>  // gsh::itype
-#include <gsh/Random.hpp>
+#include "TypeDef.hpp"  // gsh::itype
+#include "Random.hpp"
 
 namespace gsh {
 

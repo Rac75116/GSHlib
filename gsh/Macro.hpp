@@ -3,10 +3,11 @@
 #include <cstdlib>          // std::exit
 #include <tuple>            // std::forward_as_tuple
 #include <source_location>  // std::source_location
-#include <gsh/InOut.hpp>    // gsh::BasicWriter, gsh::Formatter
-#include <gsh/Range.hpp>    // gsh::RangeTraits
-#include <gsh/Option.hpp>   // gsh::Option
-#include <gsh/Util.hpp>     // gsh::Step
+#include "TypeDef.hpp"      // gsh::itype
+#include "InOut.hpp"        // gsh::BasicWriter, gsh::Formatter
+#include "Range.hpp"        // gsh::RangeTraits
+#include "Option.hpp"       // gsh::Option
+#include "Util.hpp"         // gsh::Step
 
 #define ALL(V)       std::begin(V), std::end(V)
 #define RALL(V)      std::rbegin(V), std::rend(V)

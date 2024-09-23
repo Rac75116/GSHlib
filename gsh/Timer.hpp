@@ -2,6 +2,7 @@
 #include <ctime>   // std::clock_t, std::clock, CLOCKS_PER_SEC
 #include <limits>  // std::numeric_limits
 #include <cstdio>  // std::printf
+#include "TypeDef.hpp"
 
 namespace gsh {
 

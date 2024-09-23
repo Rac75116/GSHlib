@@ -1,10 +1,10 @@
 #pragma once
 #include <algorithm>
 #include <bit>
-#include <gsh/TypeDef.hpp>
-#include <gsh/Modint.hpp>
-#include <gsh/Vec.hpp>
-#include <gsh/Numeric.hpp>
+#include "TypeDef.hpp"
+#include "Modint.hpp"
+#include "Vec.hpp"
+#include "Numeric.hpp"
 
 namespace gsh {
 

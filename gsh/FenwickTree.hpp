@@ -3,10 +3,10 @@
 #include <bit>               // std::bit_floor, std::bit_width, std::countr_zero
 #include <iterator>          // std::iterator_traits
 #include <initializer_list>  // std::initializer_list
-#include <gsh/Memory.hpp>    // gsh::Allocator, gsh::AllocatorTraits
-#include <gsh/Arr.hpp>       // gsh::Arr
-#include <gsh/TypeDef.hpp>   // gsh::itype
-#include <gsh/internal/UtilMacro.hpp>
+#include "TypeDef.hpp"       // gsh::itype
+#include "Memory.hpp"        // gsh::Allocator, gsh::AllocatorTraits
+#include "Arr.hpp"           // gsh::Arr
+#include "internal/UtilMacro.hpp"
 
 namespace gsh {
 

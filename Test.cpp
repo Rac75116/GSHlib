@@ -11,8 +11,7 @@
 #endif
 #include <gsh/InOut.hpp>
 #include <gsh/Exception.hpp>
-#include <gsh/Range.hpp>
-#include <map>
+#include <unordered_set>
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -32,32 +31,6 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    u32 n = rd.read<u32>();
-    map<u32, u32> m;
-    for (u32 i = 2; i * i <= n; ++i) {
-        while (n % i == 0) {
-            n /= i;
-            ++m[i];
-        }
-    }
-    if (n != 1) ++m[n];
-    wt.writeln_sep('\n', m);
-    u32 low = 0, high = n;
-    while (high - low > 1) {
-        u32 mid = (high + low) / 2;
-        bool ok = true;
-        for (auto [a, b] : m) {
-            u32 cnt = 0;
-            for (u32 i = mid; i != 0;) {
-                cnt += i / a;
-                i /= a;
-            }
-            ok &= cnt >= b;
-        }
-        if (ok) high = mid;
-        else low = mid;
-    }
-    wt.writeln(high);
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

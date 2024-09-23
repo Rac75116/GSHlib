@@ -1,8 +1,8 @@
 #pragma once
 #include <type_traits>
 #include <tuple>
-#include <utility>          // std::forward, std::make_integer_sequence
-#include <gsh/TypeDef.hpp>  // gsh::itype
+#include <utility>      // std::forward, std::make_integer_sequence
+#include "TypeDef.hpp"  // gsh::itype
 
 namespace gsh {
 

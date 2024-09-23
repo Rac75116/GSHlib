@@ -1,9 +1,9 @@
 #pragma once
-#include <tuple>            // std::tuple_size, std::tuple_element
-#include <utility>          // std::integer_sequence, std::make_index_sequence
-#include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ctype
-#include <gsh/Util.hpp>     // gsh::MemoryCopy, gsh::StrLen
-#include <gsh/Range.hpp>    // gsh::ForwardRange
+#include <tuple>        // std::tuple_size, std::tuple_element
+#include <utility>      // std::integer_sequence, std::make_index_sequence
+#include <ranges>       // std::ranges::forward_range
+#include "TypeDef.hpp"  // gsh::itype, gsh::ctype
+#include "Util.hpp"     // gsh::MemoryCopy, gsh::StrLen
 
 namespace gsh {
 
@@ -399,7 +399,7 @@ public:
     template<class Stream, class... Args> constexpr void operator()(Stream&& stream, T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
     template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
 };
-template<class R> concept FormatableRange = ForwardRange<R> && requires { sizeof(Formatter<std::remove_cvref_t<std::ranges::range_value_t<R>>>) != 0; };
+template<class R> concept FormatableRange = std::ranges::forward_range<R> && requires { sizeof(Formatter<std::remove_cvref_t<std::ranges::range_value_t<R>>>) != 0; };
 template<FormatableRange R>
     requires(!FormatableTuple<R>)
 class Formatter<R> {

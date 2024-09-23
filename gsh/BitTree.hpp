@@ -1,9 +1,9 @@
 #pragma once
-#include <bit>              // std::popcount
-#include <cstring>          // std::memset
-#include <type_traits>      // std::is_constant_evaluated
-#include <gsh/TypeDef.hpp>  // gsh::itype
-#include <gsh/Util.hpp>     // gsh::Assume
+#include <bit>          // std::popcount
+#include <cstring>      // std::memset
+#include <type_traits>  // std::is_constant_evaluated
+#include "TypeDef.hpp"  // gsh::itype
+#include "Util.hpp"     // gsh::Assume
 #include <immintrin.h>
 
 namespace gsh {

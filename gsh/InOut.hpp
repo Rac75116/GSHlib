@@ -10,10 +10,10 @@
 #include <sys/mman.h>  // mmap
 #include <sys/stat.h>  // stat, fstat
 #endif
-#include <gsh/TypeDef.hpp>     // gsh::itype, gsh::ctype
-#include <gsh/Parser.hpp>      // gsh::Parser
-#include <gsh/Formatter.hpp>   // gsh::Formatter
-#include <gsh/Functional.hpp>  // gsh::Invoke
+#include "TypeDef.hpp"     // gsh::itype, gsh::ctype
+#include "Parser.hpp"      // gsh::Parser
+#include "Formatter.hpp"   // gsh::Formatter
+#include "Functional.hpp"  // gsh::Invoke
 
 namespace gsh {
 

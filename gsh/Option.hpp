@@ -1,12 +1,13 @@
 #pragma once
-#include <type_traits>        // std::is_trivially_(***), std::integral_constant, std::is_convertible_v
-#include <utility>            // std::move, std::forward, std::declval
-#include <initializer_list>   // std::initializer_list
-#include <compare>            // std::three_way_comparable, std::compare_three_way_result
-#include <tuple>              // std::tuple_size, std::tuple_element
-#include <memory>             // std::construct_at, std::destroy_at
-#include <gsh/Util.hpp>       // gsh::InPlace
-#include <gsh/Exception.hpp>  // gsh::Exception
+#include <type_traits>       // std::is_trivially_(***), std::integral_constant, std::is_convertible_v
+#include <utility>           // std::move, std::forward, std::declval
+#include <initializer_list>  // std::initializer_list
+#include <compare>           // std::three_way_comparable, std::compare_three_way_result
+#include <tuple>             // std::tuple_size, std::tuple_element
+#include <memory>            // std::construct_at, std::destroy_at
+#include "TypeDef.hpp"       // gsh::itype
+#include "Util.hpp"          // gsh::InPlace
+#include "Exception.hpp"     // gsh::Exception
 
 namespace gsh {
 

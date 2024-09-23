@@ -1,9 +1,9 @@
 #pragma once
-#include <bit>                 // std::rotr, std::bit_cast
-#include <ctime>               // std::time, std::clock
-#include <source_location>     // std::source_location
-#include <gsh/TypeDef.hpp>     // gsh::itype, gsh::ftype
-#include <gsh/Functional.hpp>  // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers
+#include <bit>              // std::rotr, std::bit_cast
+#include <ctime>            // std::time, std::clock
+#include <source_location>  // std::source_location
+#include "TypeDef.hpp"      // gsh::itype, gsh::ftype
+#include "Functional.hpp"   // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers
 
 namespace gsh {
 

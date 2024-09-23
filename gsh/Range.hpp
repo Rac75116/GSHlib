@@ -18,23 +18,6 @@ template<class R> concept BidirectionalRange = std::ranges::bidirectional_range<
 template<class R> concept RandomAccessRange = std::ranges::random_access_range<R>;
 enum class RangeKind { Sized, Unsized };
 
-template<class T> class Formatter;
-template<ForwardRange R> class Formatter<R> {
-public:
-    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R&& r, Args&&... args) {
-        auto first = std::ranges::begin(r);
-        auto last = std::ranges::end(r);
-        Formatter<std::ranges::range_value_t<R>> formatter{ std::forward<Args>(args)... };
-        while (true) {
-            formatter(stream, *first);
-            ++first;
-            if (first != last) {
-                Formatter<ctype::c8>{}(stream, ' ');
-            } else break;
-        }
-    }
-};
-
 namespace internal {
     template<class T, class U> concept same_ncvr = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 }

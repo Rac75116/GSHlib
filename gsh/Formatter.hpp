@@ -1,6 +1,9 @@
 #pragma once
+#include <tuple>            // std::tuple_size, std::tuple_element
+#include <utility>          // std::integer_sequence, std::make_index_sequence
 #include <gsh/TypeDef.hpp>  // gsh::itype, gsh::ctype
 #include <gsh/Util.hpp>     // gsh::MemoryCopy, gsh::StrLen
+#include <gsh/Range.hpp>    // gsh::ForwardRange
 
 namespace gsh {
 
@@ -335,6 +338,14 @@ public:
         stream.skip(1);
     }
 };
+template<> class Formatter<bool> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, bool b) const {
+        stream.reload(1);
+        *stream.current() = '0' + b;
+        stream.skip(1);
+    }
+};
 template<> class Formatter<const ctype::c8*> {
     itype::u32 n;
 public:
@@ -362,6 +373,53 @@ public:
             }
         }
     }
+};
+namespace internal {
+    template<class T, class U> constexpr bool FormatableTupleImpl = false;
+    template<class T, std::size_t... I> constexpr bool FormatableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Formatter<std::remove_cvref_t<typename std::tuple_element<I, T>::type>>) != 0; });
+}  // namespace internal
+template<class T> concept FormatableTuple = requires { std::tuple_size<T>::value; } && internal::FormatableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
+template<FormatableTuple T> class Formatter<T> {
+    template<std::size_t I, class Stream, class U, class... Args> constexpr void print_element(Stream&& stream, U&& x, Args&&... args) const {
+        using std::get;
+        using element_type = std::remove_cvref_t<std::tuple_element_t<I, T>>;
+        if constexpr (requires { x.template get<I>(); }) Formatter<element_type>{}(stream, x.template get<I>(), args...);
+        else Formatter<element_type>{}(stream, get<I>(x), args...);
+        if constexpr (I < std::tuple_size<T>::value - 1) {
+            Formatter<ctype::c8>{}(stream, ' ');
+            print_element<I + 1>(std::forward<Stream>(stream), x, std::forward<Args>(args)...);
+        }
+    }
+    template<class Stream, class U, class... Args> constexpr void print(Stream&& stream, U&& x, Args&&... args) const {
+        if constexpr (std::tuple_size<T>::value != 0) print_element<0>(std::forward<Stream>(stream), x, std::forward<Args>(args)...);
+    }
+public:
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, T& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const T& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
+};
+template<class R> concept FormatableRange = ForwardRange<R> && requires { sizeof(Formatter<std::remove_cvref_t<std::ranges::range_value_t<R>>>) != 0; };
+template<FormatableRange R>
+    requires(!FormatableTuple<R>)
+class Formatter<R> {
+    template<class Stream, class T, class... Args> constexpr void print(Stream&& stream, T&& r, Args&&... args) const {
+        auto first = std::ranges::begin(r);
+        auto last = std::ranges::end(r);
+        Formatter<std::remove_cvref_t<std::ranges::range_value_t<R>>> formatter;
+        while (true) {
+            formatter(stream, *first, args...);
+            ++first;
+            if (first != last) {
+                Formatter<ctype::c8>{}(stream, ' ');
+            } else break;
+        }
+    }
+public:
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const R& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R&& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const R&& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
 };
 
 }  // namespace gsh

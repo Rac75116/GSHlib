@@ -24,8 +24,11 @@ namespace internal {
     public:
         constexpr auto read() { return std::tuple{}; }
         template<class T, class... Types> constexpr auto read() {
-            if constexpr (sizeof...(Types) == 0) return std::tuple(Parser<T>{}(derived()));
-            else {
+            if constexpr (sizeof...(Types) == 0) return Parser<T>{}(derived());
+            else if constexpr (sizeof...(Types) == 1) {
+                auto res = Parser<T>{}(derived());
+                return std::tuple_cat(std::tuple(std::move(res)), std::tuple(read<Types...>()));
+            } else {
                 auto res = Parser<T>{}(derived());
                 return std::tuple_cat(std::tuple(std::move(res)), read<Types...>());
             }
@@ -44,8 +47,14 @@ namespace internal {
             }
         }
         template<class... Args> constexpr void write(Args&&... args) { write_sep(' ', std::forward<Args>(args)...); }
-        template<class Sep, class... Args> constexpr void writeln_sep(Sep&& sep, Args&&... args) { write_sep(std::forward<Sep>(sep), std::forward<Args>(args)..., '\n'); }
-        template<class... Args> constexpr void writeln(Args&&... args) { write_sep(' ', std::forward<Args>(args)..., '\n'); }
+        template<class Sep, class... Args> constexpr void writeln_sep(Sep&& sep, Args&&... args) {
+            write_sep(std::forward<Sep>(sep), std::forward<Args>(args)...);
+            Formatter<ctype::c8>{}(derived(), '\n');
+        }
+        template<class... Args> constexpr void writeln(Args&&... args) {
+            write_sep(' ', std::forward<Args>(args)...);
+            Formatter<ctype::c8>{}(derived(), '\n');
+        }
     };
 }  // namespace internal
 

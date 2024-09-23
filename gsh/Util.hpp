@@ -67,7 +67,7 @@ template<class T, class... Args> GSH_INTERNAL_INLINE constexpr void ForceCalc(co
 }
 
 class InPlaceTag {};
-constexpr InPlaceTag InPlace;
+[[maybe_unused]] constexpr InPlaceTag InPlace;
 
 template<class T>
     requires std::is_trivially_copyable_v<T>

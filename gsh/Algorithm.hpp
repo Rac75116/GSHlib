@@ -1,15 +1,16 @@
 #pragma once
-#include <type_traits>     // std::common_type
-#include <cstring>         // std::memset
-#include <cstdlib>         // std::malloc, std::free
-#include <algorithm>       // std::lower_bound
-#include <cmath>           // std::sqrt
-#include <limits>          // std::numeric_limits
-#include "TypeDef.hpp"     // gsh::itype
-#include "Arr.hpp"         // gsh::Arr
-#include "Vec.hpp"         // gsh::Vec
-#include "Range.hpp"       // gsh::Range
-#include "Functional.hpp"  // gsh::Less, gsh::Greater
+#include <type_traits>                  // std::common_type
+#include <cstring>                      // std::memset
+#include <cstdlib>                      // std::malloc, std::free
+#include <algorithm>                    // std::lower_bound
+#include <cmath>                        // std::sqrt
+#include <limits>                       // std::numeric_limits
+#include "TypeDef.hpp"                  // gsh::itype
+#include "Arr.hpp"                      // gsh::Arr
+#include "Vec.hpp"                      // gsh::Vec
+#include "Range.hpp"                    // gsh::Range
+#include "Functional.hpp"               // gsh::Less, gsh::Greater
+#include "internal/SortingNetwork.hpp"  // gsh::internal::OptimalSortFixedLength
 #include <immintrin.h>
 
 namespace gsh {
@@ -78,12 +79,28 @@ template<ForwardRange R, class T = typename RangeTraits<R>::value_type, internal
 template<BidirectionalRange R>
     requires std::permutable<typename RangeTraits<R>::iterator>
 void Reverse(R&& r) {
-    using traits = RangeTraits<R>;
-    auto first = traits::begin(r);
-    auto last = traits::end(r);
+    std::ranges::reverse(std::forward<R>(r));
 }
 
 namespace internal {
+    template<class T, class Proj = Identity> void SortUnsigned8(T* const p, const itype::u32 n, Proj&& proj = {}) {
+        static itype::u32 cnt[1 << 8];
+        std::memset(cnt, 0, sizeof(cnt));
+        for (itype::u32 i = 0; i != n; ++i) ++cnt[Invoke(proj, p[i]) & 0xff];
+        for (itype::u32 i = 0; i != (1 << 8) - 1; ++i) cnt[i + 1] += cnt[i];
+        Arr<T> tmp(n);
+        for (itype::u32 i = n; i--;) tmp[--cnt[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
+    }
+    template<class T, class Proj = Identity> void SortUnsigned16(T* const p, const itype::u32 n, Proj&& proj = {}) {
+        static itype::u32 cnt[1 << 16];
+        std::memset(cnt, 0, sizeof(cnt));
+        for (itype::u32 i = 0; i != n; ++i) ++cnt[Invoke(proj, p[i]) & 0xffff];
+        for (itype::u32 i = 0; i != (1 << 16) - 1; ++i) cnt[i + 1] += cnt[i];
+        Arr<T> tmp(n);
+        for (itype::u32 i = n; i--;) tmp[--cnt[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
+    }
     template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const itype::u32 n, Proj&& proj = {}) {
         static itype::u32 cnt1[1 << 16], cnt2[1 << 16];
         std::memset(cnt1, 0, sizeof(cnt1));
@@ -99,10 +116,9 @@ namespace internal {
             cnt1[i + 1] += cnt1[i];
             cnt2[i + 1] += cnt2[i];
         }
-        T* const tmp = reinterpret_cast<T*>(std::malloc(sizeof(T) * n));
-        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
-        for (itype::u32 i = n; i != 0;) --i, p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
-        std::free(tmp);
+        Arr<T> tmp(n);
+        for (itype::u32 i = n; i--;) tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = n; i--;) p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
     }
     template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const itype::u32 n, Proj&& proj = {}) {
         static itype::u32 cnt1[1 << 16], cnt2[1 << 16], cnt3[1 << 16], cnt4[1 << 16];
@@ -127,35 +143,64 @@ namespace internal {
             cnt3[i + 1] += cnt3[i];
             cnt4[i + 1] += cnt4[i];
         }
-        T* const tmp = reinterpret_cast<T*>(std::malloc(sizeof(T) * n));
-        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
-        for (itype::u32 i = n; i != 0;) --i, p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
-        for (itype::u32 i = n; i != 0;) --i, tmp[--cnt3[Invoke(proj, p[i]) >> 32 & 0xffff]] = std::move(p[i]);
-        for (itype::u32 i = n; i != 0;) --i, p[--cnt4[Invoke(proj, tmp[i]) >> 48 & 0xffff]] = std::move(tmp[i]);
-        std::free(tmp);
+        Arr<T> tmp(n);
+        for (itype::u32 i = n; i--;) tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = n; i--;) p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
+        for (itype::u32 i = n; i--;) tmp[--cnt3[Invoke(proj, p[i]) >> 32 & 0xffff]] = std::move(p[i]);
+        for (itype::u32 i = n; i--;) p[--cnt4[Invoke(proj, tmp[i]) >> 48 & 0xffff]] = std::move(tmp[i]);
     }
+    class Revmsb {
+        template<class T> constexpr auto operator()(T&& x) const {
+            using result_type = std::make_unsigned_t<T>;
+            return std::bit_cast<result_type>(x) ^ (result_type(1) << (sizeof(T) * 8 - 1));
+        }
+    };
 }  // namespace internal
-/*
 template<Range R, class Comp = Less, class Proj = Identity>
     requires std::sortable<std::ranges::iterator_t<R>, Comp, Proj>
 constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
-    using traits = RangeTraits<R>;
-    const itype::u32 n = traits::size(r);
-    if constexpr (std::same_as<typename traits::value_type, itype::u32>) {
-        if (n >= 2000) {
-            if constexpr (std::same_as<std::remove_cvref_t<Comp>, Less>) {
-                internal::SortUnsigned32(traits::data(r), n);
-                return;
+    if (!std::is_constant_evaluated()) {
+        constexpr bool is_less = std::same_as<std::remove_cvref_t<Comp>, Less>;
+        constexpr bool is_greater = std::same_as<std::remove_cvref_t<Comp>, Greater>;
+        if constexpr (PointerObtainable<R> && (is_less || is_greater) && std::is_default_constructible_v<std::ranges::range_value_t<R>>) {
+            itype::u32 n = 0;
+            using inv_result = std::invoke_result_t<Proj, std::ranges::range_value_t<R>>;
+            if constexpr (std::same_as<inv_result, itype::u8> || std::same_as<inv_result, itype::i8> || std::same_as<inv_result, ctype::c8>) {
+                if ((n = std::ranges::size(r)) >= 500) {
+                    if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned8(std::ranges::data(r), n, std::forward<Proj>(proj));
+                    else internal::SortUnsigned8(std::ranges::data(r), n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
+                    if constexpr (is_greater) Reverse(std::forward<R>(r));
+                    return;
+                }
             }
-            if constexpr (std::same_as<std::remove_cvref_t<Comp>, Greater>) {
-                internal::SortUnsigned32(traits::data(r), n);
-                return;
+            if constexpr (std::same_as<inv_result, itype::u16> || std::same_as<inv_result, itype::i16>) {
+                if ((n = std::ranges::size(r)) >= 1000) {
+                    if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned16(std::ranges::data(r), n, std::forward<Proj>(proj));
+                    else internal::SortUnsigned16(std::ranges::data(r), n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
+                    if constexpr (is_greater) Reverse(std::forward<R>(r));
+                    return;
+                }
+            }
+            if constexpr (std::same_as<inv_result, itype::u32> || std::same_as<inv_result, itype::i32>) {
+                if ((n = std::ranges::size(r)) >= 2000) {
+                    if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned32(std::ranges::data(r), n, std::forward<Proj>(proj));
+                    else internal::SortUnsigned32(std::ranges::data(r), n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
+                    if constexpr (is_greater) Reverse(std::forward<R>(r));
+                    return;
+                }
+            }
+            if constexpr (std::same_as<inv_result, itype::u64> || std::same_as<inv_result, itype::i64>) {
+                if ((n = std::ranges::size(r)) >= 4000) {
+                    if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned64(std::ranges::data(r), n, std::forward<Proj>(proj));
+                    else internal::SortUnsigned64(std::ranges::data(r), n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
+                    if constexpr (is_greater) Reverse(std::forward<R>(r));
+                    return;
+                }
             }
         }
     }
     std::ranges::sort(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj));
 }
-*/
 
 template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
     using traits = RangeTraits<R>;

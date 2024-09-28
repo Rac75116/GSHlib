@@ -374,15 +374,17 @@ public:
         }
     }
 };
+template<> class Formatter<ctype::c8*> : public Formatter<const ctype::c8*> {};
+
 namespace internal {
     template<class T, class U> constexpr bool FormatableTupleImpl = false;
-    template<class T, std::size_t... I> constexpr bool FormatableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Formatter<std::remove_cvref_t<typename std::tuple_element<I, T>::type>>) != 0; });
+    template<class T, std::size_t... I> constexpr bool FormatableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Formatter<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
 }  // namespace internal
 template<class T> concept FormatableTuple = requires { std::tuple_size<T>::value; } && internal::FormatableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
 template<FormatableTuple T> class Formatter<T> {
     template<std::size_t I, class Stream, class U, class... Args> constexpr void print_element(Stream&& stream, U&& x, Args&&... args) const {
         using std::get;
-        using element_type = std::remove_cvref_t<std::tuple_element_t<I, T>>;
+        using element_type = std::decay_t<std::tuple_element_t<I, T>>;
         if constexpr (requires { x.template get<I>(); }) Formatter<element_type>{}(stream, x.template get<I>(), args...);
         else Formatter<element_type>{}(stream, get<I>(x), args...);
         if constexpr (I < std::tuple_size<T>::value - 1) {
@@ -399,14 +401,14 @@ public:
     template<class Stream, class... Args> constexpr void operator()(Stream&& stream, T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
     template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
 };
-template<class R> concept FormatableRange = std::ranges::forward_range<R> && requires { sizeof(Formatter<std::remove_cvref_t<std::ranges::range_value_t<R>>>) != 0; };
+template<class R> concept FormatableRange = std::ranges::forward_range<R> && requires { sizeof(Formatter<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
 template<FormatableRange R>
     requires(!FormatableTuple<R>)
 class Formatter<R> {
     template<class Stream, class T, class... Args> constexpr void print(Stream&& stream, T&& r, Args&&... args) const {
         auto first = std::ranges::begin(r);
         auto last = std::ranges::end(r);
-        Formatter<std::remove_cvref_t<std::ranges::range_value_t<R>>> formatter;
+        Formatter<std::decay_t<std::ranges::range_value_t<R>>> formatter;
         while (true) {
             formatter(stream, *first, args...);
             ++first;

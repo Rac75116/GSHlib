@@ -17,6 +17,7 @@ template<class R> concept ForwardRange = std::ranges::forward_range<R>;
 template<class R> concept BidirectionalRange = std::ranges::bidirectional_range<R>;
 template<class R> concept RandomAccessRange = std::ranges::random_access_range<R>;
 enum class RangeKind { Sized, Unsized };
+template<class R> concept PointerObtainable = requires(R r) { std::ranges::data(r); };
 
 namespace internal {
     template<class T, class U> concept same_ncvr = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;

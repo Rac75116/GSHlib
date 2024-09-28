@@ -38,12 +38,12 @@ namespace internal {
         constexpr D& derived() { return *static_cast<D*>(this); }
         constexpr const D& derived() const { return *static_cast<const D*>(this); }
     public:
-        constexpr void write_sep(ctype::c8) {}
+        template<class Sep> constexpr void write_sep(Sep&&) {}
         template<class Sep, class T, class... Args> constexpr void write_sep(Sep&& sep, T&& x, Args&&... args) {
-            Formatter<std::remove_cvref_t<T>>{}(derived(), std::forward<T>(x));
+            Formatter<std::decay_t<T>>{}(derived(), std::forward<T>(x));
             if constexpr (sizeof...(Args) != 0) {
-                Formatter<std::remove_cvref_t<Sep>>{}(derived(), std::forward<Sep>(sep));
-                write(std::forward<Args>(args)...);
+                Formatter<std::decay_t<Sep>>{}(derived(), sep);
+                write_sep(std::forward<Sep>(sep), std::forward<Args>(args)...);
             }
         }
         template<class... Args> constexpr void write(Args&&... args) { write_sep(' ', std::forward<Args>(args)...); }

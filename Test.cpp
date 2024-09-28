@@ -9,9 +9,9 @@
 #ifdef ONLINE_JUDGE
 #define NDEBUG
 #endif
-#include <gsh/InOut.hpp>
-#include <gsh/Exception.hpp>
-#include <unordered_set>
+#include "gsh/InOut.hpp"
+#include "gsh/Exception.hpp"
+#include "gsh/Algorithm.hpp"
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -31,6 +31,9 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
+    static int a[32];
+    for (int i = 0; i != 32; ++i) a[i] = rd.read<int>();
+    gsh::internal::OptimalSortFixedLength<32>(a);
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;
@@ -79,9 +82,7 @@ int main() {
         Main();
         wt.reload();
     } catch (gsh::Exception& e) {
-        gsh::Formatter<const gsh::ctype::c8*>{}(wt, "gsh::Exception was throwed: ");
-        gsh::Formatter<const gsh::ctype::c8*>{}(wt, e.what());
-        gsh::Formatter<gsh::ctype::c8>{}(wt, '\n');
+        wt.writeln("gsh::Exception was throwed:", e.what());
         wt.reload();
         return 1;
     }

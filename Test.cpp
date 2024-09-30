@@ -8,10 +8,14 @@
 #endif
 #ifdef ONLINE_JUDGE
 #define NDEBUG
+#else
+#define NDEBUG
 #endif
 #include "gsh/InOut.hpp"
 #include "gsh/Exception.hpp"
 #include "gsh/Algorithm.hpp"
+#include "gsh/Random.hpp"
+#include "gsh/Timer.hpp"
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -31,9 +35,6 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    static int a[32];
-    for (int i = 0; i != 32; ++i) a[i] = rd.read<int>();
-    gsh::internal::OptimalSortFixedLength<32>(a);
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

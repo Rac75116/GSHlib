@@ -99,9 +99,8 @@ public:
     void skip(itype::u32 n) { cur += n; }
 };
 class MmapReader : public internal::IstreamInterface<MmapReader> {
-    const itype::i32 fh;
-    ctype::c8* buf;
-    ctype::c8 *cur, *eof;
+    [[maybe_unused]] const itype::i32 fh;
+    [[maybe_unused]] ctype::c8 *buf, *cur, *eof;
 public:
     MmapReader() : fh(0) {
 #ifdef _WIN32

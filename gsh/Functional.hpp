@@ -4,12 +4,9 @@
 #include <utility>                 // std::forward
 #include <cstddef>                 // std::nullptr_t
 #include <bit>                     // std::bit_cast
+#include <typeindex>               // std::hash
 #include "TypeDef.hpp"             // gsh::itype
 #include "internal/UtilMacro.hpp"  // GSH_INTERNAL_INLINE
-
-namespace std {
-template<class T> class reference_wrapper;
-}
 
 namespace gsh {
 
@@ -128,14 +125,6 @@ public:
     constexpr BindFront() noexcept(std::is_nothrow_default_constructible_v<F>) : F() {}
     template<class... Args> constexpr BindFront(Args&&... args) noexcept(std::is_nothrow_constructible_v<F, Args...>) : F(std::forward<Args>(args)...) {}
 };
-
-}  // namespace gsh
-
-namespace std {
-template<class T> class hash;
-}
-
-namespace gsh {
 
 template<class T> class CustomizedHash;
 

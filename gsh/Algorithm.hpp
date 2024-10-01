@@ -16,13 +16,17 @@ namespace gsh {
 template<class T, class U> constexpr std::common_type_t<T, U> Min(const T& a, const U& b) {
     return a < b ? a : b;
 }
-template<class T, class... Args> constexpr auto Min(const T& x, const Args&... args) {
+template<class T, class... Args>
+    requires(sizeof...(Args) >= 2)
+constexpr auto Min(const T& x, const Args&... args) {
     return Min(x, Min(args...));
 }
 template<class T, class U> constexpr std::common_type_t<T, U> Max(const T& a, const U& b) {
     return a < b ? b : a;
 }
-template<class T, class... Args> constexpr auto Max(const T& x, const Args&... args) {
+template<class T, class... Args>
+    requires(sizeof...(Args) >= 2)
+constexpr auto Max(const T& x, const Args&... args) {
     return Max(x, Max(args...));
 }
 template<class T, class U> constexpr bool Chmin(T& a, const U& b) {
@@ -30,7 +34,9 @@ template<class T, class U> constexpr bool Chmin(T& a, const U& b) {
     a = f ? b : a;
     return f;
 }
-template<class T, class... Args> constexpr bool Chmin(T& a, const Args&... b) {
+template<class T, class... Args>
+    requires(sizeof...(Args) >= 2)
+constexpr bool Chmin(T& a, const Args&... b) {
     return Chmin(a, Min(b...));
 }
 template<class T, class U> constexpr bool Chmax(T& a, const U& b) {
@@ -38,16 +44,17 @@ template<class T, class U> constexpr bool Chmax(T& a, const U& b) {
     a = f ? b : a;
     return f;
 }
-template<class T, class... Args> constexpr bool Chmax(T& a, const Args&... b) {
+template<class T, class... Args>
+    requires(sizeof...(Args) >= 2)
+constexpr bool Chmax(T& a, const Args&... b) {
     return Chmax(a, Max(b...));
 }
 
-template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
-    requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>
-constexpr typename RangeTraits<R>::value_type MinValue(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
-    using traits = RangeTraits<R>;
-    auto first = traits::begin(r);
-    auto last = traits::end(r);
+template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less>
+    requires std::indirectly_copyable_storable<std::ranges::iterator_t<R>, std::ranges::range_value_t<R>*>
+constexpr auto MinValue(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+    auto first = std::ranges::begin(r);
+    auto last = std::ranges::end(r);
     if (first == last) throw Exception("gsh::Min / The input is empty.");
     auto res = *(first++);
     for (; first != last; ++first) {
@@ -57,9 +64,9 @@ constexpr typename RangeTraits<R>::value_type MinValue(R&& r, Comp&& comp = {}, 
     }
     return res;
 }
-template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less>
-    requires std::indirectly_copyable_storable<typename RangeTraits<R>::iterator, typename RangeTraits<R>::value_type*>
-constexpr typename RangeTraits<R>::value_type MaxValue(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less>
+    requires std::indirectly_copyable_storable<std::ranges::iterator_t<R>, std::ranges::range_value_t<R>*>
+constexpr auto MaxValue(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     if constexpr (std::same_as<std::remove_cvref_t<Comp>, Less>) return MinValue(std::forward<R>(r), Greater(), proj);
     else if constexpr (std::same_as<std::remove_cvref_t<Comp>, Greater>) return MinValue(std::forward<R>(r), Less(), proj);
     else return MinValue(std::forward<R>(r), SwapArgs(std::forward<Comp>(comp)), proj);
@@ -69,13 +76,13 @@ namespace internal {
     template<class F, class T, class I, class U> concept IndirectlyBinaryLeftFoldableImpl = std::movable<T> && std::movable<U> && std::convertible_to<T, U> && std::invocable<F&, U, std::iter_reference_t<I>> && std::assignable_from<U&, std::invoke_result_t<F&, U, std::iter_reference_t<I>>>;
     template<class F, class T, class I> concept IndirectlyBinaryLeftFoldable = std::copy_constructible<F> && std::indirectly_readable<I> && std::invocable<F&, T, std::iter_reference_t<I>> && std::convertible_to<std::invoke_result_t<F&, T, std::iter_reference_t<I>>, std::decay_t<std::invoke_result_t<F&, T, std::iter_reference_t<I>>>> && IndirectlyBinaryLeftFoldableImpl<F, T, I, std::decay_t<std::invoke_result_t<F&, T, std::iter_reference_t<I>>>>;
 }  // namespace internal
-template<ForwardRange R, class T = typename RangeTraits<R>::value_type, internal::IndirectlyBinaryLeftFoldable<T, typename RangeTraits<R>::iterator> F = Plus> constexpr auto Fold(R&& r, T init = {}, F&& f = {}) {
+template<ForwardRange R, class T = std::ranges::range_value_t<R>, internal::IndirectlyBinaryLeftFoldable<T, std::ranges::iterator_t<R>> F = Plus> constexpr auto Fold(R&& r, T init = {}, F&& f = {}) {
     for (auto&& x : std::forward<R>(r)) init = Invoke(f, std::move(init), std::forward<decltype(x)>(x));
     return init;
 }
 
 template<BidirectionalRange R>
-    requires std::permutable<typename RangeTraits<R>::iterator>
+    requires std::permutable<std::ranges::iterator_t<R>>
 void Reverse(R&& r) {
     std::ranges::reverse(std::forward<R>(r));
 }
@@ -154,13 +161,20 @@ namespace internal {
         }
     };
     struct ToUnsigned {
-        constexpr auto operator()(ftype::f32 x) const {
-            itype::u32 y = std::bit_cast<itype::u32>(x);
-            return y ^ ((y >> 31) == 1 ? 0xffffffff : (1u << 31));
-        }
-        constexpr auto operator()(ftype::f64 x) const {
-            itype::u64 y = std::bit_cast<itype::u64>(x);
-            return y ^ ((y >> 63) == 1 ? 0xffffffff : (1ull << 63));
+        template<class T> constexpr auto operator()(T x) const {
+            if constexpr (std::same_as<T, ftype::f16>) {
+                itype::u16 y = std::bit_cast<itype::u16>(x);
+                return itype::u16(y ^ ((y >> 15) != 0 ? ~itype::u16(0) : (itype::u16(1) << 15)));
+            } else if constexpr (std::same_as<T, ftype::f32>) {
+                itype::u32 y = std::bit_cast<itype::u32>(x);
+                return y ^ ((y >> 31) != 0 ? ~itype::u32(0) : (itype::u32(1) << 31));
+            } else if constexpr (std::same_as<T, ftype::f64>) {
+                itype::u64 y = std::bit_cast<itype::u64>(x);
+                return y ^ ((y >> 63) != 0 ? ~itype::u64(0) : (itype::u64(1) << 63));
+            } else if constexpr (std::same_as<T, ftype::f128>) {
+                itype::u128 y = std::bit_cast<itype::u128>(x);
+                return y ^ ((y >> 127) != 0 ? ~itype::u128(0) : (itype::u128(1) << 127));
+            }
         }
     };
     template<class T, class Comp, class Proj>
@@ -260,6 +274,12 @@ constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
                         return;
                     }
                 }
+                if constexpr (std::same_as<inv_result, ftype::f16>) {
+                    if (n >= 1500) {
+                        internal::SortUnsigned16(p, n, BindFront<Proj, internal::ToUnsigned>(std::forward<Proj>(proj), internal::ToUnsigned()));
+                        if constexpr (is_greater) Reverse(std::forward<R>(r));
+                    }
+                }
                 if constexpr (std::same_as<inv_result, ftype::f32>) {
                     if (n >= 3000) {
                         internal::SortUnsigned32(p, n, BindFront<Proj, internal::ToUnsigned>(std::forward<Proj>(proj), internal::ToUnsigned()));
@@ -267,7 +287,7 @@ constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
                     }
                 }
                 if constexpr (std::same_as<inv_result, ftype::f64>) {
-                    if (n >= 3000) {
+                    if (n >= 5000) {
                         internal::SortUnsigned64(p, n, BindFront<Proj, internal::ToUnsigned>(std::forward<Proj>(proj), internal::ToUnsigned()));
                         if constexpr (is_greater) Reverse(std::forward<R>(r));
                     }
@@ -320,34 +340,32 @@ constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     }
 }
 
-template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
-    using traits = RangeTraits<R>;
-    auto st = traits::begin(r);
-    for (auto len = traits::size(r) + 1; len > 1;) {
+template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
+    auto st = std::ranges::begin(r);
+    for (auto len = std::ranges::size(r) + 1; len > 1;) {
         auto half = len / 2;
         len -= half;
-        auto tmp = std::next(st, half);
-        auto md = std::next(tmp, -1);
+        auto tmp = std::ranges::next(st, half);
+        auto md = std::ranges::next(tmp, -1);
         st = Invoke(comp, Invoke(proj, *md), value) ? tmp : st;
     }
     return st;
 }
-template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<typename RangeTraits<R>::iterator, Proj>> Comp = Less> constexpr auto UpperBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
-    using traits = RangeTraits<R>;
-    auto st = traits::begin(r);
-    for (auto len = traits::size(r) + 1; len > 1;) {
+template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto UpperBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
+    auto st = std::ranges::begin(r);
+    for (auto len = std::ranges::size(r) + 1; len > 1;) {
         auto half = len / 2;
         len -= half;
-        auto tmp = std::next(st, half);
-        auto md = std::next(tmp, -1);
+        auto tmp = std::ranges::next(st, half);
+        auto md = std::ranges::next(tmp, -1);
         st = !static_cast<bool>(Invoke(comp, value, Invoke(proj, *md))) ? tmp : st;
     }
     return st;
 }
 
 template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
-    using T = typename RangeTraits<R>::value_type;
-    Arr<itype::u32> idx(RangeTraits<R>::size(r));
+    using T = std::ranges::range_value_t<R>;
+    Arr<itype::u32> idx(std::ranges::size(r));
     itype::u32 len = 0;
     {
         Arr<T> dp(idx.size());
@@ -374,8 +392,8 @@ template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr Arr
     return res;
 }
 template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr itype::u32 LongestIncreasingSubsequenceLength(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
-    using T = typename RangeTraits<R>::value_type;
-    Arr<T> dp(RangeTraits<R>::size(r));
+    using T = std::ranges::range_value_t<R>;
+    Arr<T> dp(std::ranges::size(r));
     T *begin = dp.data(), *last = dp.data();
     for (auto&& x : r) {
         if (begin == last || Invoke(comp, *(last - 1), Invoke(proj, x))) [[unlikely]] {
@@ -389,17 +407,15 @@ template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr ity
     return last - begin;
 }
 
-
 template<RandomAccessRange R> constexpr Arr<itype::u32> LongestCommonPrefixArray(R&& r) {
-    using traits = RangeTraits<R>;
-    const itype::u32 n = traits::size(r);
+    const itype::u32 n = std::ranges::size(r);
     Arr<itype::u32> res(n);
     if (n == 0) return res;
     res[0] = n;
-    const auto itr = traits::begin(r);
+    const auto itr = std::ranges::begin(r);
     itype::u32 i = 1, j = 0;
     while (i != n) {
-        while (i + j < n && *std::next(itr, j) == *std::next(itr, i + j)) ++j;
+        while (i + j < n && *std::ranges::next(itr, j) == *std::ranges::next(itr, i + j)) ++j;
         res[i] = j;
         if (j == 0) {
             ++i;
@@ -417,8 +433,7 @@ template<RandomAccessRange R> constexpr Arr<itype::u32> LongestCommonPrefixArray
 }
 
 template<class T = itype::u64, Rangeof<itype::u32> R> constexpr T CountDistinctSubsequences(R&& r) {
-    using traits = RangeTraits<R>;
-    const itype::u32 n = traits::size(r);
+    const itype::u32 n = std::ranges::size(r);
     if (n == 0) return 0;
     Arr<itype::u64> s(n);
     for (itype::u32 i = 0; itype::u32 x : r) {

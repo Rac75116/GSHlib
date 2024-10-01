@@ -206,18 +206,6 @@ public:
             static_assert(sizeof(x) == 4 || sizeof(x) == 8);
             if constexpr (sizeof(x) == 8) return operator()(std::bit_cast<itype::u64>(x));
             else return operator()(std::bit_cast<itype::u32>(x));
-        } else if constexpr (simd::Is256BitVector<T>) {
-            struct chars {
-                ctype::c8 c[32];
-            };
-            auto y = std::bit_cast<chars>(x);
-            return internal::HashBytes(y.c, 32);
-        } else if constexpr (simd::Is512BitVector<T>) {
-            struct chars {
-                ctype::c8 c[64];
-            };
-            auto y = std::bit_cast<chars>(x);
-            return internal::HashBytes(y.c, 64);
         } else if constexpr (std::same_as<T, itype::u64>) return internal::MixIntegers(x, 0x9e3779b97f4a7c15);
         else if constexpr (std::same_as<T, itype::u128>) {
             itype::u64 a = internal::MixIntegers(static_cast<itype::u64>(x), 0x9e3779b97f4a7c15);

@@ -21,7 +21,7 @@ class Rand64 {
     itype::u64 s0, s1;
 public:
     using result_type = itype::u64;
-    static constexpr itype::usize word_size = sizeof(result_type) * 8;
+    static constexpr itype::u32 word_size = sizeof(result_type) * 8;
     static constexpr result_type default_seed = 0xcafef00dd15ea5e5;
     constexpr Rand64() : Rand64(default_seed) {}
     constexpr explicit Rand64(result_type value) : s0(value), s1(internal::Splitmix(value)) {}
@@ -47,7 +47,7 @@ class Rand32 {
     itype::u64 val;
 public:
     using result_type = itype::u32;
-    static constexpr itype::usize word_size = sizeof(result_type) * 8;
+    static constexpr itype::u32 word_size = sizeof(result_type) * 8;
     static constexpr result_type default_seed = 0xcafef00d;
     constexpr Rand32() : Rand32(default_seed) {}
     constexpr explicit Rand32(result_type value) : val(internal::Splitmix((itype::u64) value << 32 | value)) {}

@@ -35,6 +35,7 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
+
     /*
     //internal::StaticModint32Impl<998244353> mint;
     internal::DynamicModint32Impl mint;

@@ -1,9 +1,26 @@
 #pragma once
+#include <type_traits>
 #include <cstdint>
+#include <limits>
+#if __has_include(<stdfloat>)
+#include <stdfloat>
+#endif
 
 namespace gsh {
 
 namespace itype {
+#if !defined(INT8_MAX) || !defined(UINT8_MAX)
+    static_assert(false, "This library needs std::int8_t and std::uint8_t.");
+#endif
+#if !defined(INT16_MAX) || !defined(UINT16_MAX)
+    static_assert(false, "This library needs std::int16_t and std::uint16_t.");
+#endif
+#if !defined(INT32_MAX) || !defined(UINT32_MAX)
+    static_assert(false, "This library needs std::int32_t and std::uint32_t.");
+#endif
+#if !defined(INT64_MAX) || !defined(UINT64_MAX)
+    static_assert(false, "This library needs std::int64_t and std::uint64_t.");
+#endif
     using i8 = std::int8_t;
     using u8 = std::uint8_t;
     using i16 = std::int16_t;
@@ -15,17 +32,41 @@ namespace itype {
 #ifdef __SIZEOF_INT128__
     using i128 = __int128_t;
     using u128 = __uint128_t;
+#else
+    static_assert(false, "This library needs __int128_t and __uint128_t.");
 #endif
 }  // namespace itype
 
 namespace ftype {
-    //using f16 = _Float16;
-    using f32 = float;
-    using f64 = double;
-#ifdef __SIZEOF_FLOAT128__
-    using f128 = __float128;
+#ifdef __STDCPP_FLOAT16_T__
+    using f16 = std::float16_t;
+#else
+    using f16 = void;
 #endif
-    using flong = long double;
+#ifdef __STDCPP_FLOAT32_T__
+    using f32 = std::float32_t;
+#else
+    static_assert(std::numeric_limits<float>::is_iec559, "There are no types compliant with IEC 559 binary32.");
+    using f32 = float;
+#endif
+#ifdef __STDCPP_FLOAT64_T__
+    using f64 = std::float64_t;
+#else
+    static_assert(std::numeric_limits<double>::is_iec559, "There are no types compliant with IEC 559 binary64.");
+    using f64 = double;
+#endif
+#ifdef __STDCPP_FLOAT128_T__
+    using f128 = std::float128_t;
+#elif defined(__SIZEOF_FLOAT128__)
+    using f128 = __float128;
+#else
+    using f128 = std::conditional_t<std::numeric_limits<long double>::is_iec559 && sizeof(long double) == 16, long double, void>;
+#endif
+#ifdef __STDCPP_BFLOAT16_T__
+    using bf16 = std::bfloat16_t;
+#else
+    using bf16 = void;
+#endif
 }  // namespace ftype
 
 namespace ctype {
@@ -35,50 +76,5 @@ namespace ctype {
     using utf16 = char16_t;
     using utf32 = char32_t;
 }  // namespace ctype
-
-namespace internal {
-    template<class T, class U> constexpr bool IsSame = false;
-    template<class T> constexpr bool IsSame<T, T> = true;
-    template<class T, class U, class... V> constexpr bool IsSameAny = IsSame<T, U> || IsSameAny<T, V...>;
-    template<class T, class U> constexpr bool IsSameAny<T, U> = IsSame<T, U>;
-}  // namespace internal
-
-namespace simd {
-
-#if defined __GNUC__
-    using i8x32 = __attribute__((vector_size(32))) itype::i8;
-    using u8x32 = __attribute__((vector_size(32))) itype::u8;
-    using i16x16 = __attribute__((vector_size(32))) itype::i16;
-    using u16x16 = __attribute__((vector_size(32))) itype::u16;
-    using i32x8 = __attribute__((vector_size(32))) itype::i32;
-    using u32x8 = __attribute__((vector_size(32))) itype::u32;
-    using i64x4 = __attribute__((vector_size(32))) itype::i64;
-    using u64x4 = __attribute__((vector_size(32))) itype::u64;
-    //using f16x16 = __attribute__((vector_size(32))) ftype::f16;
-    using f32x8 = __attribute__((vector_size(32))) ftype::f32;
-    using f64x4 = __attribute__((vector_size(32))) ftype::f64;
-
-    using i8x64 = __attribute__((vector_size(64))) itype::i8;
-    using u8x64 = __attribute__((vector_size(64))) itype::u8;
-    using i16x32 = __attribute__((vector_size(64))) itype::i16;
-    using u16x32 = __attribute__((vector_size(64))) itype::u16;
-    using i32x16 = __attribute__((vector_size(64))) itype::i32;
-    using u32x16 = __attribute__((vector_size(64))) itype::u32;
-    using i64x8 = __attribute__((vector_size(64))) itype::i64;
-    using u64x8 = __attribute__((vector_size(64))) itype::u64;
-    //using f16x32 = __attribute__((vector_size(64))) ftype::f16;
-    using f32x16 = __attribute__((vector_size(64))) ftype::f32;
-    using f64x8 = __attribute__((vector_size(64))) ftype::f64;
-
-    template<class T, class U> constexpr T VectorCast(U x) {
-        return __builtin_convertvector(x, T);
-    }
-
-    template<class T> concept Is256BitVector = internal::IsSameAny<T, i8x32, i16x16, i32x8, i64x4, u8x32, u16x16, u32x8, u64x4, f32x8, f64x4>;
-    template<class T> concept Is512BitVector = internal::IsSameAny<T, i8x64, i16x32, i32x16, i64x8, u8x64, u16x32, u32x16, u64x8, f32x16, f64x8>;
-    template<class T> concept IsVector = Is256BitVector<T> || Is512BitVector<T>;
-#endif
-
-}  // namespace simd
 
 }  // namespace gsh

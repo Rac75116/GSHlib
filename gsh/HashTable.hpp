@@ -40,13 +40,13 @@ namespace internal {
         constexpr static itype::u32 min_bucket_size = sizeof(Key) > 64 ? 1 : 64 / sizeof(Key);
         [[no_unique_address]] hasher hash_func;
         [[no_unique_address]] key_equal equal_func;
-        template<class K> constexpr itype::u64 calc_hash(const K& k) const {
-            if constexpr (is_hs_tp) return static_cast<itype::u64>(hash_func(k));
-            else return static_cast<itype::u64>(hash_func(static_cast<key_type>(k)));
+        template<class K> constexpr itype::u64 calc_hash(K&& k) const {
+            if constexpr (is_hs_tp) return Invoke(hash_func, std::forward<K>(k));
+            else return Invoke(hash_func, static_cast<key_type>(std::forward<K>(k)));
         }
-        template<class T, class U> constexpr bool is_equal(const T& a, const U& b) const {
-            if constexpr (is_eq_tp) return static_cast<bool>(equal_func(a, b));
-            else return static_cast<bool>(equal_func(static_cast<key_type>(a), static_cast<key_type>(b)));
+        template<class T, class U> constexpr bool is_equal(T&& a, U&& b) const {
+            if constexpr (is_eq_tp) return Invoke(equal_func, std::forward<T>(a), std::forward<U>(b));
+            else return Invoke(equal_func, static_cast<key_type>(std::forward<T>(a)), static_cast<key_type>(std::forward<U>(b)));
         }
         constexpr const key_type& get_key(const value_type& v) const {
             if constexpr (is_set) return v;
@@ -360,20 +360,20 @@ namespace internal {
         //constexpr std::pair<const_iterator, const_iterator> equal_range(const key_type& x) const;
         //template<class K> constexpr std::pair<iterator, iterator> equal_range(const K& k);
         //template<class K> constexpr std::pair<const_iterator, const_iterator> equal_range(const K& k) const;
-        constexpr size_type bucket_count() const noexcept { return buckets.size(); }
-        constexpr size_type max_bucket_count() const noexcept { return buckets.max_size(); }
-        constexpr size_type min_bucket_count() const noexcept { return min_bucket_size; }
-        constexpr size_type bucket_size(size_type n) const { return std::popcount(buckets[n].exist); }
-        template<class K> constexpr size_type bucket(const K& k) const { return calc_index(calc_hash(k)); }
+        //constexpr size_type bucket_count() const noexcept { return buckets.size(); }
+        //constexpr size_type max_bucket_count() const noexcept { return buckets.max_size(); }
+        //constexpr size_type min_bucket_count() const noexcept { return min_bucket_size; }
+        //constexpr size_type bucket_size(size_type n) const { return std::popcount(buckets[n].exist); }
+        //template<class K> constexpr size_type bucket(const K& k) const { return calc_index(calc_hash(k)); }
         //constexpr local_iterator begin(size_type n);
         //constexpr const_local_iterator begin(size_type n) const;
         //constexpr local_iterator end(size_type n);
         //constexpr const_local_iterator end(size_type n) const;
         //constexpr const_local_iterator cbegin(size_type n) const;
         //constexpr const_local_iterator cend(size_type n) const;
-        constexpr ftype::f32 load_factor() const noexcept { return static_cast<ftype::f32>(size()) / bucket_count(); }
-        constexpr ftype::f32 max_load_factor() const noexcept { return static_cast<ftype::f32>(bsize); }
-        constexpr void max_load_factor(ftype::f32 z) { rehash(size() / (z < 0.001f ? 0.001f : z)); }
+        //constexpr ftype::f32 load_factor() const noexcept { return static_cast<ftype::f32>(size()) / bucket_count(); }
+        //constexpr ftype::f32 max_load_factor() const noexcept { return static_cast<ftype::f32>(bsize); }
+        //constexpr void max_load_factor(ftype::f32 z) { rehash(size() / (z < 0.001f ? 0.001f : z)); }
         constexpr void rehash(size_type n) {
             n = n < size() / bsize ? size() / bsize : n;
             n = std::bit_ceil(n);

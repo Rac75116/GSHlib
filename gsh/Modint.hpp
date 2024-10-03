@@ -62,6 +62,8 @@ namespace internal {
             return *this;
         }
         constexpr static ModintImpl raw(value_type x) noexcept { return construct(mint().raw(x)); }
+        constexpr static ModintImpl nan() noexcept { return construct(mint().nan()); }
+        constexpr static ModintImpl isnan() noexcept { return construct(mint.isnan()); }
         constexpr ModintImpl inv() const noexcept { return construct(mint().inv(val_)); }
         constexpr ModintImpl pow(itype::u64 e) const noexcept { return construct(mint().pow(val_, e)); }
         constexpr ModintImpl operator+() const noexcept { return *this; }
@@ -110,6 +112,7 @@ namespace internal {
 
     template<class D, class T> class ModintInterface {
         constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
+        constexpr static bool is_static_mod = IsStaticModint<D>;
     public:
         using value_type = T;
         constexpr value_type val(value_type x) const noexcept { return x; }
@@ -137,6 +140,8 @@ namespace internal {
             Assume(x < derived().mod());
             return x;
         }
+        constexpr value_type nan() const noexcept { return std::numeric_limits<value_type>::max(); }
+        constexpr value_type isnan(value_type x) const noexcept { return x == derived().nan(); }
         constexpr value_type zero() const noexcept { return derived().raw(0); }
         constexpr value_type one() const noexcept { return derived().raw(1); }
         constexpr value_type neg(value_type x) const noexcept {
@@ -145,23 +150,19 @@ namespace internal {
         }
         constexpr value_type inc(value_type x) const noexcept {
             Assume(x < derived().mod());
-            ForceCalc(x + 1);
             return x + 1 == derived().mod() ? 0 : x + 1;
         }
         constexpr value_type dec(value_type x) const noexcept {
             Assume(x < derived().mod());
-            ForceCalc(x - 1);
             return x == 0 ? derived().mod() - 1 : x - 1;
         }
         constexpr value_type add(value_type x, value_type y) const noexcept {
             Assume(x < derived().mod() && y < derived().mod());
-            ForceCalc(x + y, y - (derived().mod() - x));
-            return derived().mod() - x > y ? x + y : y - (derived().mod() - x);
+            return x + y - (derived().mod() - x <= y) * derived().mod();
         }
         constexpr value_type sub(value_type x, value_type y) const noexcept {
             Assume(x < derived().mod() && y < derived().mod());
-            ForceCalc(x - y, derived().mod() - (y - x));
-            return x >= y ? x - y : derived().mod() - (y - x);
+            return x - y + (x < y) * derived().mod();
         }
         constexpr value_type fma(value_type x, value_type y, value_type z) const noexcept { return derived().add(derived().mul(x, y), z); }
         constexpr value_type div(value_type x, value_type y) const noexcept {
@@ -186,18 +187,18 @@ namespace internal {
             return res;
         }
         constexpr value_type inv(value_type t) const noexcept {
-            auto a = 1, b = 0, x = derived().val(t), y = derived().mod();
+            value_type a = 1, b = 0, x = derived().val(t), y = derived().mod();
             while (true) {
                 if (x <= 1) {
                     if (x == 0) [[unlikely]]
-                        return derived().zero();
+                        return derived().nan();
                     else return derived().build(a);
                 }
                 b += a * (y / x);
                 y %= x;
                 if (y <= 1) {
                     if (y == 0) [[unlikely]]
-                        return derived().zero();
+                        return derived().nan();
                     else return derived().build(derived().mod() - b);
                 }
                 a += b * (x / y);
@@ -226,12 +227,12 @@ namespace internal {
             }
             return n == 1 ? res : 0;
         }
-        constexpr Option<value_type> sqrt(value_type n) const noexcept {
+        constexpr value_type sqrt(value_type n) const noexcept {
             const auto md = derived().mod();
             if (derived().same(n, derived().zero()) || derived().same(n, derived().one())) return n;
             if (md % 4 == 3) {
                 auto res = derived().pow(n, (md + 1) >> 2);
-                if (!derived().same(derived().mul(res, res), n)) return Null;
+                if (!derived().same(derived().mul(res, res), n)) return derived().nan();
                 else return derived().abs(res);
             } else if (md % 8 == 5) {
                 auto res = derived().pow(n, (md + 3) >> 3);
@@ -239,7 +240,7 @@ namespace internal {
                     const auto p = derived().pow(derived().raw(2), (md - 1) >> 2);
                     res = derived().mul(res, p);
                 }
-                if (!derived().same(derived().mul(res, res), n)) return Null;
+                if (!derived().same(derived().mul(res, res), n)) return derived().nan();
                 else return derived().abs(res);
             } else {
                 const itype::u32 S = std::countr_zero(md - 1);
@@ -251,7 +252,7 @@ namespace internal {
                     if (derived().same(t, derived().one())) return R;
                     auto u = t;
                     for (itype::u32 i = 0; i != S - 1; ++i) u = derived().mul(u, u);
-                    if (!derived().same(u, derived().one())) return Null;
+                    if (!derived().same(u, derived().one())) return derived().nan();
                     const auto z = derived().pow(
                       [&]() {
                           if (md % 3 == 2) return derived().raw(3);
@@ -280,7 +281,7 @@ namespace internal {
                     } while (!derived().same(t, derived().one()));
                     return derived().abs(R);
                 } else {
-                    if (derived().legendre(n) != 1) return Null;
+                    if (derived().legendre(n) != 1) return derived().nan();
                     auto a = derived().raw(4);
                     decltype(a) w;
                     while (derived().legendre(w = derived().sub(derived().mul(a, a), n)) != -1) a = derived().inc(a);
@@ -387,11 +388,18 @@ namespace internal {
     };
 
     class MontgomeryModint64Impl : public ModintInterface<MontgomeryModint64Impl, itype::u64> {
-        itype::u64 mod_ = 0, R2 = 0, ninv = 0;
-        constexpr itype::u64 reduce(const itype::u128 t) const noexcept {
-            const itype::u64 a = t, b = t >> 64;
-            const itype::u64 c = (static_cast<itype::u128>(a * ninv) * mod_) >> 64;
-            return b + c + (a != 0);
+        itype::u64 mod_ = 0, rs = 0, nr = 0;
+        constexpr itype::u64 reduce(const itype::u64 t) const noexcept {
+            itype::u64 q = t * nr;
+            itype::u64 m = (static_cast<itype::u128>(q) * mod_) >> 64;
+            return mod_ - m;
+        }
+        constexpr itype::u64 reduce(const itype::u64 a, const itype::u64 b) const noexcept {
+            itype::u128 t = static_cast<itype::u128>(a) * b;
+            itype::u64 c = t, d = t >> 64;
+            itype::u64 q = c * nr;
+            itype::u64 m = (static_cast<itype::u128>(q) * mod_) >> 64;
+            return d + mod_ - m;
         }
     public:
         constexpr MontgomeryModint64Impl() noexcept {}
@@ -401,37 +409,49 @@ namespace internal {
             if (n % 2 == 0) [[unlikely]]
                 throw Exception("gsh::internal::MontgomeryModint64Impl::set / It is not allowed to set the modulo to an even number.");
             mod_ = n;
-            R2 = -static_cast<itype::u128>(mod_) % mod_;
-            ninv = mod_;
-            for (itype::u32 i = 0; i != 5; ++i) ninv *= 2 - mod_ * ninv;
-            ninv = -ninv;
+            rs = -static_cast<itype::u128>(n) % n;
+            nr = n;
+            for (itype::u32 i = 0; i != 6; ++i) nr *= 2 - n * nr;
         }
         constexpr itype::u64 val(itype::u64 x) const noexcept {
-            const itype::u64 res = static_cast<itype::u64>((static_cast<itype::u128>(x * ninv) * mod_) >> 64) + (x != 0);
-            return res == mod_ ? 0 : res;
+            itype::u64 tmp = reduce(x);
+            return tmp - (tmp >= mod_) * mod_;
         }
         constexpr itype::u64 mod() const noexcept { return mod_; }
-        constexpr itype::u64 build(itype::u32 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
-        constexpr itype::u64 build(itype::u64 x) const noexcept { return reduce(static_cast<itype::u128>(x % mod_) * R2); }
+        constexpr itype::u64 build(itype::u32 x) const noexcept { return reduce(x % mod_, rs); }
+        constexpr itype::u64 build(itype::u64 x) const noexcept { return reduce(x % mod_, rs); }
         template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintInterface::build(x); }
-        constexpr itype::u64 raw(itype::u64 x) const noexcept { return reduce(static_cast<itype::u128>(x) * R2); }
+        constexpr itype::u64 raw(itype::u64 x) const noexcept {
+            Assume(x < mod_);
+            return reduce(x, rs);
+        }
         constexpr itype::u64 neg(itype::u64 x) const noexcept {
-            const itype::u64 tmp = 2 * mod_ - x;
-            return x == 0 ? 0 : tmp;
+            Assume(x < 2 * mod_);
+            return x == 2 * mod_ ? 0 : 2 * mod_ - x;
         }
-        constexpr itype::u64 inc(itype::u64 x) const noexcept { return x + 1 == 2 * mod_ ? 0 : x + 1; }
-        constexpr itype::u64 dec(itype::u64 x) const noexcept { return x == 0 ? 2 * mod_ - 1 : x - 1; }
-        constexpr itype::u64 add(itype::u64 x, itype::u64 y) const noexcept { return x + y >= 2 * mod_ ? x + y - 2 * mod_ : x + y; }
-        constexpr itype::u64 sub(itype::u64 x, itype::u64 y) const noexcept { return x - y < 2 * mod_ ? x - y : 2 * mod_ + (x - y); }
-        constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept { return reduce(static_cast<itype::u128>(x) * y); }
-        constexpr itype::u64 fma(itype::u64 x, itype::u64 y, itype::u64 z) const noexcept {
-            const itype::u128 t = static_cast<itype::u128>(x) * y;
-            const itype::u64 a = t, b = t >> 64;
-            const itype::u64 c = (static_cast<itype::u128>(a * ninv) * mod_) >> 64;
-            const itype::u64 res = b + c + (a != 0) + z;
-            return res < 2 * mod_ ? res : res - 2 * mod_;
+        constexpr itype::u64 inc(itype::u64 x) const noexcept {
+            Assume(x < 2 * mod_);
+            return x + 1 == 2 * mod_ ? 0 : x + 1;
         }
+        constexpr itype::u64 dec(itype::u64 x) const noexcept {
+            Assume(x < 2 * mod_);
+            return x == 0 ? 2 * mod_ - 1 : x - 1;
+        }
+        constexpr itype::u64 add(itype::u64 x, itype::u64 y) const noexcept {
+            Assume(x < 2 * mod_ && y < 2 * mod_);
+            return x + y - (x + y >= mod_) * mod_;
+        }
+        constexpr itype::u64 sub(itype::u64 x, itype::u64 y) const noexcept {
+            Assume(x < 2 * mod_ && y < 2 * mod_);
+            return x - y + (x - y >= 2 * mod_) * (2 * mod_);
+        }
+        constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
+            Assume(x < 2 * mod_ && y < 2 * mod_);
+            return reduce(x, y);
+        }
+        //constexpr itype::u64 fma(itype::u64 x, itype::u64 y, itype::u64 z) const noexcept {}
         constexpr bool same(itype::u64 x, itype::u64 y) const noexcept { return x + mod_ == y || x == y; }
+        constexpr itype::u64 abs(itype::u64 x) const noexcept { return x; }
     };
 
 }  // namespace internal

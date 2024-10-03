@@ -13,9 +13,9 @@
 #endif
 #include "gsh/InOut.hpp"
 #include "gsh/Exception.hpp"
-#include "gsh/Algorithm.hpp"
-#include "gsh/Random.hpp"
+#include "gsh/Modint.hpp"
 #include "gsh/Timer.hpp"
+#include <cassert>
 
 #if 0 && !defined ONLINE_JUDGE
 #include <fcntl.h>
@@ -35,44 +35,27 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-
+    internal::StaticModint32Impl<998244353> mint1;
+    internal::MontgomeryModint64Impl mint2;
+    mint2.set(998244353);
+    auto a = mint1.build(2u);
+    auto b = mint2.build(2u);
+    for (u32 i = 0; i != 1000000; ++i) {}
     /*
     //internal::StaticModint32Impl<998244353> mint;
-    internal::DynamicModint32Impl mint;
+    //internal::DynamicModint64Impl mint;
+    internal::MontgomeryModint64Impl mint;
     mint.set(998244353);
     //mint.set((51ull << 53) + 1);
     //mint.set(4 * 123456789ull + 3);
     auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);
     ClockTimer t;
-    [&]() __attribute__((noinline)) {
-        for (u32 i = 0; i != 100000000; ++i) {
-            auto d = mint.neg(mint.inc(mint.sub(mint.dec(mint.add(mint.mul(a, a), b)), c)));
-            auto e = mint.neg(mint.inc(mint.sub(mint.dec(mint.add(mint.mul(b, b), c)), a)));
-            auto f = mint.neg(mint.inc(mint.sub(mint.dec(mint.add(mint.mul(c, c), a)), b)));
-            a = d, b = e, c = f;
-        }
-        R"(
-        for (u32 i = 0; i != 200000; ++i) {
-            auto tmp_a = mint.sqrt(a);
-            auto tmp_b = mint.sqrt(b);
-            auto tmp_c = mint.sqrt(c);
-            if (tmp_a) assert(mint.same(mint.mul(*tmp_a, *tmp_a), a));
-            if (tmp_b) assert(mint.same(mint.mul(*tmp_b, *tmp_b), b));
-            if (tmp_c) assert(mint.same(mint.mul(*tmp_c, *tmp_c), c));
-            a = mint.mul(tmp_a ? tmp_a.val() : a, a);
-            b = mint.mul(tmp_b ? tmp_b.val() : b, b);
-            c = mint.mul(tmp_c ? tmp_c.val() : c, c);
-        }
-        )";
+    for (u32 i = 0; i != 1000000; ++i) {
+        auto d = mint.inv(a);
+        a = mint.inc(mint.isnan(d) ? a : d);
     }
-    ();
     t.print();
-    Formatter<u64>{}(w, mint.val(a));
-    Formatter<c8>{}(w, '\n');
-    Formatter<u64>{}(w, mint.val(b));
-    Formatter<c8>{}(w, '\n');
-    Formatter<u64>{}(w, mint.val(c));
-    Formatter<c8>{}(w, '\n');
+    wt.writeln_sep('\n', mint.val(a), mint.val(b), mint.val(c));
     */
 }
 int main() {

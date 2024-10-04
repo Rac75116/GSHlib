@@ -192,14 +192,14 @@ namespace internal {
                 if (x <= 1) {
                     if (x == 0) [[unlikely]]
                         return derived().nan();
-                    else return derived().build(a);
+                    return derived().raw(a);
                 }
                 b += a * (y / x);
                 y %= x;
                 if (y <= 1) {
                     if (y == 0) [[unlikely]]
                         return derived().nan();
-                    else return derived().build(derived().mod() - b);
+                    return derived().raw(derived().mod() - b);
                 }
                 a += b * (x / y);
                 x %= y;
@@ -388,7 +388,7 @@ namespace internal {
     };
 
     class MontgomeryModint64Impl : public ModintInterface<MontgomeryModint64Impl, itype::u64> {
-        itype::u64 mod_ = 0, rs = 0, nr = 0;
+        itype::u64 mod_ = 0, rs = 0, nr = 0, np = 0;
         constexpr itype::u64 reduce(const itype::u64 t) const noexcept {
             itype::u64 q = t * nr;
             itype::u64 m = (static_cast<itype::u128>(q) * mod_) >> 64;
@@ -412,10 +412,11 @@ namespace internal {
             rs = -static_cast<itype::u128>(n) % n;
             nr = n;
             for (itype::u32 i = 0; i != 6; ++i) nr *= 2 - n * nr;
+            np = reduce(1, rs);
         }
         constexpr itype::u64 val(itype::u64 x) const noexcept {
             itype::u64 tmp = reduce(x);
-            return tmp - (tmp >= mod_) * mod_;
+            return tmp - (tmp == mod_) * mod_;
         }
         constexpr itype::u64 mod() const noexcept { return mod_; }
         constexpr itype::u64 build(itype::u32 x) const noexcept { return reduce(x % mod_, rs); }
@@ -425,18 +426,14 @@ namespace internal {
             Assume(x < mod_);
             return reduce(x, rs);
         }
+        constexpr itype::u64 zero() const noexcept { return 0; }
+        constexpr itype::u64 one() const noexcept { return np; }
         constexpr itype::u64 neg(itype::u64 x) const noexcept {
             Assume(x < 2 * mod_);
             return x == 2 * mod_ ? 0 : 2 * mod_ - x;
         }
-        constexpr itype::u64 inc(itype::u64 x) const noexcept {
-            Assume(x < 2 * mod_);
-            return x + 1 == 2 * mod_ ? 0 : x + 1;
-        }
-        constexpr itype::u64 dec(itype::u64 x) const noexcept {
-            Assume(x < 2 * mod_);
-            return x == 0 ? 2 * mod_ - 1 : x - 1;
-        }
+        constexpr itype::u64 inc(itype::u64 x) const noexcept { return add(x, np); }
+        constexpr itype::u64 dec(itype::u64 x) const noexcept { return sub(x, np); }
         constexpr itype::u64 add(itype::u64 x, itype::u64 y) const noexcept {
             Assume(x < 2 * mod_ && y < 2 * mod_);
             return x + y - (x + y >= mod_) * mod_;

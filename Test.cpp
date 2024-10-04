@@ -35,28 +35,25 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
-    internal::StaticModint32Impl<998244353> mint1;
-    internal::MontgomeryModint64Impl mint2;
-    mint2.set(998244353);
-    auto a = mint1.build(2u);
-    auto b = mint2.build(2u);
-    for (u32 i = 0; i != 1000000; ++i) {}
     /*
-    //internal::StaticModint32Impl<998244353> mint;
-    //internal::DynamicModint64Impl mint;
     internal::MontgomeryModint64Impl mint;
+    mint.set(998244353);
+    wt.writeln(mint.val(mint.add(mint.one(), mint.neg(mint.one()))));
+    */
+    //internal::StaticModint32Impl<998244353> mint;
+    internal::DynamicModint64Impl mint;
+    //internal::MontgomeryModint64Impl mint;
     mint.set(998244353);
     //mint.set((51ull << 53) + 1);
     //mint.set(4 * 123456789ull + 3);
-    auto a = mint.build(2u), b = mint.build(3u), c = mint.build(5u);
+    auto a = mint.build(2u);
     ClockTimer t;
     for (u32 i = 0; i != 1000000; ++i) {
-        auto d = mint.inv(a);
-        a = mint.inc(mint.isnan(d) ? a : d);
+        auto b = mint.sqrt(a);
+        a = (mint.isnan(b) ? mint.inc(a) : b);
     }
     t.print();
-    wt.writeln_sep('\n', mint.val(a), mint.val(b), mint.val(c));
-    */
+    wt.writeln_sep('\n', mint.val(a));
 }
 int main() {
 #ifdef ONLINE_JUDGE

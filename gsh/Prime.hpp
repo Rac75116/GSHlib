@@ -45,9 +45,9 @@ namespace internal {
 5411,35353,50898,1084,2127,4305,115,7821,1265,16169,1705,1857,24938,220,3650,1057,482,1690,2718,4309,7496,1515,7972,3763,10954,2817,3430,1423,714,6734,328,2581,2580,10047,2797,155,5951,3817,54850,2173,1318,246,1807,2958,2697,337,4871,2439,736,37112,1226,527,7531,5418,7242,2421,16135,7015,8432,2605,5638,5161,11515,14949,
 748,5003,9048,4679,1915,7652,9657,660,3054,15469,2910,775,14106,1749,136,2673,61814,5633,1244,2567,4989,1637,1273,11423,7974,7509,6061,531,6608,1088,1627,160,6416,11350,921,306,18117,1238,463,1722,996,3866,6576,6055,130,24080,7331,3922,8632,2706,24108,32374,4237,15302,287,2296,1220,20922,3350,2089,562,11745,163,11951};
         // clang-format on
-        template<class Modint = internal::DynamicModint32Impl> constexpr static bool calc(const itype::u32 x) {
+        constexpr static bool calc(const itype::u32 x) {
             if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
-            Modint mint;
+            internal::MontgomeryModint64Impl mint;
             mint.set(x);
             const itype::u32 h = x * 0xad625b89;
             itype::u32 d = x - 1;
@@ -62,17 +62,17 @@ namespace internal {
                 pow = tmp;
                 d >>= 1;
             }
-            if (cur == one) return true;
-            while (--s && cur != mone) cur = mint.mul(cur, cur);
-            return cur == mone;
+            if (mint.same(cur, one)) return true;
+            while (--s && !mint.same(cur, mone)) cur = mint.mul(cur, cur);
+            return mint.same(cur, mone);
         }
     };
 
     template<bool Prob, itype::u32> struct isPrime64;
     template<itype::u32 id> struct isPrime64<false, id> {
-        template<class Modint = internal::MontgomeryModint64Impl> constexpr static bool calc(const itype::u64 x) {
+        constexpr static bool calc(const itype::u64 x) {
             if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
-            Modint mint;
+            internal::MontgomeryModint64Impl mint;
             mint.set(x);
             const itype::u32 S = std::countr_zero(x - 1);
             const itype::u64 D = (x - 1) >> S;
@@ -87,8 +87,8 @@ namespace internal {
                     c = e, d = f;
                     ex >>= 1;
                 }
-                bool res1 = mint.same(a, one) || mint.same(a, mone);
-                bool res2 = mint.same(b, one) || mint.same(b, mone);
+                bool res1 = mint.same(a, one) | mint.same(a, mone);
+                bool res2 = mint.same(b, one) | mint.same(b, mone);
                 if (!(res1 && res2)) {
                     for (itype::u32 i = 0; i != S - 1; ++i) {
                         a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
@@ -108,9 +108,9 @@ namespace internal {
                     d = g, e = h, f = i;
                     ex >>= 1;
                 }
-                bool res1 = mint.same(a, one) || mint.same(a, mone);
-                bool res2 = mint.same(b, one) || mint.same(b, mone);
-                bool res3 = mint.same(c, one) || mint.same(c, mone);
+                bool res1 = mint.same(a, one) | mint.same(a, mone);
+                bool res2 = mint.same(b, one) | mint.same(b, mone);
+                bool res3 = mint.same(c, one) | mint.same(c, mone);
                 if (!(res1 && res2 && res3)) {
                     for (itype::u32 i = 0; i != S - 1; ++i) {
                         a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
@@ -130,10 +130,10 @@ namespace internal {
                     e = i, f = j, g = k, h = l;
                     ex >>= 1;
                 }
-                bool res1 = mint.same(a, one) || mint.same(a, mone);
-                bool res2 = mint.same(b, one) || mint.same(b, mone);
-                bool res3 = mint.same(c, one) || mint.same(c, mone);
-                bool res4 = mint.same(d, one) || mint.same(d, mone);
+                bool res1 = mint.same(a, one) | mint.same(a, mone);
+                bool res2 = mint.same(b, one) | mint.same(b, mone);
+                bool res3 = mint.same(c, one) | mint.same(c, mone);
+                bool res4 = mint.same(d, one) | mint.same(d, mone);
                 if (!(res1 && res2 && res3 && res4)) {
                     for (itype::u32 i = 0; i != S - 1; ++i) {
                         a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c), d = mint.mul(d, d);
@@ -154,12 +154,12 @@ namespace internal {
     };
     template<itype::u32 id> struct isPrime64<true, id> {
         constexpr static itype::u16 bases1[] = {
-#include <gsh/internal/MRbase.txt>
+#include "internal/MRbase.txt"
         };
         constexpr static itype::u64 bases2 = 15ull | (135ull << 8) | (13ull << 16) | (60ull << 24) | (15ull << 32) | (117ull << 40) | (65ull << 48) | (29ull << 56);
-        template<class Modint = internal::MontgomeryModint64Impl> constexpr static bool calc(const itype::u64 x) {
+        constexpr static bool calc(const itype::u64 x) {
             if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
-            Modint mint;
+            internal::MontgomeryModint64Impl mint;
             mint.set(x);
             const itype::u32 S = std::countr_zero(x - 1);
             const itype::u64 D = (x - 1) >> S;
@@ -174,10 +174,10 @@ namespace internal {
                     c = e, d = f;
                     ex >>= 1;
                 }
-                bool res1 = mint.same(a, one) || mint.same(a, mone);
-                bool res2 = mint.same(b, one) || mint.same(b, mone);
+                bool res1 = mint.same(a, one) | mint.same(a, mone);
+                bool res2 = mint.same(b, one) | mint.same(b, mone);
                 for (itype::u32 i = 0; i != S - 1; ++i) {
-                    a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
+                    a = mint.mul(a, a), b = mint.mul(b, b);
                     res1 |= mint.same(a, mone), res2 |= mint.same(b, mone);
                 }
                 return res1 && res2;
@@ -192,9 +192,9 @@ namespace internal {
                     d = g, e = h, f = i;
                     ex >>= 1;
                 }
-                bool res1 = mint.same(a, one) || mint.same(a, mone);
-                bool res2 = mint.same(b, one) || mint.same(b, mone);
-                bool res3 = mint.same(c, one) || mint.same(c, mone);
+                bool res1 = mint.same(a, one) | mint.same(a, mone);
+                bool res2 = mint.same(b, one) | mint.same(b, mone);
+                bool res3 = mint.same(c, one) | mint.same(c, mone);
                 for (itype::u32 i = 0; i != S - 1; ++i) {
                     a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
                     res1 |= mint.same(a, mone), res2 |= mint.same(b, mone), res3 |= mint.same(c, mone);
@@ -213,8 +213,7 @@ namespace internal {
 template<bool Prob = true> constexpr bool isPrime(const itype::u64 x) {
     if (x <= 0xffffffff) {
         if (x < 65536u) return internal::isPrime16<0>::calc(x);
-        else if (x < 2147483648u) return internal::isPrime32<0>::calc(x);
-        else return internal::isPrime32<0>::calc<internal::MontgomeryModint64Impl>(x);
+        else return internal::isPrime32<0>::calc(x);
     } else return internal::isPrime64<Prob, 0>::calc(x);
 }
 

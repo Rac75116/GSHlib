@@ -40,77 +40,77 @@ namespace internal {
         constexpr static T mint{};
     };
 
-    template<class T, itype::u32 id = 0> class ModintImpl : public ModintBase<T, id> {
+    template<class T, itype::u32 id = 0> class ModintInterface : public ModintBase<T, id> {
         typename T::value_type val_{};
         constexpr static auto& mint() noexcept { return ModintBase<T, id>::mint; }
-        constexpr static ModintImpl construct(typename T::value_type x) noexcept {
-            ModintImpl res;
+        constexpr static ModintInterface construct(typename T::value_type x) noexcept {
+            ModintInterface res;
             res.val_ = x;
             return res;
         }
     public:
         using value_type = typename T::value_type;
         constexpr static bool is_static_mod = IsStaticModint<T>;
-        constexpr ModintImpl() noexcept {}
-        template<class U> constexpr ModintImpl(U x) noexcept { operator=(x); }
+        constexpr ModintInterface() noexcept {}
+        template<class U> constexpr ModintInterface(U x) noexcept { operator=(x); }
         constexpr explicit operator value_type() const noexcept { return val(); }
         constexpr static void set_mod(value_type x) { mint().set(x); }
         constexpr value_type val() const noexcept { return mint().val(val_); }
         constexpr static value_type mod() noexcept { return mint().mod(); }
-        template<class U> constexpr ModintImpl& operator=(U x) noexcept {
+        template<class U> constexpr ModintInterface& operator=(U x) noexcept {
             val_ = mint().build(x);
             return *this;
         }
-        constexpr static ModintImpl raw(value_type x) noexcept { return construct(mint().raw(x)); }
-        constexpr static ModintImpl nan() noexcept { return construct(mint().nan()); }
-        constexpr static ModintImpl isnan() noexcept { return construct(mint.isnan()); }
-        constexpr ModintImpl inv() const noexcept { return construct(mint().inv(val_)); }
-        constexpr ModintImpl pow(itype::u64 e) const noexcept { return construct(mint().pow(val_, e)); }
-        constexpr ModintImpl operator+() const noexcept { return *this; }
-        constexpr ModintImpl operator-() const noexcept { return construct(mint().neg(val_)); }
-        constexpr ModintImpl& operator++() noexcept {
+        constexpr static ModintInterface raw(value_type x) noexcept { return construct(mint().raw(x)); }
+        constexpr static ModintInterface nan() noexcept { return construct(mint().nan()); }
+        constexpr static bool isnan(value_type x) noexcept { return mint.isnan(x); }
+        constexpr ModintInterface inv() const noexcept { return construct(mint().inv(val_)); }
+        constexpr ModintInterface pow(itype::u64 e) const noexcept { return construct(mint().pow(val_, e)); }
+        constexpr ModintInterface operator+() const noexcept { return *this; }
+        constexpr ModintInterface operator-() const noexcept { return construct(mint().neg(val_)); }
+        constexpr ModintInterface& operator++() noexcept {
             val_ = mint().inc(val_);
             return *this;
         }
-        constexpr ModintImpl& operator--() noexcept {
+        constexpr ModintInterface& operator--() noexcept {
             val_ = mint().dec(val_);
             return *this;
         }
-        constexpr ModintImpl operator++(int) noexcept {
-            ModintImpl copy = *this;
+        constexpr ModintInterface operator++(int) noexcept {
+            ModintInterface copy = *this;
             val_ = mint().inc(val_);
             return copy;
         }
-        constexpr ModintImpl operator--(int) noexcept {
-            ModintImpl copy = *this;
+        constexpr ModintInterface operator--(int) noexcept {
+            ModintInterface copy = *this;
             val_ = mint().dec(val_);
             return copy;
         }
-        constexpr ModintImpl& operator+=(ModintImpl x) noexcept {
+        constexpr ModintInterface& operator+=(ModintInterface x) noexcept {
             val_ = mint().add(val_, x.val_);
             return *this;
         }
-        constexpr ModintImpl& operator-=(ModintImpl x) noexcept {
+        constexpr ModintInterface& operator-=(ModintInterface x) noexcept {
             val_ = mint().sub(val_, x.val_);
             return *this;
         }
-        constexpr ModintImpl& operator*=(ModintImpl x) noexcept {
+        constexpr ModintInterface& operator*=(ModintInterface x) noexcept {
             val_ = mint().mul(val_, x.val_);
             return *this;
         }
-        constexpr ModintImpl& operator/=(ModintImpl x) {
+        constexpr ModintInterface& operator/=(ModintInterface x) {
             val_ = mint().div(val_, x.val_);
             return *this;
         }
-        friend constexpr ModintImpl operator+(ModintImpl l, ModintImpl r) noexcept { return construct(mint().add(l.val_, r.val_)); }
-        friend constexpr ModintImpl operator-(ModintImpl l, ModintImpl r) noexcept { return construct(mint().sub(l.val_, r.val_)); }
-        friend constexpr ModintImpl operator*(ModintImpl l, ModintImpl r) noexcept { return construct(mint().mul(l.val_, r.val_)); }
-        friend constexpr ModintImpl operator/(ModintImpl l, ModintImpl r) { return construct(mint().div(l.val_, r.val_)); }
-        friend constexpr bool operator==(ModintImpl l, ModintImpl r) noexcept { return mint().same(l.val_, r.val_); }
-        friend constexpr bool operator!=(ModintImpl l, ModintImpl r) noexcept { return !mint().same(l.val_, r.val_); }
+        friend constexpr ModintInterface operator+(ModintInterface l, ModintInterface r) noexcept { return construct(mint().add(l.val_, r.val_)); }
+        friend constexpr ModintInterface operator-(ModintInterface l, ModintInterface r) noexcept { return construct(mint().sub(l.val_, r.val_)); }
+        friend constexpr ModintInterface operator*(ModintInterface l, ModintInterface r) noexcept { return construct(mint().mul(l.val_, r.val_)); }
+        friend constexpr ModintInterface operator/(ModintInterface l, ModintInterface r) { return construct(mint().div(l.val_, r.val_)); }
+        friend constexpr bool operator==(ModintInterface l, ModintInterface r) noexcept { return mint().same(l.val_, r.val_); }
+        friend constexpr bool operator!=(ModintInterface l, ModintInterface r) noexcept { return !mint().same(l.val_, r.val_); }
     };
 
-    template<class D, class T> class ModintInterface {
+    template<class D, class T> class ModintImpl {
         constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
         constexpr static bool is_static_mod = IsStaticModint<D>;
     public:
@@ -119,7 +119,7 @@ namespace internal {
         constexpr value_type build(itype::u32 x) const noexcept { return x % derived().mod(); }
         constexpr value_type build(itype::u64 x) const noexcept { return x % derived().mod(); }
         template<class U> constexpr value_type build(U x) const noexcept {
-            static_assert(std::is_integral_v<U>, "gsh::internal::ModintInterface::build<U> / Only integer types can be assigned.");
+            static_assert(std::is_integral_v<U>, "gsh::internal::ModintImpl::build<U> / Only integer types can be assigned.");
             if constexpr (std::is_unsigned_v<U>) {
                 if constexpr (std::is_same_v<U, itype::u128>) return derived().raw(static_cast<value_type>(x % derived().mod()));
                 else if constexpr (std::is_same_v<U, unsigned long long> || std::is_same_v<U, unsigned long>) return derived().build(static_cast<itype::u64>(x));
@@ -168,7 +168,7 @@ namespace internal {
         constexpr value_type div(value_type x, value_type y) const noexcept {
             const value_type iv = derived().inv(y);
             if (derived().same(iv, derived().zero())) [[unlikely]]
-                throw gsh::Exception("gsh::internal::ModintInterface::div / Cannot calculate inverse.");
+                throw gsh::Exception("gsh::internal::ModintImpl::div / Cannot calculate inverse.");
             return derived().mul(x, iv);
         }
         constexpr bool same(value_type x, value_type y) const noexcept { return x == y; }
@@ -227,9 +227,8 @@ namespace internal {
             }
             return n == 1 ? res : 0;
         }
-        constexpr value_type sqrt(value_type n) const noexcept {
+        GSH_INTERNAL_INLINE constexpr value_type sqrt(value_type n) const noexcept {
             const auto md = derived().mod();
-            if (derived().same(n, derived().zero()) || derived().same(n, derived().one())) return n;
             if (md % 4 == 3) {
                 auto res = derived().pow(n, (md + 1) >> 2);
                 if (!derived().same(derived().mul(res, res), n)) return derived().nan();
@@ -239,10 +238,12 @@ namespace internal {
                 if (!derived().same(derived().mul(res, res), n)) {
                     const auto p = derived().pow(derived().raw(2), (md - 1) >> 2);
                     res = derived().mul(res, p);
+                    if (!derived().same(derived().mul(res, res), n)) return derived().nan();
+                    else return derived().abs(res);
                 }
-                if (!derived().same(derived().mul(res, res), n)) return derived().nan();
-                else return derived().abs(res);
+                return derived().abs(res);
             } else {
+                if (derived().same(n, derived().zero()) || derived().same(n, derived().one())) return n;
                 const itype::u32 S = std::countr_zero(md - 1);
                 const itype::u32 W = std::bit_width(md);
                 if (S * S <= 12 * W) {
@@ -253,22 +254,21 @@ namespace internal {
                     auto u = t;
                     for (itype::u32 i = 0; i != S - 1; ++i) u = derived().mul(u, u);
                     if (!derived().same(u, derived().one())) return derived().nan();
-                    const auto z = derived().pow(
-                      [&]() {
-                          if (md % 3 == 2) return derived().raw(3);
-                          if (auto x = md % 5; x == 2 || x == 3) return derived().raw(5);
-                          if (auto x = md % 7; x == 3 || x == 5 || x == 6) return derived().raw(7);
-                          if (auto x = md % 11; x == 2 || x == 6 || x == 7 || x == 8 || x == 10) return derived().build(11);
-                          if (auto x = md % 13; x == 2 || x == 5 || x == 6 || x == 7 || x == 8 || x == 11) return derived().build(13);
-                          for (const itype::u32 x : { 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97 }) {
-                              const auto y = derived().build(x);
-                              if (derived().legendre(y) == -1) return y;
-                          }
-                          auto z = derived().build(101);
-                          while (derived().legendre(z) != -1) z = derived().add(z, derived().raw(2));
-                          return z;
-                      }(),
-                      Q);
+                    const auto base = [&]() GSH_INTERNAL_INLINE {
+                        if (md % 3 == 2) return derived().raw(3);
+                        if (auto x = md % 5; x == 2 || x == 3) return derived().raw(5);
+                        if (auto x = md % 7; x == 3 || x == 5 || x == 6) return derived().raw(7);
+                        if (auto x = md % 11; x == 2 || x == 6 || x == 7 || x == 8 || x == 10) return derived().build(11);
+                        if (auto x = md % 13; x == 2 || x == 5 || x == 6 || x == 7 || x == 8 || x == 11) return derived().build(13);
+                        for (const itype::u32 x : { 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97 }) {
+                            const auto y = derived().build(x);
+                            if (derived().legendre(y) == -1) return y;
+                        }
+                        auto z = derived().build(101);
+                        while (derived().legendre(z) != -1) z = derived().add(z, derived().raw(2));
+                        return z;
+                    }();
+                    const auto z = derived().pow(base, Q);
                     itype::u32 M = S;
                     auto c = z;
                     do {
@@ -305,7 +305,7 @@ namespace internal {
         }
     };
 
-    template<itype::u32 mod_> class StaticModint32Impl : public ModintInterface<StaticModint32Impl<mod_>, itype::u32> {
+    template<itype::u32 mod_> class StaticModint32Impl : public ModintImpl<StaticModint32Impl<mod_>, itype::u32> {
     public:
         constexpr StaticModint32Impl() noexcept {}
         constexpr itype::u32 mod() const noexcept { return mod_; }
@@ -314,7 +314,7 @@ namespace internal {
             return static_cast<itype::u64>(x) * y % mod_;
         }
     };
-    template<itype::u64 mod_> class StaticModint64Impl : public ModintInterface<StaticModint64Impl<mod_>, itype::u64> {
+    template<itype::u64 mod_> class StaticModint64Impl : public ModintImpl<StaticModint64Impl<mod_>, itype::u64> {
     public:
         constexpr StaticModint64Impl() noexcept {}
         constexpr itype::u64 mod() const noexcept { return mod_; }
@@ -342,7 +342,7 @@ namespace internal {
     };
     template<itype::u64 mod_> using StaticModintImpl = std::conditional_t<(mod_ <= 0xffffffff), StaticModint32Impl<mod_>, StaticModint64Impl<mod_>>;
 
-    class DynamicModint32Impl : public ModintInterface<DynamicModint32Impl, itype::u32> {
+    class DynamicModint32Impl : public ModintImpl<DynamicModint32Impl, itype::u32> {
         itype::u32 mod_ = 0;
         itype::u64 M_ = 0;
     public:
@@ -363,7 +363,7 @@ namespace internal {
         }
     };
 
-    class DynamicModint64Impl : public ModintInterface<DynamicModint64Impl, itype::u64> {
+    class DynamicModint64Impl : public ModintImpl<DynamicModint64Impl, itype::u64> {
         itype::u64 mod_ = 0;
         itype::u128 M_ = 0;
     public:
@@ -387,7 +387,7 @@ namespace internal {
         }
     };
 
-    class MontgomeryModint64Impl : public ModintInterface<MontgomeryModint64Impl, itype::u64> {
+    class MontgomeryModint64Impl : public ModintImpl<MontgomeryModint64Impl, itype::u64> {
         itype::u64 mod_ = 0, rs = 0, nr = 0, np = 0;
         constexpr itype::u64 reduce(const itype::u64 t) const noexcept {
             itype::u64 q = t * nr;
@@ -421,16 +421,19 @@ namespace internal {
         constexpr itype::u64 mod() const noexcept { return mod_; }
         constexpr itype::u64 build(itype::u32 x) const noexcept { return reduce(x % mod_, rs); }
         constexpr itype::u64 build(itype::u64 x) const noexcept { return reduce(x % mod_, rs); }
-        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintInterface::build(x); }
+        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintImpl::build(x); }
         constexpr itype::u64 raw(itype::u64 x) const noexcept {
             Assume(x < mod_);
             return reduce(x, rs);
         }
         constexpr itype::u64 zero() const noexcept { return 0; }
-        constexpr itype::u64 one() const noexcept { return np; }
+        constexpr itype::u64 one() const noexcept {
+            Assume(np < 2 * mod_);
+            return np;
+        }
         constexpr itype::u64 neg(itype::u64 x) const noexcept {
             Assume(x < 2 * mod_);
-            return x == 2 * mod_ ? 0 : 2 * mod_ - x;
+            return (2 * mod_ - x) * (x != 0);
         }
         constexpr itype::u64 inc(itype::u64 x) const noexcept { return add(x, np); }
         constexpr itype::u64 dec(itype::u64 x) const noexcept { return sub(x, np); }
@@ -440,24 +443,31 @@ namespace internal {
         }
         constexpr itype::u64 sub(itype::u64 x, itype::u64 y) const noexcept {
             Assume(x < 2 * mod_ && y < 2 * mod_);
-            return x - y + (x - y >= 2 * mod_) * (2 * mod_);
+            return x - y + (x < y) * (2 * mod_);
         }
         constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
             Assume(x < 2 * mod_ && y < 2 * mod_);
             return reduce(x, y);
         }
-        //constexpr itype::u64 fma(itype::u64 x, itype::u64 y, itype::u64 z) const noexcept {}
-        constexpr bool same(itype::u64 x, itype::u64 y) const noexcept { return x + mod_ == y || x == y; }
-        constexpr itype::u64 abs(itype::u64 x) const noexcept { return x; }
+        constexpr bool same(itype::u64 x, itype::u64 y) const noexcept {
+            Assume(x < 2 * mod_ && y < 2 * mod_);
+            itype::u64 tmp = x - y;
+            return (tmp == 0) | (tmp == mod_) | (tmp == -mod_);
+        }
+        constexpr itype::u64 abs(itype::u64 x) const noexcept {
+            itype::u64 tmp = neg(x);
+            return val(x) > mod_ / 2 ? tmp : x;
+        }
+        constexpr itype::u64 norm(itype::u64 x) const noexcept { return x >= mod_ ? x - mod_ : x; }
     };
 
 }  // namespace internal
 
-template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintImpl<internal::StaticModint32Impl<mod_>>;
-template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintImpl<internal::StaticModint64Impl<mod_>>;
-template<itype::u64 mod_ = 998244353> using StaticModint = internal::ModintImpl<internal::StaticModintImpl<mod_>>;
-template<itype::u32 id = 0> using DynamicModint32 = internal::ModintImpl<internal::DynamicModint32Impl, id>;
-template<itype::u32 id = 0> using DynamicModint64 = internal::ModintImpl<internal::DynamicModint64Impl, id>;
-template<itype::u32 id = 0> using MontgomeryModint64 = internal::ModintImpl<internal::MontgomeryModint64Impl, id>;
+template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintInterface<internal::StaticModint32Impl<mod_>>;
+template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintInterface<internal::StaticModint64Impl<mod_>>;
+template<itype::u64 mod_ = 998244353> using StaticModint = internal::ModintInterface<internal::StaticModintImpl<mod_>>;
+template<itype::u32 id = 0> using DynamicModint32 = internal::ModintInterface<internal::DynamicModint32Impl, id>;
+template<itype::u32 id = 0> using DynamicModint64 = internal::ModintInterface<internal::DynamicModint64Impl, id>;
+template<itype::u32 id = 0> using MontgomeryModint64 = internal::ModintInterface<internal::MontgomeryModint64Impl, id>;
 
 }  // namespace gsh

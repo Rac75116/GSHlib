@@ -13,10 +13,9 @@
 #endif
 #include "gsh/InOut.hpp"
 #include "gsh/Exception.hpp"
-#include "gsh/Modint.hpp"
+#include "gsh/Algorithm.hpp"
 #include "gsh/Random.hpp"
 #include "gsh/Timer.hpp"
-#include "gsh/Prime.hpp"
 #include <cassert>
 
 #if 0 && !defined ONLINE_JUDGE
@@ -37,6 +36,17 @@ void Main() {
     using namespace gsh::itype;
     using namespace gsh::ftype;
     using namespace gsh::ctype;
+    Rand32 engine;
+    constexpr u32 n = 10000000;
+    static u32 A[n + 1], B[n + 1];
+    for (u32 i = 0; i != n + 1; ++i) A[i] = engine(), B[i] = engine();
+    u32 res = 0;
+    ClockTimer t;
+    for (u32 i = 0; i != n; ++i) {
+        res += LowerBound(Subrange{ A, A + n }, B[i]) - A;
+    }
+    t.print();
+    wt.writeln(res);
 }
 int main() {
 #ifdef ONLINE_JUDGE

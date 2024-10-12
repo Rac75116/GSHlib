@@ -58,7 +58,7 @@ namespace ftype {
 #ifdef __STDCPP_FLOAT128_T__
     using f128 = std::float128_t;
 #elif defined(__SIZEOF_FLOAT128__)
-    using f128 = __float128;
+    using f128 = std::conditional_t<std::numeric_limits<long double>::is_iec559 && sizeof(long double) == 16, long double, __float128>;
 #else
     using f128 = std::conditional_t<std::numeric_limits<long double>::is_iec559 && sizeof(long double) == 16, long double, void>;
 #endif

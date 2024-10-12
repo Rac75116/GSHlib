@@ -1,9 +1,11 @@
 #pragma once
-#include <tuple>        // std::tuple_size, std::tuple_element
-#include <utility>      // std::integer_sequence, std::make_index_sequence
-#include <ranges>       // std::ranges::forward_range
-#include "TypeDef.hpp"  // gsh::itype, gsh::ctype
-#include "Util.hpp"     // gsh::MemoryCopy, gsh::StrLen
+#include <tuple>          // std::tuple_size, std::tuple_element
+#include <utility>        // std::integer_sequence, std::make_index_sequence
+#include <ranges>         // std::ranges::forward_range
+#include <charconv>       // std::to_chars, std::chars_format, std::errc
+#include "TypeDef.hpp"    // gsh::itype, gsh::ctype
+#include "Util.hpp"       // gsh::MemoryCopy, gsh::StrLen
+#include "Exception.hpp"  // gsh::Exception
 
 namespace gsh {
 
@@ -338,6 +340,52 @@ public:
         stream.skip(1);
     }
 };
+namespace internal {
+    template<class T, class Stream> constexpr void FormatFloat(Stream& stream, T f, std::chars_format fmt, itype::i32 precision) {
+        stream.reload(32);
+        auto [ptr, err] = std::to_chars(stream.current(), stream.current() + stream.avail(), f, fmt, precision);
+        if (err != std::errc{}) [[unlikely]] {
+            stream.reload();
+            auto [ptr, err] = std::to_chars(stream.current(), stream.current() + stream.avail(), f, fmt, precision);
+            if (err != std::errc{}) throw Exception("gsh::Formatter<ftype::f32>::operator() / The value is too large.");
+            stream.skip(ptr - stream.current());
+        } else {
+            stream.skip(ptr - stream.current());
+        }
+    }
+}  // namespace internal
+template<> class Formatter<ftype::f32> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, ftype::f32 f, std::chars_format fmt = std::chars_format::general, itype::i32 precision = 6) const { internal::FormatFloat(stream, f, fmt, precision); }
+};
+template<> class Formatter<ftype::f64> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, ftype::f64 f, std::chars_format fmt = std::chars_format::general, itype::i32 precision = 6) const { internal::FormatFloat(stream, f, fmt, precision); }
+};
+/*
+template<class T>
+    requires(!std::is_void_v<T> && std::same_as<T, ftype::f16>)
+class Formatter<T> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, T f, std::chars_format fmt = std::chars_format::general, itype::i32 precision = 6) const { internal::FormatFloat(stream, f, fmt, precision); }
+};
+template<class U>
+    requires(!std::is_void_v<U> && std::same_as<U, ftype::bf16>)
+class Formatter<U> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, T f, std::chars_format fmt = std::chars_format::general, itype::i32 precision = 6) const { internal::FormatFloat(stream, f, fmt, precision); }
+};
+template<class T>
+#ifdef __STDCPP_FLOAT128_T__
+    requires std::same_as<T, ftype::f128>
+#else
+    requires(!std::is_void_v<T> && std::same_as<T, ftype::f128> && std::same_as<T, long double>)
+#endif
+class Formatter<T> {
+public:
+    template<class Stream> constexpr void operator()(Stream& stream, T f, std::chars_format fmt = std::chars_format::general, itype::i32 precision = 6) const { internal::FormatFloat(stream, f, fmt, precision); }
+};
+*/
 template<> class Formatter<bool> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, bool b) const {

@@ -172,19 +172,19 @@ template<class URBG> constexpr ftype::f32 Canocicaled32(URBG& g) {
     return std::bit_cast<ftype::f32>((127u << 23) | (static_cast<itype::u32>(g()) & 0x7fffff)) - 1.0f;
 }
 template<class URBG> constexpr ftype::f32 Uniformf32(URBG& g, ftype::f32 max) {
-    return canocicaled32(g) * max;
+    return Canocicaled32(g) * max;
 }
 template<class URBG> constexpr ftype::f32 Uniformf32(URBG& g, ftype::f32 min, ftype::f32 max) {
-    return canocicaled32(g) * (max - min) + min;
+    return Canocicaled32(g) * (max - min) + min;
 }
 template<class URBG> constexpr ftype::f64 Canocicaled64(URBG& g) {
     return std::bit_cast<ftype::f64>((1023ull << 52) | (g() & 0xfffffffffffffull)) - 1.0;
 }
 template<class URBG> constexpr ftype::f64 Uniformf64(URBG& g, ftype::f64 max) {
-    return canocicaled64(g) * max;
+    return Canocicaled64(g) * max;
 }
 template<class URBG> constexpr ftype::f64 Uniformf64(URBG& g, ftype::f64 min, ftype::f64 max) {
-    return canocicaled64(g) * (max - min) + min;
+    return Canocicaled64(g) * (max - min) + min;
 }
 
 }  // namespace gsh

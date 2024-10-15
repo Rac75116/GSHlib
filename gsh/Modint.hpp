@@ -359,7 +359,7 @@ namespace internal {
             const itype::u64 a = static_cast<itype::u64>(x) * y;
             const itype::u64 b = (static_cast<itype::u128>(M_) * a) >> 64;
             const itype::u64 c = a - b * mod_;
-            return c < mod_ ? c : c - mod_;
+            return c - (c >= mod_) * mod_;
         }
     };
 

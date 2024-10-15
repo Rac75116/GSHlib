@@ -32,16 +32,39 @@ namespace itype {
 #ifdef __SIZEOF_INT128__
     using i128 = __int128_t;
     using u128 = __uint128_t;
+#elif defined(_MSC_VER)
+    class u128 {
+        u64 a, b;
+    public:
+        constexpr u128() : a(0), b(0) {}
+        constexpr u128(const u128&) = default;
+        constexpr u128(u128&&) = default;
+        constexpr u128& operator=(const u128&) = default;
+        constexpr u128& operator=(u128&&) = default;
+    };
+    class i128 {
+        i64 a;
+        u64 b;
+    public:
+        constexpr u128() : a(0), b(0) {}
+        constexpr u128(const u128&) = default;
+        constexpr u128(u128&&) = default;
+        constexpr u128& operator=(const u128&) = default;
+        constexpr u128& operator=(u128&&) = default;
+    };
 #else
     static_assert(false, "This library needs __int128_t and __uint128_t.");
 #endif
 }  // namespace itype
 
 namespace ftype {
+    class InvalidFloat16Tag;
+    class InvalidBfloat16Tag;
+    class InvalidFloat128Tag;
 #ifdef __STDCPP_FLOAT16_T__
     using f16 = std::float16_t;
 #else
-    using f16 = void;
+    using f16 = InvalidFloat16Tag;
 #endif
 #ifdef __STDCPP_FLOAT32_T__
     using f32 = std::float32_t;
@@ -60,12 +83,12 @@ namespace ftype {
 #elif defined(__SIZEOF_FLOAT128__)
     using f128 = std::conditional_t<std::numeric_limits<long double>::is_iec559 && sizeof(long double) == 16, long double, __float128>;
 #else
-    using f128 = std::conditional_t<std::numeric_limits<long double>::is_iec559 && sizeof(long double) == 16, long double, void>;
+    using f128 = std::conditional_t<std::numeric_limits<long double>::is_iec559 && sizeof(long double) == 16, long double, InvalidFloat128Tag>;
 #endif
 #ifdef __STDCPP_BFLOAT16_T__
     using bf16 = std::bfloat16_t;
 #else
-    using bf16 = void;
+    using bf16 = InvalidBfloat16Tag;
 #endif
 }  // namespace ftype
 

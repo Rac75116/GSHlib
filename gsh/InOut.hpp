@@ -18,9 +18,33 @@
 namespace gsh {
 
 namespace internal {
+    template<class D, itype::u32 N, class... Types> class ParsingChain : public ParsingChain<D, N - 1, Types...> {
+        friend class IstreamInterface<D>;
+    protected:
+        union {
+            std::tuple_element_t<N - 1, std::tuple<Types...>> value;
+        };
+    public:
+        constexpr ~ParsingChain() { std::destroy_at(&value); }
+        template<class... Args> constexpr auto operator()(Args&&... args) {
+            static_assert(N < sizeof...(Args));
+            ParsingChain<D, N + 1, Types...> res(*this);
+            std::construct_at(&res.value, Parser<decltype(value)>{}(ParsingChain<D, 0, Types...>::ref, std::forward<Args>(args)...));
+            return res;
+        };
+    };
+    template<class D, class... Types> class ParsingChain<D, 0, Types...> {
+        friend class IstreamInterface<D>;
+    protected:
+        D& ref;
+    };
+}  // namespace internal
+
+}  // namespace gsh
+namespace gsh {
+namespace internal {
     template<class D> class IstreamInterface {
         constexpr D& derived() { return *static_cast<D*>(this); }
-        constexpr const D& derived() const { return *static_cast<const D*>(this); }
     public:
         constexpr auto read() { return std::tuple{}; }
         template<class T, class... Types> constexpr auto read() {
@@ -36,7 +60,6 @@ namespace internal {
     };
     template<class D> class OstreamInterface {
         constexpr D& derived() { return *static_cast<D*>(this); }
-        constexpr const D& derived() const { return *static_cast<const D*>(this); }
     public:
         template<class Sep> constexpr void write_sep(Sep&&) {}
         template<class Sep, class T, class... Args> constexpr void write_sep(Sep&& sep, T&& x, Args&&... args) {

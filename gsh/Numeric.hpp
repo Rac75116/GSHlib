@@ -5,12 +5,10 @@
 #include "TypeDef.hpp"
 #include "Modint.hpp"
 #include "Arr.hpp"
-#include "Option.hpp"
 
 namespace gsh {
 
 //@brief Find the largest x for which x * x <= n (https://rsk0315.hatenablog.com/entry/2023/11/07/221428)
-GSH_INTERNAL_PUSH_ATTRIBUTE(function, optimize("no-fast-math"))
 constexpr itype::u32 IntSqrt32(const itype::u32 x) {
     if (x == 0) return 0;
     if (std::is_constant_evaluated()) {
@@ -26,8 +24,6 @@ constexpr itype::u32 IntSqrt32(const itype::u32 x) {
         return tmp + (tmp * (tmp + 2) < x);
     }
 }
-GSH_INTERNAL_POP_ATTRIBUTE
-GSH_INTERNAL_PUSH_ATTRIBUTE(function, optimize("no-fast-math"))
 constexpr itype::u64 IntSqrt64(const itype::u64 x) {
     if (x == 0) return 0;
     if (std::is_constant_evaluated()) {
@@ -43,7 +39,6 @@ constexpr itype::u64 IntSqrt64(const itype::u64 x) {
         return tmp + (tmp * (tmp + 2) < x);
     }
 }
-GSH_INTERNAL_POP_ATTRIBUTE
 namespace internal {
     template<itype::u32> struct isSquareMod9360 {
         // clang-format off
@@ -214,7 +209,7 @@ constexpr static ftype::f64 rt3[] = {
             if (n == 0) return 0;
                 // clang-format off
 #ifdef F
-#define GSH_INTERNAL_DEFINED
+#define GSH_INTERNAL_DEFINED_F
 #pragma push_macro("F")
 #undef F
 #endif
@@ -225,7 +220,7 @@ F(33);F(34);F(35);F(36);F(37);F(38);F(39);F(40);F(41);F(42);F(43);F(44);F(45);F(
 default : return 1;
             }
 #undef F
-#ifdef GSH_INTERNAL_DEFINED
+#ifdef GSH_INTERNAL_DEFINED_F
 #pragma pop_macro("F")
 #endif
             // clang-format on
@@ -299,15 +294,22 @@ namespace internal {
     public:
         using value_type = typename T::value_type;
         constexpr BinCoeffTable(itype::u32 mx, value_type mod) : fac(mx), finv(mx) {
-            if (mx >= mod) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
+            if (mx > mod) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
             mint.set(mod);
             fac[0] = mint.raw(1), finv[0] = mint.raw(1);
             if (mx > 1) {
                 fac[1] = mint.raw(1), finv[1] = mint.raw(1);
                 if (mx > 2) {
-                    for (itype::u32 i = 2; i != mx; ++i) fac[i] = mint.mul(fac[i - 1], mint.raw(i));
+                    auto cnt = mint.raw(1);
+                    for (itype::u32 i = 2; i != mx; ++i) {
+                        cnt = mint.inc(cnt);
+                        fac[i] = mint.mul(fac[i - 1], cnt);
+                    }
                     finv.back() = mint.inv(fac.back());
-                    for (itype::u32 i = mx - 1; i != 2; --i) finv[i - 1] = mint.mul(finv[i], mint.raw(i));
+                    for (itype::u32 i = mx - 1; i != 2; --i) {
+                        finv[i - 1] = mint.mul(finv[i], cnt);
+                        cnt = mint.dec(cnt);
+                    }
                 }
             }
         }
@@ -322,14 +324,21 @@ namespace internal {
     public:
         using value_type = typename T::value_type;
         constexpr BinCoeffTable(itype::u32 mx) : fac(mx), finv(mx) {
-            if (mx >= mint.mod()) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
+            if (mx > mint.mod()) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
             fac[0] = mint.raw(1), finv[0] = mint.raw(1);
             if (mx > 1) {
                 fac[1] = mint.raw(1), finv[1] = mint.raw(1);
                 if (mx > 2) {
-                    for (itype::u32 i = 2; i != mx; ++i) fac[i] = mint.mul(fac[i - 1], mint.raw(i));
+                    auto cnt = mint.raw(1);
+                    for (itype::u32 i = 2; i != mx; ++i) {
+                        cnt = mint.inc(cnt);
+                        fac[i] = mint.mul(fac[i - 1], cnt);
+                    }
                     finv.back() = mint.inv(fac.back());
-                    for (itype::u32 i = mx - 1; i != 2; --i) finv[i - 1] = mint.mul(finv[i], mint.raw(i));
+                    for (itype::u32 i = mx - 1; i != 2; --i) {
+                        finv[i - 1] = mint.mul(finv[i], cnt);
+                        cnt = mint.dec(cnt);
+                    }
                 }
             }
         }

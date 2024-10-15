@@ -348,47 +348,43 @@ public:
     }
 };
 template<> class Parser<ctype::c8*> {
-    ctype::c8* s;
-    itype::u32 n;
 public:
-    constexpr Parser(ctype::c8* s_, itype::u32 n_ = 0xffffffff) noexcept : s(s_), n(n_) {}
-    template<class Stream> constexpr void operator()(Stream& stream) const {
-        if (n == 0xffffffff) {
-            stream.reload(16);
-            ctype::c8* c = s;
-            while (true) {
-                const ctype::c8* e = stream.current();
-                while (*e >= '!') ++e;
-                const itype::u32 len = e - stream.current();
-                MemoryCopy(c, stream.current(), len);
-                stream.skip(len);
-                c += len;
-                if (stream.avail() == 0) stream.reload();
-                else break;
-            }
-            stream.skip(1);
-            *c = '\0';
-        } else {
-            itype::u32 rem = n;
-            ctype::c8* c = s;
-            itype::u32 avail = stream.avail();
-            while (avail <= rem) {
-                MemoryCopy(c, stream.current(), avail);
-                c += avail;
-                rem -= avail;
-                stream.skip(avail);
-                if (rem == 0) {
-                    *c = '\0';
-                    return;
-                }
-                stream.reload();
-                avail = stream.avail();
-            }
-            MemoryCopy(c, stream.current(), rem);
-            c += rem;
-            stream.skip(rem);
-            *c = '\0';
+    template<class Stream> constexpr void operator()(Stream& stream, ctype::c8* s) const {
+        stream.reload(16);
+        ctype::c8* c = s;
+        while (true) {
+            const ctype::c8* e = stream.current();
+            while (*e >= '!') ++e;
+            const itype::u32 len = e - stream.current();
+            MemoryCopy(c, stream.current(), len);
+            stream.skip(len);
+            c += len;
+            if (stream.avail() == 0) stream.reload();
+            else break;
         }
+        stream.skip(1);
+        *c = '\0';
+    }
+    template<class Stream> constexpr void operator()(Stream& stream, ctype::c8* s, itype::u32 n) const {
+        itype::u32 rem = n;
+        ctype::c8* c = s;
+        itype::u32 avail = stream.avail();
+        while (avail <= rem) {
+            MemoryCopy(c, stream.current(), avail);
+            c += avail;
+            rem -= avail;
+            stream.skip(avail);
+            if (rem == 0) {
+                *c = '\0';
+                return;
+            }
+            stream.reload();
+            avail = stream.avail();
+        }
+        MemoryCopy(c, stream.current(), rem);
+        c += rem;
+        stream.skip(rem);
+        *c = '\0';
     }
 };
 

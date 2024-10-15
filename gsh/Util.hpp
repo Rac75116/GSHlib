@@ -54,17 +54,6 @@ GSH_INTERNAL_INLINE constexpr bool Unpredictable(const bool f) {
     return f;
 #endif
 }
-template<class T>
-    requires std::is_scalar_v<T>
-GSH_INTERNAL_INLINE constexpr void ForceCalc([[maybe_unused]] const T& v) {
-#if defined __GNUC__ || defined __INTEL_COMPILER
-    if (!std::is_constant_evaluated()) __asm__ volatile("" ::"r"(v));
-#endif
-}
-template<class T, class... Args> GSH_INTERNAL_INLINE constexpr void ForceCalc(const T& v, const Args&... args) {
-    ForceCalc(v);
-    ForceCalc(args...);
-}
 
 class InPlaceTag {};
 [[maybe_unused]] constexpr InPlaceTag InPlace;

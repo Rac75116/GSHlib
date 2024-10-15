@@ -237,7 +237,7 @@ constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
         const itype::u32 n = std::ranges::size(r);
         auto* const p = std::ranges::data(r);
         using value_type = std::remove_cvref_t<decltype(*p)>;
-        if (false && !std::is_constant_evaluated()) {
+        if (!std::is_constant_evaluated()) {
             constexpr bool is_less = std::same_as<std::remove_cvref_t<Comp>, Less>;
             constexpr bool is_greater = std::same_as<std::remove_cvref_t<Comp>, Greater>;
             if constexpr ((is_less || is_greater) && std::is_default_constructible_v<value_type>) {
@@ -294,6 +294,8 @@ constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
                 }
             }
         }
+        std::ranges::sort(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj));
+        /*
         const itype::u32 minrun = n <= 16 ? 32 : ((n >> (std::bit_width(n) - 4)) + ((n & ((1ull << (std::bit_width(n) - 4)) - 1)) != 0)) << std::has_single_bit(n);
         const itype::u32 rem = n % minrun, blocks = n / minrun;
         switch (rem) {
@@ -337,8 +339,18 @@ constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
             ++cnt;
             while (cnt >= 2 && size[cnt - 2] >= size[cnt - 1]) {}
         }
+        */
     }
 }
+
+/*
+template<Range R, class Comp = Less, class Proj = Identity>
+    requires std::sortable<std::ranges::iterator_t<R>, Comp, Proj>
+constexpr Arr<itype::u32> Compress(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+    Arr tmp(std::ranges::begin(r), std::ranges::end(r));
+    Sort(tmp, comp, proj);
+}
+*/
 
 template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
     auto st = std::ranges::begin(r);

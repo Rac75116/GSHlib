@@ -304,6 +304,7 @@ public:
 };
 template<> class Parser<itype::u4dig> {
 public:
+    using value_type = itype::u16;
     template<class Stream> constexpr itype::u16 operator()(Stream& stream) const {
         stream.reload(8);
         return internal::Parseu4dig(stream);
@@ -311,6 +312,7 @@ public:
 };
 template<> class Parser<itype::i4dig> {
 public:
+    using value_type = itype::i16;
     template<class Stream> constexpr itype::i16 operator()(Stream& stream) const {
         stream.reload(8);
         bool neg = *stream.current() == '-';
@@ -322,6 +324,7 @@ public:
 };
 template<> class Parser<itype::u8dig> {
 public:
+    using value_type = itype::u32;
     template<class Stream> constexpr itype::u32 operator()(Stream& stream) const {
         stream.reload(16);
         return internal::Parseu8dig(stream);
@@ -329,6 +332,7 @@ public:
 };
 template<> class Parser<itype::i8dig> {
 public:
+    using value_type = itype::i32;
     template<class Stream> constexpr itype::i32 operator()(Stream& stream) const {
         stream.reload(16);
         bool neg = *stream.current() == '-';
@@ -349,7 +353,8 @@ public:
 };
 template<> class Parser<ctype::c8*> {
 public:
-    template<class Stream> constexpr void operator()(Stream& stream, ctype::c8* s) const {
+    using value_type = void;
+    template<class Stream> constexpr ctype::c8* operator()(Stream& stream, ctype::c8* s) const {
         stream.reload(16);
         ctype::c8* c = s;
         while (true) {
@@ -364,8 +369,9 @@ public:
         }
         stream.skip(1);
         *c = '\0';
+        return s;
     }
-    template<class Stream> constexpr void operator()(Stream& stream, ctype::c8* s, itype::u32 n) const {
+    template<class Stream> constexpr ctype::c8* operator()(Stream& stream, ctype::c8* s, itype::u32 n) const {
         itype::u32 rem = n;
         ctype::c8* c = s;
         itype::u32 avail = stream.avail();
@@ -376,7 +382,7 @@ public:
             stream.skip(avail);
             if (rem == 0) {
                 *c = '\0';
-                return;
+                return s;
             }
             stream.reload();
             avail = stream.avail();
@@ -385,6 +391,7 @@ public:
         c += rem;
         stream.skip(rem);
         *c = '\0';
+        return s;
     }
 };
 

@@ -2,6 +2,7 @@
 #include <type_traits>  // std::is_constant_evaluated
 #include <cstring>      // std::memset
 #include <bit>          //std::bit_cast
+#include <utility>      // std::make_integer_sequence
 #include "TypeDef.hpp"
 #include "internal/UtilMacro.hpp"
 
@@ -143,5 +144,25 @@ GSH_INTERNAL_INLINE constexpr itype::u32 StrLen(const ctype::c8* p) {
         return q - p;
     } else return std::strlen(p);
 }
+
+namespace internal {
+    template<itype::u32 N, class First, class... Tail> class TypeAtImpl : public TypeAtImpl<N - 1, Tail...> {};
+    template<class T, class... Types> class TypeAtImpl<0, T, Types...> {
+    public:
+        using type = T;
+    };
+}  // namespace internal
+template<itype::u32 N, class... Types> using TypeAt = typename internal::TypeAtImpl<N, Types...>::type;
+
+template<class... Types> class TypeArr {
+public:
+    constexpr static itype::u32 size() noexcept { return sizeof...(Types); }
+    template<itype::u32 N> using type = std::conditional_t<(N < sizeof...(Types)), TypeAt<N, Types...>, void>;
+};
+template<> class TypeArr<> {
+public:
+    constexpr static itype::u32 size() noexcept { return 0; }
+    template<itype::u32 N> using type = void;
+};
 
 }  // namespace gsh

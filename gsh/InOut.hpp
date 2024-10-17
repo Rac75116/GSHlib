@@ -14,49 +14,97 @@
 #include "Parser.hpp"      // gsh::Parser
 #include "Formatter.hpp"   // gsh::Formatter
 #include "Functional.hpp"  // gsh::Invoke
+#include "Util.hpp"        // gsh::TypeArr
 
 namespace gsh {
+
+class NoParsingResult {};
+class CustomParser {};
 
 namespace internal {
-    template<class D, itype::u32 N, class... Types> class ParsingChain : public ParsingChain<D, N - 1, Types...> {
-        friend class IstreamInterface<D>;
-    protected:
-        union {
-            std::tuple_element_t<N - 1, std::tuple<Types...>> value;
-        };
-    public:
-        constexpr ~ParsingChain() { std::destroy_at(&value); }
-        template<class... Args> constexpr auto operator()(Args&&... args) {
-            static_assert(N < sizeof...(Args));
-            ParsingChain<D, N + 1, Types...> res(*this);
-            std::construct_at(&res.value, Parser<decltype(value)>{}(ParsingChain<D, 0, Types...>::ref, std::forward<Args>(args)...));
-            return res;
-        };
-    };
-    template<class D, class... Types> class ParsingChain<D, 0, Types...> {
-        friend class IstreamInterface<D>;
-    protected:
-        D& ref;
-    };
+    template<class D> class IstreamInterface;
 }  // namespace internal
 
+template<class D, class Types, class... Args> class ParsingChain;
+template<class D, class... Types, class... Args> class ParsingChain<D, TypeArr<Types...>, Args...> {
+    friend class internal::IstreamInterface<D>;
+    template<class D2, class Types2, class... Args2> friend class ParsingChain;
+    D& ref;
+    [[no_unique_address]] std::tuple<Args...> args;
+    constexpr ParsingChain(D& r, std::tuple<Args...>&& a) noexcept : ref(r), args(a) {}
+    template<class... Options>
+        requires(sizeof...(Args) < sizeof...(Types))
+    GSH_INTERNAL_INLINE constexpr auto next_chain(Options&&... options) const noexcept {
+        return ParsingChain<D, TypeArr<Types...>, Args..., std::tuple<Options...>>(ref, std::tuple_cat(args, std::make_tuple(std::forward_as_tuple(options...))));
+    };
+public:
+    ParsingChain() = delete;
+    ParsingChain(const ParsingChain&) = delete;
+    ParsingChain(ParsingChain&&) = delete;
+    ParsingChain& operator=(const ParsingChain&) = delete;
+    ParsingChain& operator=(ParsingChain&&) = delete;
+    template<class... Options>
+        requires(sizeof...(Args) == 0)
+    [[nodiscard]] constexpr auto option(Options&&... options) const noexcept {
+        return next_chain(std::forward<Options>(options)...);
+    }
+    template<class... Options>
+        requires(sizeof...(Args) != 0)
+    [[nodiscard]] constexpr auto operator()(Options&&... options) const noexcept {
+        return next_chain(std::forward<Options>(options)...);
+    }
+    template<std::size_t N> friend constexpr decltype(auto) get(const ParsingChain& chain) {
+        auto get_result = [](auto&& parser, auto&&... args) GSH_INTERNAL_INLINE -> decltype(auto) {
+            if constexpr (std::is_void_v<std::invoke_result_t<decltype(parser), decltype(args)...>>) {
+                Invoke(std::forward<decltype(parser)>(parser), std::forward<decltype(args)>(args)...);
+                return NoParsingResult{};
+            } else {
+                return Invoke(std::forward<decltype(parser)>(parser), std::forward<decltype(args)>(args)...);
+            }
+        };
+        using value_type = typename TypeArr<Types...>::type<N>;
+        if constexpr (N < sizeof...(Args)) {
+            if constexpr (std::same_as<CustomParser, value_type>) {
+                return std::apply([get_result, &chain](auto&& parser, auto&&... args) -> decltype(auto) { return get_result(std::forward<decltype(parser)>(parser), chain.ref, std::forward<decltype(args)>(args)...); }, std::get<N>(chain.args));
+            } else {
+                return std::apply([get_result, &chain](auto&&... args) -> decltype(auto) { return get_result(Parser<value_type>(), chain.ref, std::forward<decltype(args)>(args)...); }, std::get<N>(chain.args));
+            }
+        } else {
+            return get_result(Parser<value_type>(), chain.ref);
+        }
+    }
+    constexpr void ignore() const noexcept {
+        [this]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
+            (..., get<I>(*this));
+        }(std::make_integer_sequence<itype::u32, sizeof...(Types)>());
+    }
+    constexpr operator typename TypeArr<Types...>::type<0>() const noexcept {
+        static_assert(sizeof...(Types) == 1);
+        return get<0>(*this);
+    }
+    constexpr decltype(auto) val() const noexcept {
+        static_assert(sizeof...(Types) == 1);
+        return get<0>(*this);
+    }
+};
+
 }  // namespace gsh
+
+namespace std {
+template<class D, class... Types, class... Args> class tuple_size<gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> : public integral_constant<size_t, sizeof...(Types)> {};
+template<size_t N, class D, class... Types, class... Args> class tuple_element<N, gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> {
+public:
+    using type = decltype(get<N>(std::declval<const gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>&>()));
+};
+}  // namespace std
+
 namespace gsh {
+
 namespace internal {
     template<class D> class IstreamInterface {
         constexpr D& derived() { return *static_cast<D*>(this); }
     public:
-        constexpr auto read() { return std::tuple{}; }
-        template<class T, class... Types> constexpr auto read() {
-            if constexpr (sizeof...(Types) == 0) return Parser<T>{}(derived());
-            else if constexpr (sizeof...(Types) == 1) {
-                auto res = Parser<T>{}(derived());
-                return std::tuple_cat(std::tuple(std::move(res)), std::tuple(read<Types...>()));
-            } else {
-                auto res = Parser<T>{}(derived());
-                return std::tuple_cat(std::tuple(std::move(res)), read<Types...>());
-            }
-        }
+        template<class T, class... Types> [[nodiscard]] constexpr auto read() { return ParsingChain<D, TypeArr<T, Types...>>(derived(), std::tuple<>()); }
     };
     template<class D> class OstreamInterface {
         constexpr D& derived() { return *static_cast<D*>(this); }

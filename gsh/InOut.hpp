@@ -2,7 +2,7 @@
 #include <cstdlib>  // std::exit
 #include <cstring>  // std::memcpy, std::memmove
 #include <utility>  // std::forward
-#include <tuple>    // std::tuple, std::tuple_cat
+#include <tuple>    // std::tuple, std::make_tuple
 #if __has_include(<unistd.h>)
 #include <unistd.h>  // read, write
 #endif
@@ -18,24 +18,32 @@
 
 namespace gsh {
 
-class NoParsingResult {};
-class CustomParser {};
-
 namespace internal {
     template<class D> class IstreamInterface;
 }  // namespace internal
 
 template<class D, class Types, class... Args> class ParsingChain;
+
+class NoParsingResult {
+    template<class D, class Types, class... Args> friend class ParsingChain;
+    constexpr NoParsingResult() noexcept {}
+    NoParsingResult(const NoParsingResult&) = delete;
+    NoParsingResult(NoParsingResult&&) = delete;
+};
+class CustomParser {
+    ~CustomParser() = delete;
+};
+
 template<class D, class... Types, class... Args> class ParsingChain<D, TypeArr<Types...>, Args...> {
     friend class internal::IstreamInterface<D>;
     template<class D2, class Types2, class... Args2> friend class ParsingChain;
     D& ref;
     [[no_unique_address]] std::tuple<Args...> args;
-    constexpr ParsingChain(D& r, std::tuple<Args...>&& a) noexcept : ref(r), args(a) {}
+    GSH_INTERNAL_INLINE constexpr ParsingChain(D& r, std::tuple<Args...>&& a) noexcept : ref(r), args(std::move(a)) {}
     template<class... Options>
         requires(sizeof...(Args) < sizeof...(Types))
     GSH_INTERNAL_INLINE constexpr auto next_chain(Options&&... options) const noexcept {
-        return ParsingChain<D, TypeArr<Types...>, Args..., std::tuple<Options...>>(ref, std::tuple_cat(args, std::make_tuple(std::forward_as_tuple(options...))));
+        return ParsingChain<D, TypeArr<Types...>, Args..., std::tuple<Options...>>(ref, std::tuple_cat(args, std::make_tuple(std::forward_as_tuple(std::forward<Options>(options)...))));
     };
 public:
     ParsingChain() = delete;
@@ -78,13 +86,26 @@ public:
             (..., get<I>(*this));
         }(std::make_integer_sequence<itype::u32, sizeof...(Types)>());
     }
-    constexpr operator typename TypeArr<Types...>::type<0>() const noexcept {
+    template<class T> constexpr operator T() const noexcept {
         static_assert(sizeof...(Types) == 1);
-        return get<0>(*this);
+        return static_cast<T>(get<0>(*this));
     }
     constexpr decltype(auto) val() const noexcept {
         static_assert(sizeof...(Types) == 1);
         return get<0>(*this);
+    }
+    template<class... To>
+        requires(sizeof...(To) == 0 || sizeof...(To) == sizeof...(Types))
+    constexpr auto bind() const noexcept {
+        if constexpr (sizeof...(To) == 0) {
+            return [this]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
+                return std::tuple{ get<I>(*this)... };
+            }(std::make_integer_sequence<itype::u32, sizeof...(Types)>());
+        } else {
+            return [this]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
+                return std::tuple<To...>{ static_cast<To>(get<I>(*this))... };
+            }(std::make_integer_sequence<itype::u32, sizeof...(Types)>());
+        }
     }
 };
 

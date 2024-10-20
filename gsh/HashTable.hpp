@@ -37,23 +37,22 @@ namespace internal {
     private:
         constexpr static bool is_hs_tp = requires { typename hasher::is_transparent; };
         constexpr static bool is_eq_tp = requires { typename key_equal::is_transparent; };
-        constexpr static itype::u32 min_bucket_size = sizeof(Key) > 64 ? 1 : 64 / sizeof(Key);
-        [[no_unique_address]] hasher hash_func;
-        [[no_unique_address]] key_equal equal_func;
-        template<class K> constexpr itype::u64 calc_hash(K&& k) const {
+        constexpr static itype::u32 min_bucket_size = sizeof(Key) > 64 ? 1 : std::bit_ceil<itype::u32>(64 / sizeof(Key));
+        [[no_unique_address]] mutable hasher hash_func;
+        [[no_unique_address]] mutable key_equal equal_func;
+        template<class K> GSH_INTERNAL_INLINE constexpr itype::u64 calc_hash(K&& k) const noexcept(std::is_nothrow_invocable_v<hasher, std::conditional_t<is_hs_tp, K, key_type>>) {
             if constexpr (is_hs_tp) return Invoke(hash_func, std::forward<K>(k));
             else return Invoke(hash_func, static_cast<key_type>(std::forward<K>(k)));
         }
-        template<class T, class U> constexpr bool is_equal(T&& a, U&& b) const {
+        template<class T, class U> GSH_INTERNAL_INLINE constexpr bool is_equal(T&& a, U&& b) const noexcept(std::is_nothrow_invocable_v<key_equal, std::conditional_t<is_eq_tp, T, key_type>, std::conditional_t<is_eq_tp, U, key_type>>) {
             if constexpr (is_eq_tp) return Invoke(equal_func, std::forward<T>(a), std::forward<U>(b));
             else return Invoke(equal_func, static_cast<key_type>(std::forward<T>(a)), static_cast<key_type>(std::forward<U>(b)));
         }
-        constexpr const key_type& get_key(const value_type& v) const {
+        GSH_INTERNAL_INLINE constexpr const key_type& get_key(const value_type& v) const noexcept {
             if constexpr (is_set) return v;
             else return v.first;
         }
 
-        Vec<value_type, Alloc> data;
         struct node1 {
             itype::u32 index = 0xffffffff;
         };
@@ -63,65 +62,99 @@ namespace internal {
             itype::u32 prev = 0xffffffff;
         };
         using node = std::conditional_t<Multi, node2, node1>;
-        using node_alloc = traits::template rebind_alloc<node>;
-        Vec<node, node_alloc> nodes;
-        constexpr static itype::u32 bsize = 32;
-        struct bucket_type {
-            alignas(32) itype::u8 signature[bsize]{};
-            itype::u32 index[bsize]{};
-            itype::u32 exist = 0;
-        };
-        using bucket_alloc = traits::template rebind_alloc<bucket_type>;
-        Vec<bucket_type, bucket_alloc> buckets;
-        constexpr itype::u32 calc_index(itype::u64 h) const noexcept { return ((h >> 32) * buckets.size()) >> 32; }
-        template<class K> constexpr itype::u32 find_loc(const K& k, itype::u64 h, itype::u32 idx) const {
-            itype::u32 mask = 0;
-            {
-                mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(static_cast<ctype::c8>(h)), _mm256_load_si256(reinterpret_cast<const __m256i*>(buckets[idx].signature))));
-                mask &= buckets[idx].exist;
-            }
-            {
-                const itype::u32* ptr = buckets[idx].index;
-                itype::u32 res = 0xffffffff;
-                while (mask != 0) {
-                    itype::u32 tmp = std::countr_zero(mask);
-                    res = is_equal(get_key(data[ptr[tmp]]), k) ? tmp : res;
-                    mask &= mask - 1;
+        using node_allocator = traits::template rebind_alloc<node>;
+        using node_alloc_traits = AllocatorTraits<node>;
+        [[no_unique_address]] allocator_type data_alloc;
+        [[no_unique_address]] node_allocator node_alloc;
+        value_type* data;
+        node* nodes;
+        itype::u32 nodes_cap;
+        itype::u32 nodes_size;
+        template<class... Args> GSH_INTERNAL_INLINE constexpr void push_node(Args&&... args) {
+            if (nodes_size == nodes_cap) [[unlikely]] {
+                itype::u32 new_cap = (nodes_cap << 1) + 1;
+                value_type* new_data = traits::allocate(data_alloc, new_cap);
+                node* new_nodes = node_alloc_traits::allocate(node_alloc, new_cap);
+                if (data != nullptr) [[likely]] {
+                    for (u32 i = 0; i != nodes_size; ++i) {
+                        traits::construct(data_alloc, std::move(data[i]));
+                        traits::destroy(data_alloc, data[i]);
+                    }
+                    for (u32 i = 0; i != nodes_size; ++i) {
+                        traits::construct(node_alloc, nodes[i]);
+                        traits::destroy(node_alloc, nodes[i]);
+                    }
+                    traits::deallocate(data_alloc, data);
+                    traits::deallocate(data_alloc, nodes);
                 }
-                return res;
+                data = new_data;
+                nodes = new_nodes;
+                nodes_cap = new_cap;
             }
+            traits::construct(data_alloc, data + nodes_size, std::forward<Args>(args)...);
+            node_alloc_traits::construct(node_alloc, nodes + nodes_size);
+            ++nodes_size;
         }
-        template<class K> constexpr iterator find_impl(const K& k) {
+        GSH_INTERNAL_INLINE constexpr void pop_node() {
+            traits::destroy(data_alloc, data + nodes_size - 1);
+            node_alloc_traits::destroy(node_alloc, nodes + nodes_size - 1);
+            --nodes_size;
+        }
+
+        using signature_allocator = traits::template rebind_alloc<ctype::c8>;
+        using index_allocator = traits::template rebind_alloc<itype::u32>;
+        using signature_alloc_traits = AllocatorTraits<signature_allocator>;
+        using index_alloc_traits = AllocatorTraits<index_allocator>;
+        [[no_unique_address]] signature_allocator signature_alloc;
+        [[no_unique_address]] index_allocator index_alloc;
+        ctype::c8* signatures;
+        itype::u32* indexes;
+        itype::u32 signatures_size;
+
+        GSH_INTERNAL_INLINE constexpr itype::u32 calc_index(itype::u64 h) const noexcept { return (h >> 32) & (buckets_size - 1); }
+        template<class K> constexpr itype::u32 find_loc(const K& k, itype::u64 h, itype::u32 idx) const noexcept(noexcept(is_equal(std::declval<const key_type&>(), k))) {
+            itype::u32 mask = 0;
+            mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(static_cast<ctype::c8>(h | (1 << 7))), _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(signatures + idx))));
+            const itype::u32* ptr = indexes + idx;
+            while (mask != 0) {
+                itype::u32 tmp = std::countr_zero(mask);
+                if (is_equal(get_key(data[ptr[tmp]]), k)) [[likely]] {
+                    return idx + tmp;
+                }
+                mask &= mask - 1;
+            }
+            return 0xffffffff;
+        }
+        template<class K> constexpr static bool nothrow_loc_computable = noexcept(calc_hash(std::declval<const K&>())) && noexcept(find_loc(std::declval<const K&>(), itype::u64(), itype::u32()));
+        template<class K> GSH_INTERNAL_INLINE constexpr iterator find_impl(const K& k) noexcept(nothrow_loc_computable<K>) {
             const itype::u64 h = calc_hash(k);
-            const itype::u32 idx = calc_index(h);
-            const itype::u32 loc = find_loc(k, h, idx);
-            const iterator res = begin() + buckets[idx].index[(loc == 0xffffffff ? 0 : loc)];
+            const itype::u32 loc = find_loc(k, h, calc_index(h));
+            const iterator res = begin() + indexes[(loc == 0xffffffff ? 0 : loc)];
             return loc == 0xffffffff ? end() : res;
         }
-        template<class K> constexpr const_iterator find_impl(const K& k) const {
+        template<class K> GSH_INTERNAL_INLINE constexpr const_iterator find_impl(const K& k) const noexcept(nothrow_loc_computable<K>) {
             const itype::u64 h = calc_hash(k);
-            const itype::u32 idx = calc_index(h);
-            const itype::u32 loc = find_loc(k, h, idx);
-            const const_iterator res = cbegin() + buckets[idx].index[(loc == 0xffffffff ? 0 : loc)];
+            const itype::u32 loc = find_loc(k, h, calc_index(h));
+            const const_iterator res = cbegin() + indexes[(loc == 0xffffffff ? 0 : loc)];
             return loc == 0xffffffff ? cend() : res;
         }
-        template<class K> constexpr itype::u32 count_impl(const K& k) const {
+        template<class K> GSH_INTERNAL_INLINE constexpr itype::u32 count_impl(const K& k) const noexcept(nothrow_loc_computable<K>) {
             const itype::u64 h = calc_hash(k);
-            const itype::u32 idx = calc_index(h);
-            const itype::u32 loc = find_loc(k, h, idx);
+            const itype::u32 loc = find_loc(k, h, calc_index(h));
             if constexpr (!Multi) return loc != 0xffffffff;
             else {
                 if (loc == 0xffffffff) return 0;
                 itype::u32 res = 0;
-                for (itype::u32 i = buckets[idx].index[loc]; i != 0xffffffff; i = nodes[i].next) ++res;
+                for (itype::u32 i = indexes[loc]; i != 0xffffffff; i = nodes[i].next) ++res;
                 return res;
             }
         }
-        template<class K> constexpr bool contains_impl(const K& k) const {
+        template<class K> GSH_INTERNAL_INLINE constexpr bool contains_impl(const K& k) const noexcept(nothrow_loc_computable<K>) {
             const itype::u64 h = calc_hash(k);
             return find_loc(k, h, calc_index(h)) != 0xffffffff;
         }
         constexpr bool rehash_impl(itype::u32 n) {
+            /*
             buckets.clear();
             buckets.resize(n);
             Vec<itype::u32> cnt(n);
@@ -156,37 +189,37 @@ namespace internal {
                 ++i;
             }
             return f == 0;
+            */
         }
-        constexpr itype::u32 insert_impl(const key_type& key, itype::u32 n) {
+        template<class K> GSH_INTERNAL_INLINE constexpr void insert_impl(K&& key) {
             const itype::u64 h = calc_hash(key);
             itype::u32 idx = calc_index(h);
             itype::u32 loc = find_loc(key, h, idx);
             if (loc == 0xffffffff) {
-                constexpr itype::u32 filled = static_cast<itype::u32>((1ull << bsize) - 1);
-                if (buckets[idx].exist == filled) [[unlikely]] {
-                    while (!rehash_impl(buckets.size() * 2)) {}
-                    while (true) {
-                        idx = calc_index(h);
-                        if (buckets[idx].exist != filled) [[likely]]
-                            break;
-                        while (!rehash_impl(buckets.size() * 2)) {}
-                    }
+                itype::u32 exist = 0;
+                while (true) {
+                    exist = _mm256_movemask_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(signatures + idx)));
+                    if (exist != 0xffffffff) [[likely]]
+                        break;
+                    while (!rehash_impl(signatures_size * 2)) {}
+                    idx = calc_index(h);
+                    exist = calc_mask();
                 }
-                loc = std::countr_zero(~buckets[idx].exist);
-                buckets[idx].exist |= 1u << loc;
-                buckets[idx].signature[loc] = h;
-                nodes.emplace_back();
-                buckets[idx].index[loc] = n;
-                nodes[n].index = idx * bsize + loc;
-                return n;
+                loc = idx + std::countr_zero(exist);
+                push_node(std::forward<K>(key));
+                const itype::u32 n = nodes_size - 1;
+                signatures[loc] = h;
+                indexes[loc] = n;
+                nodes[n].index = loc;
             } else {
                 if constexpr (Multi) {
-                    const itype::u32 m = buckets[idx].index[loc];
-                    buckets[idx].index[loc] = n;
+                    push_node(std::forward<K>(key));
+                    const itype::u32 n = nodes_size - 1, m = indexes[loc];
+                    nodes[n].index = loc;
+                    nodes[n].next = m;
                     nodes[m].prev = n;
-                    nodes.emplace_back(idx * bsize + loc, m, 0xffffffff);
-                    return n;
-                } else return buckets[idx].index[loc];
+                    indexes[loc] = n;
+                }
             }
         }
     public:

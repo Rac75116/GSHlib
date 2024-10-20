@@ -389,7 +389,7 @@ public:
         }
         MemoryCopy(c, stream.current(), rem);
         c += rem;
-        stream.skip(rem);
+        stream.skip(rem + 1);
         *c = '\0';
         return s;
     }

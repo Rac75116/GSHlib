@@ -3,7 +3,7 @@
 #include <cstring>      // std::memset
 #include <type_traits>  // std::is_constant_evaluated
 #include "TypeDef.hpp"  // gsh::itype
-#include "Util.hpp"     // gsh::Assume
+#include "Util.hpp"     // gsh::Assume, gsh::StrLen
 #include <immintrin.h>
 
 namespace gsh {
@@ -11,8 +11,9 @@ namespace gsh {
 template<itype::u32 Size>
     requires(Size <= (1u << 24))
 class BitTree24 {
-    constexpr static itype::u32 s1 = ((Size + 262143) / 262144 + 7) / 8 * 8, s2 = ((Size + 4095) / 4096 + 7) / 8 * 8, s3 = ((Size + 63) / 64 + 7) / 8 * 8;
-    alignas(32) itype::u64 v0, v1[s1], v2[s2], v3[s3];
+    constexpr static itype::u32 s1 = ((Size + 262143) / 262144 + 63) / 64 * 64, s2 = ((Size + 4095) / 4096 + 63) / 64 * 64, s3 = ((Size + 63) / 64 + 63) / 64 * 64;
+    itype::u64 v0;
+    alignas(32) itype::u64 v1[s1], v2[s2], v3[s3];
     constexpr void build() noexcept {
         if (std::is_constant_evaluated()) {
             v0 = 0;
@@ -56,9 +57,8 @@ public:
     }
     constexpr BitTree24(const ctype::c8* p) { assign(p); }
     constexpr BitTree24(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') { assign(p, sz, one); }
-    constexpr ~BitTree24() noexcept = default;
     constexpr BitTree24& operator=(const BitTree24&) noexcept = default;
-    constexpr void assign(const ctype::c8* p) { assign(p, std::strlen(p)); }
+    constexpr void assign(const ctype::c8* p) { assign(p, StrLen(p)); }
     constexpr void assign(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') {
         sz = sz < Size ? sz : Size;
         if (std::is_constant_evaluated()) {

@@ -95,10 +95,10 @@ namespace internal {
             node_alloc_traits::construct(node_alloc, nodes + nodes_size);
             ++nodes_size;
         }
-        GSH_INTERNAL_INLINE constexpr void pop_node() {
-            traits::destroy(data_alloc, data + nodes_size - 1);
-            node_alloc_traits::destroy(node_alloc, nodes + nodes_size - 1);
+        GSH_INTERNAL_INLINE constexpr void pop_node() noexcept(noexcept(traits::destroy(data_alloc, data + nodes_size)) && noexcept(node_alloc_traits::destroy(node_alloc, nodes + nodes_size))) {
             --nodes_size;
+            traits::destroy(data_alloc, data + nodes_size);
+            node_alloc_traits::destroy(node_alloc, nodes + nodes_size);
         }
 
         using signature_allocator = traits::template rebind_alloc<ctype::c8>;
@@ -111,8 +111,8 @@ namespace internal {
         itype::u32* indexes;
         itype::u32 signatures_size;
 
-        GSH_INTERNAL_INLINE constexpr itype::u32 calc_index(itype::u64 h) const noexcept { return (h >> 32) & (buckets_size - 1); }
-        template<class K> constexpr itype::u32 find_loc(const K& k, itype::u64 h, itype::u32 idx) const noexcept(noexcept(is_equal(std::declval<const key_type&>(), k))) {
+        GSH_INTERNAL_INLINE constexpr itype::u32 calc_index(itype::u64 h) const noexcept { return (h >> 32) & (signatures_size - 1); }
+        template<class K> GSH_INTERNAL_INLINE constexpr itype::u32 find_loc(const K& k, itype::u64 h, itype::u32 idx) const noexcept(noexcept(is_equal(std::declval<const key_type&>(), k))) {
             itype::u32 mask = 0;
             mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(static_cast<ctype::c8>(h | (1 << 7))), _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(signatures + idx))));
             const itype::u32* ptr = indexes + idx;
@@ -125,6 +125,7 @@ namespace internal {
             }
             return 0xffffffff;
         }
+        GSH_INTERNAL_INLINE constexpr itype::u32 make_mask(itype::u32 idx) const noexcept { return _mm256_movemask_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(signatures + idx))); }
         template<class K> constexpr static bool nothrow_loc_computable = noexcept(calc_hash(std::declval<const K&>())) && noexcept(find_loc(std::declval<const K&>(), itype::u64(), itype::u32()));
         template<class K> GSH_INTERNAL_INLINE constexpr iterator find_impl(const K& k) noexcept(nothrow_loc_computable<K>) {
             const itype::u64 h = calc_hash(k);
@@ -154,42 +155,37 @@ namespace internal {
             return find_loc(k, h, calc_index(h)) != 0xffffffff;
         }
         constexpr bool rehash_impl(itype::u32 n) {
-            /*
-            buckets.clear();
-            buckets.resize(n);
-            Vec<itype::u32> cnt(n);
-            itype::u32 i = 0, j = data.size();
-            while (i + 8 < j) {
-                itype::u32 f = 0;
-                for (itype::u32 k = 0; k != 8; ++k) {
-                    const itype::u64 h = calc_hash(get_key(data[i + k]));
-                    const itype::u32 idx = calc_index(h);
-                    const itype::u32 tmp = cnt[idx]++;
-                    const itype::u32 loc = tmp % bsize;
-                    f += tmp == 32;
-                    buckets[idx].exist |= 1u << loc;
-                    buckets[idx].signature[loc] = h;
-                    buckets[idx].index[loc] = i + k;
-                    nodes[i + k].index = idx * bsize + loc;
-                }
-                i += 8;
-                if (f != 0) return false;
+            for (itype::u32 i = 0; i != signatures_size + 32; ++i) {
+                signature_alloc_traits::destroy(signature_alloc, signatures + i);
+                index_alloc_traits::destroy(index_alloc, indexes + i);
             }
-            itype::u32 f = 0;
-            while (i < j) {
+            signature_alloc_traits::deallocate(signature_alloc, signatures, signatures_size + 32);
+            index_alloc_traits::deallocate(index_alloc, indexes, signatures_size + 32);
+            signatures_size = n;
+            signatures = signature_alloc_traits::allocate(signature_alloc, n + 32);
+            indexes = index_alloc_traits::allocate(index_alloc, n + 32);
+            for (itype::u32 i = 0; i != n + 32; ++i) {
+                signature_alloc_traits::construct(signature_alloc, signatures + i);
+                index_alloc_traits::construct(index_alloc, indexes + i);
+            }
+            for (itype::u32 i = 0; i != nodes_size; ++i) {
+                if constexpr (Multi) {
+                    if (nodes[i].prev != 0xffffffff) continue;
+                }
                 const itype::u64 h = calc_hash(get_key(data[i]));
                 const itype::u32 idx = calc_index(h);
-                const itype::u32 tmp = cnt[idx]++;
-                const itype::u32 loc = tmp % bsize;
-                f += tmp == 32;
-                buckets[idx].exist |= 1u << loc;
-                buckets[idx].signature[loc] = h;
-                buckets[idx].index[loc] = i;
-                nodes[i].index = idx * bsize + loc;
-                ++i;
+                const itype::u32 mask = make_mask(idx);
+                if (mask == 0xffffffff) [[unlikely]]
+                    return false;
+                const itype::u32 loc = idx + std::countr_one(mask);
+                signatures[loc] = h | (1 << 7);
+                indexes[loc] = i;
+                nodes[i].index = loc;
+                if constexpr (Multi) {
+                    //TODO
+                }
             }
-            return f == 0;
-            */
+            return true;
         }
         template<class K> GSH_INTERNAL_INLINE constexpr void insert_impl(K&& key) {
             const itype::u64 h = calc_hash(key);
@@ -198,17 +194,17 @@ namespace internal {
             if (loc == 0xffffffff) {
                 itype::u32 exist = 0;
                 while (true) {
-                    exist = _mm256_movemask_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(signatures + idx)));
+                    exist = make_mask(idx);
                     if (exist != 0xffffffff) [[likely]]
                         break;
                     while (!rehash_impl(signatures_size * 2)) {}
                     idx = calc_index(h);
                     exist = calc_mask();
                 }
-                loc = idx + std::countr_zero(exist);
+                loc = idx + std::countr_one(exist);
                 push_node(std::forward<K>(key));
                 const itype::u32 n = nodes_size - 1;
-                signatures[loc] = h;
+                signatures[loc] = h | (1 << 7);
                 indexes[loc] = n;
                 nodes[n].index = loc;
             } else {

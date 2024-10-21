@@ -143,47 +143,70 @@ public:
     using is_always_equal = typename internal::IsAlwaysEqual<Alloc>::type;
     template<class U> using rebind_alloc = typename internal::RebindAlloc<Alloc, U>::type;
     template<class U> using rebind_traits = AllocatorTraits<typename internal::RebindAlloc<Alloc, U>::type>;
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n) { return a.allocate(n); }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, size_type align) { return a.allocate(align, n); }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, const_void_pointer hint) {
-        if constexpr (requires { a.allocate(n, hint); }) return a.allocate(n, hint);
-        else return a.allocate(n);
+private:
+    constexpr static bool with_hint = requires(Alloc& a, size_type n, const_void_pointer hint) { a.allocate(n, hint); };
+    constexpr static bool aligned_with_hint = requires(Alloc& a, size_type n, std::align_val_t align, const_void_pointer hint) { a.allocate(n, align, hint); };
+    template<class... Args> constexpr static bool constructible = requires(Alloc& a, pointer p, Args&&... args) { a.construct(p, std::forward<Args>(args)...); };
+    constexpr static bool destructible = requires(Alloc& a, pointer p) { a.destroy(p); };
+    constexpr static bool selectable = requires(Alloc& a) { a.select_on_container_copy_construction(); };
+public:
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n) noexcept(noexcept(a.allocate(n))) { return a.allocate(n); }
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, std::align_val_t align) noexcept(noexcept(a.allocate(n, align))) { return a.allocate(n, align); }
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, const_void_pointer hint) noexcept(noexcept(a.allocate(n, hint)))
+        requires(with_hint)
+    {
+        return a.allocate(n, hint);
     }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, size_type align, const_void_pointer hint) {
-        if constexpr (requires { a.allocate(align, n, hint); }) return a.allocate(align, n, hint);
-        else return a.allocate(align, n);
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, const_void_pointer) noexcept(noexcept(a.allocate(n)))
+        requires(!with_hint)
+    {
+        return a.allocate(n);
     }
-    static constexpr void deallocate(Alloc& a, pointer p, size_type n) { a.deallocate(p, n); }
-    static constexpr void deallocate(Alloc& a, pointer p, size_type n, size_type align) { a.deallocate(p, n, align); }
-    [[nodiscard]] static constexpr pointer reallocate(Alloc& a, pointer p, size_type prev_size, size_type new_size) {
-        if constexpr (requires { a.reallocate(p, prev_size, new_size); }) return a.reallocate(p, prev_size, new_size);
-        else {
-            deallocate(a, p, prev_size);
-            return allocate(a, new_size, p);
-        }
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, std::align_val_t align, const_void_pointer hint) noexcept(noexcept(a.allocate(n, align, hint)))
+        requires(aligned_with_hint)
+    {
+        return a.allocate(n, align, hint);
     }
-    [[nodiscard]] static constexpr pointer reallocate(Alloc& a, pointer p, size_type prev_size, size_type new_size, size_type align) {
-        if constexpr (requires { a.reallocate(p, prev_size, new_size, align); }) return a.reallocate(p, prev_size, new_size, align);
-        else {
-            deallocate(a, p, prev_size, align);
-            return allocate(a, new_size, p, align);
-        }
+    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, std::align_val_t align, const_void_pointer) noexcept(noexcept(a.allocate(align, n)))
+        requires(!aligned_with_hint)
+    {
+        return a.allocate(align, n);
     }
+    static constexpr void deallocate(Alloc& a, pointer p, size_type n) noexcept(noexcept(a.deallocate(p, n))) { a.deallocate(p, n); }
+    static constexpr void deallocate(Alloc& a, pointer p, size_type n, std::align_val_t align) noexcept(noexcept(a.deallocate(p, n, align))) { a.deallocate(p, n, align); }
     static constexpr size_type max_size(const Alloc& a) noexcept {
         if constexpr (requires { a.max_size(); }) return a.max_size();
         else return std::numeric_limits<size_type>::max() / sizeof(value_type);
     }
-    template<class T, class... Args> static constexpr void construct(Alloc& a, T* p, Args&&... args) {
-        if constexpr (requires { a.construct(p, std::forward<Args>(args)...); }) a.construct(p, std::forward<Args>(args)...);
-        else std::construct_at(p, std::forward<Args>(args)...);
+    template<class T, class... Args> static constexpr void construct(Alloc& a, T* p, Args&&... args) noexcept(noexcept(a.construct(p, std::forward<Args>(args)...)))
+        requires(constructible<Args...>)
+    {
+        a.construct(p, std::forward<Args>(args)...);
     }
-    template<class T> static constexpr void destroy(Alloc& a, T* p) {
-        if constexpr (requires { a.destroy(p); }) a.destroy(p);
-        else std::destroy_at(p);
+    template<class T, class... Args> static constexpr void construct(Alloc&, T* p, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+        requires(!constructible<Args...>)
+    {
+        if constexpr (!std::is_trivially_constructible_v<T, Args...>) std::construct_at(p, std::forward<Args>(args)...);
     }
-    static constexpr Alloc select_on_container_copy_construction(const Alloc& a) {
-        if constexpr (requires { a.select_on_container_copy_construction(); }) return a.select_on_container_copy_construction();
-        else return a;
+    template<class T> static constexpr void destroy(Alloc& a, T* p) noexcept(noexcept(a.destroy(p)))
+        requires(destructible)
+    {
+        return a.destroy(p);
+    }
+    template<class T> static constexpr void destroy(Alloc&, T* p) noexcept(std::is_nothrow_destructible_v<T>)
+        requires(!destructible)
+    {
+        if constexpr (!std::is_trivially_destructible_v<T>) return std::destroy_at(p);
+    }
+    static constexpr Alloc select_on_container_copy_construction(const Alloc& a) noexcept(noexcept(a.select_on_container_copy_construction()))
+        requires(selectable)
+    {
+        return a.select_on_container_copy_construction();
+    }
+    static constexpr Alloc select_on_container_copy_construction(const Alloc& a) noexcept(std::is_nothrow_copy_constructible_v<Alloc>)
+        requires(!selectable)
+    {
+        return a;
     }
 };
 
@@ -201,8 +224,8 @@ public:
         if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
         else return static_cast<T*>(::operator new(sizeof(T) * n));
     }
-    [[nodiscard]] constexpr T* allocate(size_type n, size_type align) { return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(align))); }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) {
+    [[nodiscard]] constexpr T* allocate(size_type n, std::align_val_t align) { return static_cast<T*>(::operator new(sizeof(T) * n, align)); }
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) noexcept {
 #ifdef __cpp_sized_deallocation
         if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
         else ::operator delete(p, n);
@@ -211,11 +234,11 @@ public:
         else ::operator delete(p);
 #endif
     }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, size_type align) {
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, std::align_val_t align) noexcept {
 #ifdef __cpp_sized_deallocation
-        ::operator delete(p, n, static_cast<std::align_val_t>(align));
+        ::operator delete(p, n, align);
 #else
-        ::operator delete(p, static_cast<std::align_val_t>(align));
+        ::operator delete(p, align);
 #endif
     }
     constexpr Allocator& operator=(const Allocator&) = default;
@@ -266,11 +289,11 @@ public:
         *cnt = static_cast<ctype::c8*>(ptr) - buf;
         return res;
     }
-    [[nodiscard]] constexpr T* allocate(size_type n, size_type align) {
-        if (std::is_constant_evaluated()) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(align)));
+    [[nodiscard]] constexpr T* allocate(size_type n, std::align_val_t align) {
+        if (std::is_constant_evaluated()) return static_cast<T*>(::operator new(sizeof(T) * n, align));
         void* ptr = static_cast<void*>(buf + *cnt);
         std::size_t space = end - static_cast<ctype::c8*>(ptr);
-        std::align(align, sizeof(T) * n, ptr, space);
+        std::align(static_cast<std::size_t>(align), sizeof(T) * n, ptr, space);
         if (ptr == nullptr) throw Exception("gsh::PoolAllocator::allocate / Failed to allocate memory.");
         T* res = static_cast<T*>(ptr);
         *cnt = static_cast<ctype::c8*>(ptr) - buf;
@@ -287,12 +310,12 @@ public:
 #endif
         }
     }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, size_type align) {
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, std::align_val_t align) {
         if (std::is_constant_evaluated()) {
 #ifdef __cpp_sized_deallocation
-            ::operator delete(p, n, static_cast<std::align_val_t>(align));
+            ::operator delete(p, n, align);
 #else
-            ::operator delete(p, static_cast<std::align_val_t>(align));
+            ::operator delete(p, align);
 #endif
         }
     }

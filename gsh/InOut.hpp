@@ -70,7 +70,7 @@ public:
                 return Invoke(std::forward<decltype(parser)>(parser), std::forward<decltype(args)>(args)...);
             }
         };
-        using value_type = typename TypeArr<Types...>::type<N>;
+        using value_type = typename TypeArr<Types...>::template type<N>;
         if constexpr (N < sizeof...(Args)) {
             if constexpr (std::same_as<CustomParser, value_type>) {
                 return std::apply([get_result, &chain](auto&& parser, auto&&... args) -> decltype(auto) { return get_result(std::forward<decltype(parser)>(parser), chain.ref, std::forward<decltype(args)>(args)...); }, std::get<N>(chain.args));

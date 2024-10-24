@@ -217,15 +217,17 @@ public:
     using size_type = itype::u32;
     using difference_type = itype::i32;
     using is_always_equal = std::true_type;
-    constexpr Allocator() noexcept = default;
-    constexpr Allocator(const Allocator&) noexcept = default;
+    constexpr Allocator() noexcept {}
+    constexpr Allocator(const Allocator&) noexcept {}
     template<class U> constexpr Allocator(const Allocator<U>&) noexcept {}
     [[nodiscard]] constexpr T* allocate(size_type n) {
+        if (std::is_constant_evaluated()) return std::allocator<T>().allocate(n);
         if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
         else return static_cast<T*>(::operator new(sizeof(T) * n));
     }
-    [[nodiscard]] constexpr T* allocate(size_type n, std::align_val_t align) { return static_cast<T*>(::operator new(sizeof(T) * n, align)); }
+    [[nodiscard]] T* allocate(size_type n, std::align_val_t align) { return static_cast<T*>(::operator new(sizeof(T) * n, align)); }
     constexpr void deallocate(T* p, [[maybe_unused]] size_type n) noexcept {
+        if (std::is_constant_evaluated()) return std::allocator<T>().deallocate(p, n);
 #ifdef __cpp_sized_deallocation
         if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
         else ::operator delete(p, n);
@@ -234,7 +236,7 @@ public:
         else ::operator delete(p);
 #endif
     }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, std::align_val_t align) noexcept {
+    void deallocate(T* p, [[maybe_unused]] size_type n, std::align_val_t align) noexcept {
 #ifdef __cpp_sized_deallocation
         ::operator delete(p, n, align);
 #else
@@ -276,10 +278,7 @@ public:
         if (ref != nullptr) --*ref;
     }
     [[nodiscard]] constexpr T* allocate(size_type n) {
-        if (std::is_constant_evaluated()) {
-            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
-            else return static_cast<T*>(::operator new(sizeof(T) * n));
-        }
+        if (std::is_constant_evaluated()) return Allocator<T>().allocate(n);
         constexpr itype::u32 align = __STDCPP_DEFAULT_NEW_ALIGNMENT__ < alignof(T) ? alignof(T) : __STDCPP_DEFAULT_NEW_ALIGNMENT__;
         void* ptr = static_cast<void*>(buf + *cnt);
         std::size_t space = end - static_cast<ctype::c8*>(ptr);
@@ -289,8 +288,7 @@ public:
         *cnt = static_cast<ctype::c8*>(ptr) - buf;
         return res;
     }
-    [[nodiscard]] constexpr T* allocate(size_type n, std::align_val_t align) {
-        if (std::is_constant_evaluated()) return static_cast<T*>(::operator new(sizeof(T) * n, align));
+    [[nodiscard]] T* allocate(size_type n, std::align_val_t align) {
         void* ptr = static_cast<void*>(buf + *cnt);
         std::size_t space = end - static_cast<ctype::c8*>(ptr);
         std::align(static_cast<std::size_t>(align), sizeof(T) * n, ptr, space);
@@ -299,26 +297,10 @@ public:
         *cnt = static_cast<ctype::c8*>(ptr) - buf;
         return res;
     }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) {
-        if (std::is_constant_evaluated()) {
-#ifdef __cpp_sized_deallocation
-            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
-            else ::operator delete(p, n);
-#else
-            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, static_cast<std::align_val_t>(alignof(T)));
-            else ::operator delete(p);
-#endif
-        }
+    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) noexcept {
+        if (std::is_constant_evaluated()) return Allocator<T>().deallocate(p, n);
     }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n, std::align_val_t align) {
-        if (std::is_constant_evaluated()) {
-#ifdef __cpp_sized_deallocation
-            ::operator delete(p, n, align);
-#else
-            ::operator delete(p, align);
-#endif
-        }
-    }
+    void deallocate(T*, size_type, std::align_val_t) noexcept {}
     constexpr PoolAllocator& operator=(const PoolAllocator& a) noexcept {
         if (ref != nullptr) --*ref;
         cnt = a.cnt, ref = a.ref, buf = a.buf, end = a.end;
@@ -332,6 +314,132 @@ public:
         return *this;
     }
     template<class U> friend constexpr bool operator==(const PoolAllocator& a, const PoolAllocator<U>& b) noexcept { return a.cnt == b.cnt && a.ref == b.ref && a.buf == b.buf && a.end == b.end; }
+};
+
+template<class T> class SingleAllocator {
+    T* buffer[24] = {};
+    itype::u32 x = 0xffffffff, y = 0;
+    T** del = nullptr;
+    itype::u32 end = 0;
+    [[no_unique_address]] Allocator<T> alloc;
+    [[no_unique_address]] Allocator<T*> del_alloc;
+    using traits = AllocatorTraits<Allocator<T>>;
+    using del_alloc_traits = AllocatorTraits<Allocator<T*>>;
+public:
+    using value_type = T;
+    using propagate_on_container_copy_assignmant = std::false_type;
+    using propagate_on_container_move_assignment = std::false_type;
+    using propagate_on_container_swap = std::false_type;
+    using size_type = itype::u32;
+    using difference_type = itype::i32;
+    using is_always_equal = std::false_type;
+    constexpr SingleAllocator() noexcept {}
+    constexpr SingleAllocator(const SingleAllocator&) noexcept {}
+    template<class U> constexpr SingleAllocator(const SingleAllocator<U>&) noexcept {}
+    constexpr ~SingleAllocator() noexcept {
+        for (itype::u32 i = 0; i != x + 1; ++i) traits::deallocate(alloc, buffer[i], 1 << i);
+        if (del != nullptr) del_alloc_traits::deallocate(del_alloc, del, (1u << (x + 1)) - 1);
+    }
+    constexpr SingleAllocator& operator=(const SingleAllocator&) noexcept {}
+    constexpr T* allocate(itype::u32) {
+        if (y == (1u << (x + 1)) >> 1) {
+            if (end != 0) [[likely]] {
+                return del[--end];
+            } else {
+                x += 1, y = 0;
+                buffer[x] = traits::allocate(alloc, 1 << x);
+                T** new_del = del_alloc_traits::allocate(del_alloc, (1 << (x + 1)) - 1);
+                if (del != nullptr) [[likely]] {
+                    for (itype::u32 i = 0; i != end; ++i) new_del[i] = del[i];
+                    del_alloc_traits::deallocate(del_alloc, del, (1 << x) - 1);
+                }
+                del = new_del;
+            }
+        }
+        return &buffer[x][y++];
+    }
+    constexpr void deallocate(T* p, itype::u32) noexcept { del[end++] = p; }
+    constexpr itype::u32 max_size() const noexcept { return (1 << 24) - 1; }
+    constexpr SingleAllocator select_on_container_copy_construction() const noexcept { return {}; }
+    template<class U> friend constexpr bool operator==(const SingleAllocator& a, const SingleAllocator<U>& b) noexcept { return false; }
+};
+
+template<class Alloc> class SharedAllocator {
+    static inline Alloc alloc;
+    using traits = AllocatorTraits<Alloc>;
+public:
+    using value_type = typename traits::value_type;
+    using propagate_on_container_copy_assignmant = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+    using size_type = typename traits::size_type;
+    using difference_type = typename traits::difference_type;
+    using is_always_equal = std::true_type;
+    using allocator_type = Alloc;
+    template<class U> class rebind {
+    public:
+        ~rebind() = delete;
+        using other = SharedAllocator<typename traits::template rebind_alloc<U>>;
+    };
+    constexpr SharedAllocator() noexcept {}
+    constexpr SharedAllocator(const SharedAllocator&) noexcept {}
+    template<class T> constexpr SharedAllocator(const SharedAllocator<T>&) noexcept {}
+    constexpr SharedAllocator& operator=(const SharedAllocator&) noexcept {}
+    template<class... Args> auto allocate(Args&&... args) noexcept(noexcept(alloc.allocate(std::forward<Args>(args)...))) { return alloc.allocate(std::forward<Args>(args)...); }
+    template<class... Args> void deallocate(Args&&... args) noexcept(noexcept(alloc.deallocate(std::forward<Args>(args)...))) { return alloc.deallocate(std::forward<Args>(args)...); }
+    size_type max_size() const noexcept { return alloc.max_size(); }
+    static Alloc& get_allocator() noexcept { return alloc; }
+    template<class T> friend constexpr bool operator==(const SharedAllocator& a, const SharedAllocator<T>& b) noexcept { return true; }
+};
+
+template<class Alloc> class ConstexprAllocator {
+    [[no_unique_address]] Alloc alloc;
+    using traits = AllocatorTraits<Alloc>;
+public:
+    using allocator_type = Alloc;
+    using value_type = typename traits::value_type;
+    using pointer = typename traits::pointer;
+    using const_pointer = typename traits::const_pointer;
+    using void_pointer = typename traits::void_pointer;
+    using const_void_pointer = typename traits::const_void_pointer;
+    using difference_type = typename traits::difference_type;
+    using size_type = typename traits::size_type;
+    using propagate_on_container_copy_assignment = typename traits::propagate_on_container_copy_assignment;
+    using propagate_on_container_move_assignment = typename traits::propagate_on_container_move_assignment;
+    using propagate_on_container_swap = typename traits::propagate_on_container_swap;
+    using is_always_equal = typename traits::is_always_equal;
+    template<class U> class rebind {
+    public:
+        ~rebind() = delete;
+        using other = ConstexprAllocator<typename traits::template rebind_alloc<U>>;
+    };
+    constexpr ConstexprAllocator() noexcept(noexcept(Alloc())) {}
+    constexpr ConstexprAllocator(const ConstexprAllocator&) noexcept(std::is_nothrow_copy_constructible_v<Alloc>) = default;
+    constexpr ConstexprAllocator(ConstexprAllocator&&) noexcept(std::is_nothrow_move_constructible_v<Alloc>) = default;
+    template<class U> constexpr ConstexprAllocator(const ConstexprAllocator<U>& a) noexcept(std::is_nothrow_constructible_v<Alloc, const U&>) : alloc(a.alloc) {}
+    template<class U> constexpr ConstexprAllocator(ConstexprAllocator<U>&& a) noexcept(std::is_nothrow_constructible_v<Alloc, U&&>) : alloc(std::move(a.alloc)) {}
+    constexpr ConstexprAllocator& operator=(const ConstexprAllocator& a) noexcept(std::is_nothrow_copy_assignable_v<Alloc>) {
+        alloc = a.alloc;
+        return *this;
+    }
+    constexpr ConstexprAllocator& operator=(ConstexprAllocator&& a) noexcept(std::is_nothrow_move_assignable_v<Alloc>) {
+        alloc = std::move(a.alloc);
+        return *this;
+    }
+    template<class... Args> constexpr auto allocate(Args&&... args) noexcept(noexcept(alloc.allocate(std::forward<Args>(args)...))) {
+        if (std::is_constant_evaluated()) return Allocator<value_type>().allocate(std::forward<Args>(args)...);
+        else return alloc.allocate(std::forward<Args>(args)...);
+    }
+    template<class... Args> constexpr void deallocate(Args&&... args) noexcept(noexcept(alloc.deallocate(std::forward<Args>(args)...))) {
+        if (std::is_constant_evaluated()) return Allocator<value_type>().deallocate(std::forward<Args>(args)...);
+        else return alloc.deallocate(std::forward<Args>(args)...);
+    }
+    constexpr size_type max_size() const noexcept {
+        if (std::is_constant_evaluated()) return AllocatorTraits<Allocator<value_type>>::max_size();
+        else return alloc.max_size();
+    }
+    constexpr Alloc& get_allocator() noexcept { return alloc; }
+    template<class U> friend constexpr bool operator==(const ConstexprAllocator& a, const ConstexprAllocator<U>& b) noexcept(noexcept(a.alloc == b.alloc)) { return a.alloc == b.alloc; }
 };
 
 }  // namespace gsh

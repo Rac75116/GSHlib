@@ -5,6 +5,7 @@
 #include "Memory.hpp"
 #include "Range.hpp"
 #include "Vec.hpp"
+#include "Util.hpp"
 #include <immintrin.h>
 
 namespace gsh {
@@ -34,6 +35,7 @@ namespace internal {
         using iterator = std::conditional_t<is_set, const value_type*, value_type*>;
         using const_iterator = const value_type*;
         //using insert_return_type = void;
+        static_assert(std::is_same_v<typename traits::value_type, value_type>);
     private:
         constexpr static bool is_hs_tp = requires { typename hasher::is_transparent; };
         constexpr static bool is_eq_tp = requires { typename key_equal::is_transparent; };
@@ -66,10 +68,10 @@ namespace internal {
         using node_alloc_traits = AllocatorTraits<node>;
         [[no_unique_address]] allocator_type data_alloc;
         [[no_unique_address]] node_allocator node_alloc;
-        value_type* data;
-        node* nodes;
-        itype::u32 nodes_cap;
-        itype::u32 nodes_size;
+        value_type* data = nullptr;
+        node* nodes = nullptr;
+        itype::u32 nodes_cap = 0;
+        itype::u32 nodes_size = 0;
         template<class... Args> GSH_INTERNAL_INLINE constexpr void push_node(Args&&... args) {
             if (nodes_size == nodes_cap) [[unlikely]] {
                 itype::u32 new_cap = (nodes_cap << 1) + 1;
@@ -107,9 +109,9 @@ namespace internal {
         using index_alloc_traits = AllocatorTraits<index_allocator>;
         [[no_unique_address]] signature_allocator signature_alloc;
         [[no_unique_address]] index_allocator index_alloc;
-        ctype::c8* signatures;
-        itype::u32* indexes;
-        itype::u32 signatures_size;
+        ctype::c8* signatures = nullptr;
+        itype::u32* indexes = nullptr;
+        itype::u32 signatures_size = min_bucket_size;
 
         GSH_INTERNAL_INLINE constexpr itype::u32 calc_index(itype::u64 h) const noexcept { return (h >> 32) & (signatures_size - 1); }
         template<class K> GSH_INTERNAL_INLINE constexpr itype::u32 find_loc(const K& k, itype::u64 h, itype::u32 idx) const noexcept(noexcept(is_equal(std::declval<const key_type&>(), k))) {
@@ -155,15 +157,15 @@ namespace internal {
             return find_loc(k, h, calc_index(h)) != 0xffffffff;
         }
         constexpr bool rehash_impl(itype::u32 n) {
-            for (itype::u32 i = 0; i != signatures_size + 32; ++i) {
+            for (itype::u32 i = 0; i != signatures_size + 31; ++i) {
                 signature_alloc_traits::destroy(signature_alloc, signatures + i);
                 index_alloc_traits::destroy(index_alloc, indexes + i);
             }
-            signature_alloc_traits::deallocate(signature_alloc, signatures, signatures_size + 32);
-            index_alloc_traits::deallocate(index_alloc, indexes, signatures_size + 32);
+            signature_alloc_traits::deallocate(signature_alloc, signatures, signatures_size + 31);
+            index_alloc_traits::deallocate(index_alloc, indexes, signatures_size + 31);
             signatures_size = n;
-            signatures = signature_alloc_traits::allocate(signature_alloc, n + 32);
-            indexes = index_alloc_traits::allocate(index_alloc, n + 32);
+            signatures = signature_alloc_traits::allocate(signature_alloc, n + 31);
+            indexes = index_alloc_traits::allocate(index_alloc, n + 31);
             for (itype::u32 i = 0; i != n + 32; ++i) {
                 signature_alloc_traits::construct(signature_alloc, signatures + i);
                 index_alloc_traits::construct(index_alloc, indexes + i);
@@ -177,13 +179,17 @@ namespace internal {
                 const itype::u32 mask = make_mask(idx);
                 if (mask == 0xffffffff) [[unlikely]]
                     return false;
+                Assume(~mask != 0);
                 const itype::u32 loc = idx + std::countr_one(mask);
                 signatures[loc] = h | (1 << 7);
                 indexes[loc] = i;
-                nodes[i].index = loc;
                 if constexpr (Multi) {
-                    //TODO
-                }
+                    itype::u32 cur = i;
+                    do {
+                        nodes[cur].index = loc;
+                        cur = nodes[cur].next;
+                    } while (cur != 0xffffffff);
+                } else nodes[i].index = loc;
             }
             return true;
         }
@@ -199,8 +205,9 @@ namespace internal {
                         break;
                     while (!rehash_impl(signatures_size * 2)) {}
                     idx = calc_index(h);
-                    exist = calc_mask();
+                    exist = make_mask(idx);
                 }
+                Assume(~exist != 0);
                 loc = idx + std::countr_one(exist);
                 push_node(std::forward<K>(key));
                 const itype::u32 n = nodes_size - 1;
@@ -218,14 +225,38 @@ namespace internal {
                 }
             }
         }
+        GSH_INTERNAL_INLINE constexpr void init_impl() {
+            signatures = signature_alloc_traits::allocate(signature_alloc, signatures_size + 31);
+            indexes = index_alloc_traits::allocate(index_alloc, signatures_size + 31);
+            for (itype::u32 i = 0; i != signatures_size + 31; ++i) signature_alloc_traits::construct(signature_alloc, signatures + i);
+            for (itype::u32 i = 0; i != signatures_size + 31; ++i) index_alloc_traits::construct(index_alloc, indexes + i);
+        }
     public:
-        constexpr HashTable() : hash_func(), equal_func(), data(), nodes(), buckets(min_bucket_size) {}
-        constexpr explicit HashTable(size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : hash_func(hf), equal_func(eql), data(a), nodes(static_cast<node_alloc>(a)), buckets((n < min_bucket_size ? min_bucket_size : n), static_cast<bucket_alloc>(a)) {}
-        template<class InputIterator> constexpr HashTable(InputIterator first, InputIterator last, size_type n = min_bucket_size, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : hash_func(hf), equal_func(eql), data(a), nodes(static_cast<node_alloc>(a)), buckets((n < min_bucket_size ? min_bucket_size : n), static_cast<bucket_alloc>(a)) { insert(first, last); }
-        constexpr HashTable(const HashTable& v) = default;
-        constexpr HashTable(HashTable&& rv) = default;
-        constexpr explicit HashTable(const allocator_type& a) : hash_func(), equal_func(), data(a), nodes(static_cast<node_alloc>(a)), buckets(min_bucket_size, static_cast<bucket_alloc>(a)) {}
-        constexpr HashTable(const HashTable& v, const allocator_type& a) : hash_func(v.hash_func), equal_func(v.equal_func), data(v.data, a), nodes(v.nodes, static_cast<node_alloc>(a)), buckets(v.buckets, static_cast<bucket_alloc>(a)) {}
+        constexpr HashTable() { init_impl(); }
+        constexpr explicit HashTable(size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : hash_func(hf), equal_func(eql), data_alloc(a), node_alloc(a), signature_alloc(a), index_alloc(a) { init_impl(); }
+        template<class InputIterator> constexpr HashTable(InputIterator first, InputIterator last, size_type n = min_bucket_size, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : HashTable(n, hf, eql, a) { insert(first, last); }
+        constexpr HashTable(const HashTable& v)
+          : hash_func(v.hash_func),
+            equal_func(v.equal_func),
+            data_alloc(traits::select_on_container_copy_construction(v.data_alloc)),
+            node_alloc(node_alloc_traits::select_on_container_copy_construction(v.node_alloc)),
+            nodes_cap(std::bit_ceil(v.nodes_size)),
+            nodes_size(v.nodes_size),
+            signature_alloc(signature_alloc_traits::select_on_container_copy_construction(v.signature_alloc)),
+            index_alloc(index_alloc_traits::select_on_container_copy_construction(v.index_alloc)),
+            signatures_size(v.signatures_size) {
+            data = traits::allocate(data_alloc, nodes_cap);
+            nodes = node_alloc_traits::allocate(node_alloc, nodes_cap);
+            for (itype::u32 i = 0; i != nodes_size; ++i) traits::construct(data_alloc, data + i, v.data[i]);
+            for (itype::u32 i = 0; i != nodes_size; ++i) node_alloc_traits::construct(node_alloc, nodes + i, v.nodes[i]);
+            signatures = signature_alloc_traits::allocate(signature_alloc, signatures_size + 31);
+            indexes = index_alloc_traits::allocate(index_alloc, signatures_size + 31);
+            for (itype::u32 i = 0; i != signatures_size + 31; ++i) signature_alloc_traits::construct(signature_alloc, signatures + i, v.signatures[i]);
+            for (itype::u32 i = 0; i != signatures_size + 31; ++i) index_alloc_traits::construct(index_alloc, indexes + i, v.indexes[i]);
+        }
+        constexpr HashTable(HashTable&& rv) noexcept : hash_func(std::move(rv.hash_func)), equal_func(std::move(rv.equal_func)), data_alloc(std::move(rv.data_alloc)), node_alloc(std::move(rv.node_alloc)), data(rv.data), nodes(rv.nodes), nodes_cap(rv.nodes_cap), nodes_size(rv.nodes_size), signature_alloc(std::move(rv.signature_alloc)), index_alloc(std::move(rv.index_alloc)), signatures(rv.signatures), indexes(rv.indexes), signatures_size(rv.signatures_size) {}
+        constexpr explicit HashTable(const allocator_type& a) : data_alloc(a), node_alloc(a), signature_alloc(a), index_alloc(a) { init_impl(); }
+        constexpr HashTable(const HashTable& v, const allocator_type& a) : hash_func(v.hash_func), equal_func(v.equal_func) {}
         constexpr HashTable(HashTable&& v, const allocator_type& a) : hash_func(std::move(v.hash_func)), equal_func(std::move(v.equal_func)), data(std::move(v.data), a), nodes(std::move(v.nodes), static_cast<node_alloc>(a)), buckets(std::move(v.buckets), static_cast<bucket_alloc>(a)) {}
         constexpr HashTable(std::initializer_list<value_type> il, size_type n = min_bucket_size, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : HashTable(il.begin(), il.end(), n, hf, eql, a) {}
         constexpr HashTable(size_type n, const allocator_type& a) : HashTable(n, hasher(), key_equal(), a) {}
@@ -234,9 +265,22 @@ namespace internal {
         template<class InputIterator> constexpr HashTable(InputIterator f, InputIterator l, size_type n, const hasher& hf, const allocator_type& a) : HashTable(f, l, hf, key_equal(), a) {}
         constexpr HashTable(std::initializer_list<value_type> il, size_type n, const allocator_type& a) : HashTable(il, n, hasher(), key_equal(), a) {}
         constexpr HashTable(std::initializer_list<value_type> il, size_type n, const hasher& hf, const allocator_type& a) : HashTable(il, n, hf, key_equal(), a) {}
-        constexpr ~HashTable() = default;
+        constexpr ~HashTable() noexcept {
+            if (data != nullptr) {
+                for (itype::u32 i = 0; i != nodes_size; ++i) traits::destroy(data_alloc, data + i);
+                for (itype::u32 i = 0; i != nodes_size; ++i) node_alloc_traits::destroy(node_alloc, nodes + i);
+                traits::deallocate(data_alloc, data, nodes_cap);
+                node_alloc_traits::deallocate(node_alloc, nodes, nodes_cap);
+            }
+            for (itype::u32 i = 0; i != signatures_size + 31; ++i) {
+                signature_alloc_traits::destroy(signature_alloc, signatures + i);
+                index_alloc_traits::destroy(index_alloc, indexes + i);
+            }
+            signature_alloc_traits::deallocate(signature_alloc, signatures, signatures_size + 31);
+            index_alloc_traits::deallocate(index_alloc, indexes, signatures_size + 31);
+        }
         constexpr HashTable& operator=(const HashTable& v);
-        constexpr HashTable& operator=(HashTable&& x) noexcept(traits::is_always_equal::value && std::is_nothrow_move_assignable<Hasher>::value);
+        constexpr HashTable& operator=(HashTable&& x);
         constexpr HashTable& operator=(std::initializer_list<value_type> il);
         [[nodiscard]] constexpr bool empty() const noexcept { return nodes.empty(); }
         constexpr size_type size() const noexcept { return nodes.size(); }
@@ -350,9 +394,14 @@ namespace internal {
         constexpr size_type erase(const key_type& k);
         constexpr iterator erase(const_iterator first, const_iterator last);
         constexpr void clear() noexcept {
-            data.clear();
-            nodes.clear();
-            buckets.clear();
+            if (data != nullptr) {
+                for (itype::u32 i = 0; i != nodes_size; ++i) traits::destroy(data_alloc, data + i);
+                for (itype::u32 i = 0; i != nodes_size; ++i) node_alloc_traits::destroy(node_alloc, nodes + i);
+                traits::deallocate(data_alloc, data, nodes_cap);
+                node_alloc_traits::deallocate(node_alloc, nodes, nodes_cap);
+                data = nullptr, nodes = nullptr, nodes_cap = 0, nodes_size = 0;
+            }
+            for (itype::u32 i = 0; i != signatures_size + 31; ++i) signatures[i] = 0;
         }
         constexpr void swap(HashTable& x) noexcept(traits::is_always_equal::value && noexcept(swap(std::declval<Hash&>(), std::declval<Hash&>())) && noexcept(swap(std::declval<Pred&>(), std::declval<Pred&>())));
         //constexpr node_type extract(const_iterator position);

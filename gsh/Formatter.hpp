@@ -119,13 +119,26 @@ namespace internal {
             stream.skip(4);
         };
         auto div_1e16 = [&](itype::u64& rem) -> itype::u64 {
-            if (std::is_constant_evaluated()) {
-                rem = n % 10000000000000000;
-                return n / 10000000000000000;
+#if defined(__GNUC__) && defined(__x86_64__)
+            if constexpr (sizeof(void*) == 8) {
+                if (std::is_constant_evaluated()) {
+                    itype::u64 res = n / 10000000000000000;
+                    rem = n - 10000000000000000 * res;
+                    return res;
+                }
+                itype::u64 res;
+                __asm__("divq %[v]" : "=a"(res), "=d"(rem) : [v] "r"(10000000000000000), "a"(static_cast<itype::u64>(n)), "d"(static_cast<itype::u64>(n >> 64)));
+                return res;
+            } else {
+                itype::u64 res = n / 10000000000000000;
+                rem = n - 10000000000000000 * res;
+                return res;
             }
-            itype::u64 res;
-            __asm__("divq %[v]" : "=a"(res), "=d"(rem) : [v] "r"(10000000000000000), "a"(static_cast<itype::u64>(n)), "d"(static_cast<itype::u64>(n >> 64)));
+#else
+            itype::u64 res = n / 10000000000000000;
+            rem = n - 10000000000000000 * res;
             return res;
+#endif
         };
         constexpr itype::u128 t = static_cast<itype::u128>(10000000000000000) * 10000000000000000;
         if (n >= t) {

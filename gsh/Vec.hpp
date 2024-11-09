@@ -34,7 +34,7 @@ private:
     pointer ptr = nullptr;
     size_type len = 0, cap = 0;
 public:
-    constexpr Vec() noexcept(noexcept(Allocator())) : Vec(Allocator()) {}
+    constexpr Vec() noexcept(noexcept(Allocator())) {}
     constexpr explicit Vec(const allocator_type& a) noexcept : alloc(a) {}
     constexpr explicit Vec(size_type n, const Allocator& a = Allocator()) : alloc(a) {
         if (n == 0) [[unlikely]]
@@ -277,7 +277,7 @@ private:
         if (len == cap) {
             const pointer new_ptr = traits::allocate(alloc, cap * 2 + 8);
             if (cap != 0) {
-                for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
+                for (size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
                 for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
                 traits::deallocate(alloc, ptr, cap);
             }

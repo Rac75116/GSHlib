@@ -4,45 +4,28 @@
 #include <bit>            // std::countr_zero, std::has_single_bit
 #include "TypeDef.hpp"    // gsh::itype
 #include "Exception.hpp"  // gsh::Exception
-#include "Option.hpp"     // gsh::Option
 
 namespace gsh {
 
 namespace internal {
 
-    // https://lpha-z.hatenablog.com/entry/2020/05/24/231500
-    template<class T> constexpr T calc_gcd(T x, T y) {
-        if (x == 0 || y == 0) return x | y;
-        const itype::i32 n = std::countr_zero(x);
-        const itype::i32 m = std::countr_zero(y);
-        const itype::i32 l = n < m ? n : m;
-        x >>= n;
-        y >>= m;
-        while (x != y) {
-            const T a = y - x, b = x - y;
-            const itype::i32 m = std::countr_zero(a), n = std::countr_zero(b);
-            Assume(m == n);
-            const T s = y < x ? b : a;
-            const T t = x < y ? x : y;
-            x = s >> m;
-            y = t;
-        }
-        return x << l;
-    }
-
     template<class T> concept IsStaticModint = !requires(T x, typename T::value_type m) { x.set(m); };
-    template<class T, itype::u32 id> class ModintBase {
+    template<class T, itype::u32 id, bool IsThreadLocal> class ModintBase {
     protected:
         static inline T mint{};
     };
-    template<IsStaticModint T, itype::u32 id> class ModintBase<T, id> {
+    template<class T, itype::u32 id> class ModintBase<T, id, true> {
+    protected:
+        thread_local static inline T mint{};
+    };
+    template<IsStaticModint T, itype::u32 id> class ModintBase<T, id, false> {
     protected:
         constexpr static T mint{};
     };
 
-    template<class T, itype::u32 id = 0> class ModintInterface : public ModintBase<T, id> {
+    template<class T, itype::u32 id = 0, bool IsThreadLocal = false> class ModintInterface : public ModintBase<T, id, IsThreadLocal> {
         typename T::value_type val_{};
-        constexpr static auto& mint() noexcept { return ModintBase<T, id>::mint; }
+        constexpr static auto& mint() noexcept { return ModintBase<T, id, IsThreadLocal>::mint; }
         constexpr static ModintInterface construct(typename T::value_type x) noexcept {
             ModintInterface res;
             res.val_ = x;
@@ -227,7 +210,7 @@ namespace internal {
             }
             return n == 1 ? res : 0;
         }
-        GSH_INTERNAL_INLINE constexpr value_type sqrt(value_type n) const noexcept {
+        constexpr value_type sqrt(value_type n) const noexcept {
             const auto md = derived().mod();
             if (md % 4 == 3) {
                 auto res = derived().pow(n, (md + 1) >> 2);
@@ -469,5 +452,9 @@ template<itype::u64 mod_ = 998244353> using StaticModint = internal::ModintInter
 template<itype::u32 id = 0> using DynamicModint32 = internal::ModintInterface<internal::DynamicModint32Impl, id>;
 template<itype::u32 id = 0> using DynamicModint64 = internal::ModintInterface<internal::DynamicModint64Impl, id>;
 template<itype::u32 id = 0> using MontgomeryModint64 = internal::ModintInterface<internal::MontgomeryModint64Impl, id>;
+template<itype::u32 id = 0> using ThreadLocalDynamicModint32 = internal::ModintInterface<internal::DynamicModint32Impl, id, true>;
+template<itype::u32 id = 0> using ThreadLocalDynamicModint64 = internal::ModintInterface<internal::DynamicModint64Impl, id, true>;
+template<itype::u32 id = 0> using ThreadLocalMontgomeryModint64 = internal::ModintInterface<internal::MontgomeryModint64Impl, id, true>;
+
 
 }  // namespace gsh

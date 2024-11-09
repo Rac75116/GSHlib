@@ -81,33 +81,26 @@ public:
     constexpr void clear() { bit.clear(); }
     constexpr allocator_type get_allocator() const noexcept { return bit.get_allocator(); }
     constexpr void add(itype::u32 n, const value_type& x) {
-        GSH_INTERNAL_UNROLL(32)
         for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] += x;
     }
-    constexpr void minus(itype::u32 n, const value_type& x) {
-        GSH_INTERNAL_UNROLL(32)
+    constexpr void sub(itype::u32 n, const value_type& x) {
         for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] -= x;
     }
-    constexpr void increme(itype::u32 n) {
-        GSH_INTERNAL_UNROLL(32)
+    constexpr void inc(itype::u32 n) {
         for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & (-i))) ++bit[i - 1];
     }
-    constexpr void decreme(itype::u32 n) {
-        GSH_INTERNAL_UNROLL(32)
+    constexpr void dec(itype::u32 n) {
         for (itype::u32 i = n + 1, sz = size(); i <= sz; i += (i & (-i))) --bit[i - 1];
     }
     constexpr value_type sum(itype::u32 n) const {
         value_type res = {};
-        GSH_INTERNAL_UNROLL(32)
         for (itype::u32 i = n; i != 0; i &= i - 1) res += bit[i - 1];
         return res;
     }
     constexpr value_type sum(itype::u32 l, itype::u32 r) const {
         itype::u32 n = l & ~((std::bit_floor(l ^ r) << 1) - 1);
         value_type res1 = {}, res2 = {};
-        GSH_INTERNAL_UNROLL(32)
         for (itype::u32 i = r; i != n; i &= i - 1) res1 += bit[i - 1];
-        GSH_INTERNAL_UNROLL(32)
         for (itype::u32 i = l; i != n; i &= i - 1) res2 += bit[i - 1];
         return res1 - res2;
     }

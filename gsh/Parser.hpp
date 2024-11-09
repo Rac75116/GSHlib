@@ -1,5 +1,6 @@
 #pragma once
 #include <bit>          // std::countr_zero
+#include <ranges>       // std::ranges::forward_range
 #include "TypeDef.hpp"  // gsh::itype, gsh::ctype
 #include "Util.hpp"     // gsh::MemoryCopy
 
@@ -394,5 +395,52 @@ public:
         return s;
     }
 };
+
+namespace internal {
+    template<class T, class P, class Stream, class... Args> struct ParsingIterator {
+        using value_type = T;
+        using difference_type = itype::i32;
+        using pointer = T*;
+        using reference = T&;
+        using iterator_category = std::input_iterator_tag;
+        itype::u32 n;
+        P* ref;
+        Stream* stream;
+        std::tuple<Args...>* args;
+        constexpr ParsingIterator(itype::u32 m, P* r, Stream* s, std::tuple<Args...>* a) noexcept : n(m), ref(r), stream(s), args(a) {}
+        GSH_INTERNAL_INLINE friend constexpr bool operator==(const ParsingIterator& a, const ParsingIterator& b) noexcept { return a.n == b.n; }
+        GSH_INTERNAL_INLINE constexpr ParsingIterator& operator++() noexcept { return ++n, *this; }
+        GSH_INTERNAL_INLINE constexpr ParsingIterator operator++(int) noexcept { return { n++, *ref, *stream, *args }; }
+        GSH_INTERNAL_INLINE constexpr T operator*() const {
+            return [this]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) -> T {
+                return (*ref)(*stream, std::get<I>(*args)...);
+            }(std::make_integer_sequence<itype::u32, sizeof...(Args)>());
+        }
+    };
+}  // namespace internal
+template<class R> concept ParsableRange = std::ranges::forward_range<R> && requires { sizeof(Parser<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
+template<ParsableRange R> class Parser<R> {
+public:
+    template<class Stream, class... Args> constexpr R operator()(Stream&& stream, itype::u32 len, Args&&... args) const {
+        Parser<std::ranges::range_value_t<R>> p;
+        std::tuple<Args...> a(std::forward<Args>(args)...);
+        using iter = internal::ParsingIterator<std::ranges::range_value_t<R>, decltype(p), std::remove_cvref_t<Stream>, Args...>;
+        return R(iter(0, &p, &stream, &a), iter(len, nullptr, nullptr, nullptr));
+    }
+};
+
+/*
+namespace internal {
+    template<class T, class U> constexpr bool ParsableTupleImpl = false;
+    template<class T, std::size_t... I> constexpr bool ParsableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Parser<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
+}  // namespace internal
+template<class T> concept ParsableTuple = requires { std::tuple_size<T>::value; } && internal::ParsableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
+template<ParsableTuple T>
+    requires(!ParsableRange<T>)
+class Parser<T> {
+public:
+    template<class Stream> constexpr T operator()(Stream&& stream) const {}
+};
+*/
 
 }  // namespace gsh

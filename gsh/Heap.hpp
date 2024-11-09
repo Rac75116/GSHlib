@@ -132,6 +132,7 @@ public:
 */
 
 template<class T, class Comp = Less, class Alloc = Allocator<T>> class Heap {
+public:
     Vec<T, Alloc> data;
     [[no_unique_address]] Comp comp_func;
     itype::u32 mx = 0;
@@ -163,14 +164,21 @@ private:
         return std::bit_width(idx + 1) & 1;
     }
     GSH_INTERNAL_INLINE constexpr void set_mx() noexcept(nothrow_op) {
-        if (data.size() >= 3) mx = 1 + Invoke(comp_func, data[1], data[2]);
+        if (data.size() >= 3) [[likely]]
+            mx = 1 + Invoke(comp_func, data[1], data[2]);
         else mx = data.size() == 2;
     }
     GSH_INTERNAL_INLINE constexpr void make_heap() noexcept(nothrow_op) {
         for (itype::u32 i = data.size() / 2; i--;) push_down(i);
         set_mx();
     }
-    GSH_INTERNAL_INLINE constexpr void push_down(itype::u32 idx) noexcept(nothrow_op) {}
+    GSH_INTERNAL_INLINE constexpr void push_down(itype::u32 idx) noexcept(nothrow_op) {
+        itype::u32 lim = ((data.size() + 1) >> 2) - 1;
+        if (is_min_level(idx)) {
+        } else {
+            if (idx <= 2) set_mx();
+        }
+    }
     GSH_INTERNAL_INLINE constexpr void push_up(itype::u32 idx) noexcept(nothrow_op) {
         if (idx == 0) [[unlikely]]
             return;
@@ -181,16 +189,17 @@ private:
                 T tmp = std::move(data[idx]);
                 data[idx] = std::move(data[p]);
                 itype::u32 cur = p;
-                while (cur > 2 && Invoke(comp_func, data[p = ((cur + 1) >> 2) - 1], data[cur])) {
+                while (cur > 2 && Invoke(comp_func, data[p = ((cur + 1) >> 2) - 1], tmp)) {
                     data[cur] = std::move(data[p]);
                     cur = p;
                 }
                 data[cur] = std::move(tmp);
+                set_mx();
             } else {
                 // push_up_min(idx)
                 T tmp = std::move(data[idx]);
                 itype::u32 cur = idx;
-                while (cur > 2 && Invoke(comp_func, data[cur], data[p = ((cur + 1) >> 2) - 1])) {
+                while (cur > 2 && Invoke(comp_func, tmp, data[p = ((cur + 1) >> 2) - 1])) {
                     data[cur] = std::move(data[p]);
                     cur = p;
                 }
@@ -200,9 +209,9 @@ private:
             if (Invoke(comp_func, data[idx], data[p])) {
                 // push_up_min(p)
                 T tmp = std::move(data[idx]);
-                data[idx] = data[p];
+                data[idx] = std::move(data[p]);
                 itype::u32 cur = p;
-                while (cur > 2 && Invoke(comp_func, data[cur], data[p = ((cur + 1) >> 2) - 1])) {
+                while (cur > 2 && Invoke(comp_func, tmp, data[p = ((cur + 1) >> 2) - 1])) {
                     data[cur] = std::move(data[p]);
                     cur = p;
                 }
@@ -211,18 +220,48 @@ private:
                 // push_up_max(idx)
                 T tmp = std::move(data[idx]);
                 itype::u32 cur = idx;
-                while (cur > 2 && Invoke(comp_func, data[p = ((cur + 1) >> 2) - 1], data[cur])) {
+                while (cur > 2 && Invoke(comp_func, data[p = ((cur + 1) >> 2) - 1], tmp)) {
                     data[cur] = std::move(data[p]);
                     cur = p;
                 }
                 data[cur] = std::move(tmp);
+                set_mx();
             }
         }
     }
 public:
     constexpr const_reference top() const noexcept { return data[0]; }
-    constexpr const_reference min() const noexcept { return data[0]; }
-    constexpr const_reference max() const noexcept { return data[mx]; }
+    constexpr const_reference low() const noexcept { return data[mx]; }
+    [[nodiscard]] constexpr bool empty() const noexcept { return data.empty(); }
+    constexpr itype::u32 size() const noexcept { return data.size(); }
+    constexpr void reserve(itype::u32 n) { data.reserve(n); }
+    constexpr void push(const T& x) {
+        data.push_back(x);
+        push_up(data.size() - 1);
+    }
+    constexpr void push(T&& x) {
+        data.push_back(std::move(x));
+        push_up(data.size() - 1);
+    }
+    template<class... Args> constexpr void emplace(Args&&... args) {
+        data.emplace_back(std::forward<Args>(args)...);
+        push_up(data.size() - 1);
+    }
+    constexpr void pop() noexcept(nothrow_op) {
+        data[0] = std::move(data.back());
+        data.pop_back();
+        push_down(0);
+    }
+    constexpr void pop_top() noexcept(nothrow_op) {
+        data[0] = std::move(data.back());
+        data.pop_back();
+        push_down(0);
+    }
+    constexpr void pop_low() noexcept(nothrow_op) {
+        data[mx] = std::move(data.back());
+        data.pop_back();
+        push_down(mx);
+    }
 };
 
 }  // namespace gsh

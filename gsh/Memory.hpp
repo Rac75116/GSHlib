@@ -186,7 +186,7 @@ public:
     template<class T, class... Args> static constexpr void construct(Alloc&, T* p, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
         requires(!constructible<Args...>)
     {
-        if constexpr (!std::is_trivially_constructible_v<T, Args...>) std::construct_at(p, std::forward<Args>(args)...);
+        std::construct_at(p, std::forward<Args>(args)...);
     }
     template<class T> static constexpr void destroy(Alloc& a, T* p) noexcept(noexcept(a.destroy(p)))
         requires(destructible)
@@ -196,7 +196,7 @@ public:
     template<class T> static constexpr void destroy(Alloc&, T* p) noexcept(std::is_nothrow_destructible_v<T>)
         requires(!destructible)
     {
-        if constexpr (!std::is_trivially_destructible_v<T>) return std::destroy_at(p);
+        return std::destroy_at(p);
     }
     static constexpr Alloc select_on_container_copy_construction(const Alloc& a) noexcept(noexcept(a.select_on_container_copy_construction()))
         requires(selectable)
@@ -361,7 +361,7 @@ public:
     constexpr void deallocate(T* p, itype::u32) noexcept { del[end++] = p; }
     constexpr itype::u32 max_size() const noexcept { return (1 << 24) - 1; }
     constexpr SingleAllocator select_on_container_copy_construction() const noexcept { return {}; }
-    template<class U> friend constexpr bool operator==(const SingleAllocator& a, const SingleAllocator<U>& b) noexcept { return false; }
+    template<class U> friend constexpr bool operator==(const SingleAllocator&, const SingleAllocator<U>&) noexcept { return false; }
 };
 
 template<class Alloc> class SharedAllocator {
@@ -389,7 +389,7 @@ public:
     template<class... Args> void deallocate(Args&&... args) noexcept(noexcept(alloc.deallocate(std::forward<Args>(args)...))) { return alloc.deallocate(std::forward<Args>(args)...); }
     size_type max_size() const noexcept { return alloc.max_size(); }
     static Alloc& get_allocator() noexcept { return alloc; }
-    template<class T> friend constexpr bool operator==(const SharedAllocator& a, const SharedAllocator<T>& b) noexcept { return true; }
+    template<class T> friend constexpr bool operator==(const SharedAllocator&, const SharedAllocator<T>&) noexcept { return true; }
 };
 
 template<class Alloc> class ConstexprAllocator {

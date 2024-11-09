@@ -84,12 +84,26 @@ template<class T> constexpr T ModPow(const T x, itype::u64 e, const T mod) {
 }
 
 // @brief Find the greatest common divisor as in std::gcd. (https://lpha-z.hatenablog.com/entry/2020/05/24/231500)
-// @return std::common_type_t<T, U>
-template<class T, class U> constexpr auto GCD(T x, U y) {
+template<class T, class U> constexpr std::common_type_t<T, U> GCD(T x, U y) {
     static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool> && std::is_integral_v<T> && std::is_integral_v<U>, "gsh::GCD / The input must be an integral type.");
     if constexpr (std::is_same_v<T, U>) {
         if constexpr (std::is_unsigned_v<T>) {
-            return internal::calc_gcd(x, y);
+            if (x == 0 || y == 0) return x | y;
+            const itype::i32 n = std::countr_zero(x);
+            const itype::i32 m = std::countr_zero(y);
+            const itype::i32 l = n < m ? n : m;
+            x >>= n;
+            y >>= m;
+            while (x != y) {
+                const T a = y - x, b = x - y;
+                const itype::i32 m = std::countr_zero(a), n = std::countr_zero(b);
+                Assume(m == n);
+                const T s = y < x ? b : a;
+                const T t = x < y ? x : y;
+                x = s >> m;
+                y = t;
+            }
+            return x << l;
         } else {
             return static_cast<T>(GCD<std::make_unsigned_t<T>, std::make_unsigned<T>>((x < 0 ? -x : x), (y < 0 ? -y : y)));
         }

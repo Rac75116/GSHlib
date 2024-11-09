@@ -390,12 +390,9 @@ public:
     }
 };
 template<> class Formatter<const ctype::c8*> {
-    itype::u32 n;
 public:
-    constexpr Formatter() : n(0xffffffff) {}
-    constexpr Formatter(itype::u32 len) : n(len) {}
-    template<class Stream> constexpr void operator()(Stream& stream, const ctype::c8* s) const {
-        itype::u32 len = n == 0xffffffff ? StrLen(s) : n;
+    template<class Stream> constexpr void operator()(Stream&& stream, const ctype::c8* s) const { operator()(stream, s, StrLen(s)); }
+    template<class Stream> constexpr void operator()(Stream&& stream, const ctype::c8* s, itype::u32 len) const {
         itype::u32 avail = stream.avail();
         if (avail >= len) [[likely]] {
             MemoryCopy(stream.current(), s, len);
@@ -419,12 +416,35 @@ public:
 };
 template<> class Formatter<ctype::c8*> : public Formatter<const ctype::c8*> {};
 
+template<class R> concept FormatableRange = std::ranges::forward_range<R> && requires { sizeof(Formatter<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
+template<FormatableRange R> class Formatter<R> {
+    template<class Stream, class T, class... Args> constexpr void print(Stream&& stream, T&& r, Args&&... args) const {
+        auto first = std::ranges::begin(r);
+        auto last = std::ranges::end(r);
+        Formatter<std::decay_t<std::ranges::range_value_t<R>>> formatter;
+        while (true) {
+            formatter(stream, *first, args...);
+            ++first;
+            if (first != last) {
+                Formatter<ctype::c8>{}(stream, ' ');
+            } else break;
+        }
+    }
+public:
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const R& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R&& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
+    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const R&& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
+};
+
 namespace internal {
     template<class T, class U> constexpr bool FormatableTupleImpl = false;
     template<class T, std::size_t... I> constexpr bool FormatableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Formatter<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
 }  // namespace internal
 template<class T> concept FormatableTuple = requires { std::tuple_size<T>::value; } && internal::FormatableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
-template<FormatableTuple T> class Formatter<T> {
+template<FormatableTuple T>
+    requires(!FormatableRange<T>)
+class Formatter<T> {
     template<std::size_t I, class Stream, class U, class... Args> constexpr void print_element(Stream&& stream, U&& x, Args&&... args) const {
         using std::get;
         using element_type = std::decay_t<std::tuple_element_t<I, T>>;
@@ -443,28 +463,6 @@ public:
     template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const T& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
     template<class Stream, class... Args> constexpr void operator()(Stream&& stream, T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
     template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const T&& x, Args&&... args) const { print(std::forward<Stream>(stream), x, std::forward<Args>(args)...); }
-};
-template<class R> concept FormatableRange = std::ranges::forward_range<R> && requires { sizeof(Formatter<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
-template<FormatableRange R>
-    requires(!FormatableTuple<R>)
-class Formatter<R> {
-    template<class Stream, class T, class... Args> constexpr void print(Stream&& stream, T&& r, Args&&... args) const {
-        auto first = std::ranges::begin(r);
-        auto last = std::ranges::end(r);
-        Formatter<std::decay_t<std::ranges::range_value_t<R>>> formatter;
-        while (true) {
-            formatter(stream, *first, args...);
-            ++first;
-            if (first != last) {
-                Formatter<ctype::c8>{}(stream, ' ');
-            } else break;
-        }
-    }
-public:
-    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
-    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const R& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
-    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, R&& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
-    template<class Stream, class... Args> constexpr void operator()(Stream&& stream, const R&& r, Args&&... args) const { print(std::forward<Stream>(stream), r, std::forward<Args>(args)...); }
 };
 
 }  // namespace gsh

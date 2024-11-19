@@ -1,13 +1,14 @@
 #pragma once
 
-#define GSH_INTERNAL_SELECT1(a, ...)                      a
-#define GSH_INTERNAL_SELECT2(a, b, ...)                   b
-#define GSH_INTERNAL_SELECT3(a, b, c, ...)                c
-#define GSH_INTERNAL_SELECT4(a, b, c, d, ...)             d
-#define GSH_INTERNAL_SELECT5(a, b, c, d, e, ...)          e
-#define GSH_INTERNAL_SELECT6(a, b, c, d, e, f, ...)       f
-#define GSH_INTERNAL_SELECT7(a, b, c, d, e, f, g, ...)    g
-#define GSH_INTERNAL_SELECT8(a, b, c, d, e, f, g, h, ...) h
+#define GSH_INTERNAL_SELECT1(a, ...)                         a
+#define GSH_INTERNAL_SELECT2(a, b, ...)                      b
+#define GSH_INTERNAL_SELECT3(a, b, c, ...)                   c
+#define GSH_INTERNAL_SELECT4(a, b, c, d, ...)                d
+#define GSH_INTERNAL_SELECT5(a, b, c, d, e, ...)             e
+#define GSH_INTERNAL_SELECT6(a, b, c, d, e, f, ...)          f
+#define GSH_INTERNAL_SELECT7(a, b, c, d, e, f, g, ...)       g
+#define GSH_INTERNAL_SELECT8(a, b, c, d, e, f, g, h, ...)    h
+#define GSH_INTERNAL_SELECT9(a, b, c, d, e, f, g, h, i, ...) i
 
 #define GSH_INTERNAL_STR(s)       #s
 #define GSH_INTERNAL_CONCAT(a, b) a##b

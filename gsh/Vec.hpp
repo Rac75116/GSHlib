@@ -225,14 +225,14 @@ public:
             throw gsh::Exception("gsh::Vec::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
-    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) { return *(ptr + n); }
-    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept { return *(ptr + n); }
     constexpr pointer data() noexcept { return ptr; }
     constexpr const_pointer data() const noexcept { return ptr; }
-    constexpr reference front() { return *ptr; }
-    constexpr const_reference front() const { return *ptr; }
-    constexpr reference back() { return *(ptr + len - 1); }
-    constexpr const_reference back() const { return *(ptr + len - 1); }
+    constexpr reference front() noexcept { return *ptr; }
+    constexpr const_reference front() const noexcept { return *ptr; }
+    constexpr reference back() noexcept { return *(ptr + len - 1); }
+    constexpr const_reference back() const noexcept { return *(ptr + len - 1); }
     template<std::input_iterator InputIter> constexpr void assign(const InputIter first, const InputIter last) {
         const size_type n = std::distance(first, last);
         if (n > cap) {
@@ -325,6 +325,12 @@ public:
     constexpr void clear() {
         for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         len = 0;
+    }
+    constexpr void reset() {
+        if (cap != 0) {
+            traits::deallocate(alloc, ptr, cap);
+            ptr = nullptr, len = 0, cap = 0;
+        }
     }
     constexpr allocator_type get_allocator() const noexcept { return alloc; }
     friend constexpr bool operator==(const Vec& x, const Vec& y) {

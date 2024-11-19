@@ -7,7 +7,91 @@
 
 namespace gsh {
 
-class UnionFind {
+namespace internal {
+    template<class D> class UnionFindImpl {
+        D& derived() noexcept { return static_cast<D&>(*this); }
+        const D& derived() const noexcept { return static_cast<const D&>(*this); }
+    public:
+        constexpr itype::u32 size() const noexcept { return derived().parent.size(); }
+        [[nodiscard]] constexpr bool empty() const noexcept { return derived().parent.empty(); }
+        constexpr itype::u32 leader(itype::u32 n) {
+#ifndef NDEBUG
+            if (n >= derived().parent.size()) throw gsh::Exception("gsh::internal::UnionFindImpl::leader / The index is out of range. ( n=", n, ", size=", derived().parent.size(), " )");
+#endif
+            return derived().root(n);
+        }
+        constexpr bool is_leader(itype::u32 n) const {
+#ifndef NDEBUG
+            if (n >= derived().parent.size()) throw gsh::Exception("gsh::internal::UnionFindImpl::is_leader / The index is out of range. ( n=", n, ", size=", derived().parent.size(), " )");
+#endif
+            return derived().parent[n] < 0;
+        }
+        constexpr bool same(itype::u32 a, itype::u32 b) {
+#ifndef NDEBUG
+            if (a >= derived().parent.size() || b >= derived().parent.size()) throw gsh::Exception("gsh::UnionFind::same / The index is out of range. ( a=", a, ", b=", b, ", size=", derived().parent.size(), " )");
+#endif
+            return derived().root(a) == derived().root(b);
+        }
+    protected:
+        GSH_INTERNAL_INLINE constexpr itype::u32 merge_impl(itype::u32 ar, itype::u32 br) noexcept {
+            const itype::i32 sa = derived().parent[ar], sb = derived().parent[br];
+            const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
+            derived().parent[tmp1] += derived().parent[tmp2];
+            derived().parent[tmp2] = tmp1;
+            --derived().cnt;
+            return tmp1;
+        }
+    public:
+        constexpr itype::u32 group_size(itype::u32 n) {
+#ifndef NDEBUG
+            if (n >= derived().parent.size()) throw gsh::Exception("gsh::internal::UnionFindImpl::group_size(itype::u32) / The index is out of range. ( n=", n, ", size=", derived().parent.size(), " )");
+#endif
+            return -derived().parent[derived().root(n)];
+        }
+        constexpr itype::u32 max_group_size() const noexcept {
+            itype::i32 res = 1;
+            for (itype::u32 i = 0; i != size(); ++i) {
+                res = -derived().parent[i] < res ? res : -derived().parent[i];
+            }
+            return res;
+        }
+        constexpr itype::u32 count_groups() const noexcept { return derived().cnt; }
+        constexpr Arr<itype::u32> extract(itype::u32 n) {
+#ifndef NDEBUG
+            if (n >= derived().parent.size()) throw gsh::Exception("gsh::internal::UnionFindImpl::extract / The index is out of range. ( n=", n, ", size=", derived().parent.size(), " )");
+#endif
+            const itype::i32 nr = derived().root(n);
+            itype::u32 ccnt = 0;
+            for (itype::u32 i = 0; i != derived().parent.size(); ++i) ccnt += derived().root(i) == nr;
+            Arr<itype::u32> res(ccnt);
+            for (itype::u32 i = 0, j = 0; i != derived().parent.size(); ++i)
+                if (i == static_cast<itype::u32>(nr) || derived().parent[i] == nr) res[j++] = i;
+            return res;
+        }
+        constexpr Arr<Arr<itype::u32>> groups() {
+            Arr<itype::u32> key(derived().parent.size());
+            itype::u32 cnt = 0;
+            for (itype::u32 i = 0; i != derived().parent.size(); ++i) {
+                if (derived().parent[i] < 0) key[i] = cnt++;
+            }
+            Arr<itype::u32> cnt2(cnt);
+            for (itype::u32 i = 0; i != derived().parent.size(); ++i) ++cnt2[key[derived().root(i)]];
+            Arr<Arr<itype::u32>> res(cnt);
+            for (itype::u32 i = 0; i != cnt; ++i) {
+                res[i].resize(cnt2[i]);
+                cnt2[i] = 0;
+            }
+            for (itype::u32 i = 0; i != derived().parent.size(); ++i) {
+                const itype::u32 idx = key[derived().parent[i] < 0 ? i : derived().parent[i]];
+                res[idx][cnt2[idx]++] = i;
+            }
+            return res;
+        }
+    };
+}  // namespace internal
+
+class UnionFind : public internal::UnionFindImpl<UnionFind> {
+    friend class internal::UnionFindImpl<UnionFind>;
     Arr<itype::i32> parent;
     itype::u32 cnt = 0;
     constexpr itype::i32 root(itype::i32 n) noexcept {
@@ -16,49 +100,24 @@ class UnionFind {
     }
 public:
     using size_type = itype::u32;
-    constexpr UnionFind() {}
+    constexpr UnionFind() noexcept {}
     constexpr explicit UnionFind(itype::u32 n) : parent(n, -1), cnt(n) {}
-    constexpr void reset() {
-        cnt = size();
-        for (itype::u32 i = 0; i != size(); ++i) parent[i] = -1;
+    constexpr void reset() noexcept {
+        cnt = parent.size();
+        for (itype::u32 i = 0; i != cnt; ++i) parent[i] = -1;
     }
-    constexpr itype::u32 size() const noexcept { return parent.size(); }
-    [[nodiscard]] constexpr bool empty() const noexcept { return parent.empty(); }
     constexpr void resize(itype::u32 n) {
         if (n < size()) throw gsh::Exception("gsh::UnionFind::resize / It cannot be smaller than it is now.");
         cnt += n - size();
         parent.resize(n, -1);
     }
-    constexpr itype::u32 leader(itype::u32 n) {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::UnionFind::leader / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return root(n);
-    }
-    constexpr bool is_leader(itype::u32 n) const {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::UnionFind::is_leader / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return parent[n] < 0;
-    }
-    constexpr bool same(itype::u32 a, itype::u32 b) {
-#ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::UnionFind::same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
-#endif
-        return root(a) == root(b);
-    }
     constexpr itype::u32 merge(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::UnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::UnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
         if (ar == br) return ar;
-        const itype::i32 sa = parent[ar], sb = parent[br];
-        const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
-        parent[tmp1] += parent[tmp2];
-        parent[tmp2] = tmp1;
-        --cnt;
-        return tmp1;
+        return merge_impl(ar, br);
     }
     constexpr bool merge_same(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
@@ -66,61 +125,13 @@ public:
 #endif
         const itype::i32 ar = root(a), br = root(b);
         if (ar == br) return true;
-        const itype::i32 sa = parent[ar], sb = parent[br];
-        const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
-        parent[tmp1] += parent[tmp2];
-        parent[tmp2] = tmp1;
-        --cnt;
+        merge_impl(ar, br);
         return false;
-    }
-    constexpr itype::u32 size(itype::u32 n) {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::UnionFind::size(itype::u32) / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return -parent[root(n)];
-    }
-    constexpr itype::u32 max_group_size() const noexcept {
-        itype::i32 res = 1;
-        for (itype::u32 i = 0; i != size(); ++i) {
-            res = -parent[i] < res ? res : -parent[i];
-        }
-        return res;
-    }
-    constexpr itype::u32 count_groups() const noexcept { return cnt; }
-    constexpr Arr<itype::u32> extract(itype::u32 n) {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::UnionFind::extract / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        const itype::i32 nr = root(n);
-        itype::u32 ccnt = 0;
-        for (itype::u32 i = 0; i != size(); ++i) ccnt += root(i) == nr;
-        Arr<itype::u32> res(ccnt);
-        for (itype::u32 i = 0, j = 0; i != size(); ++i)
-            if (i == static_cast<itype::u32>(nr) || parent[i] == nr) res[j++] = i;
-        return res;
-    }
-    constexpr Arr<Arr<itype::u32>> groups() {
-        Arr<itype::u32> key(size());
-        itype::u32 cnt = 0;
-        for (itype::u32 i = 0; i != size(); ++i) {
-            if (parent[i] < 0) key[i] = cnt++;
-        }
-        Arr<itype::u32> cnt2(cnt);
-        for (itype::u32 i = 0; i != size(); ++i) ++cnt2[key[root(i)]];
-        Arr<Arr<itype::u32>> res(cnt);
-        for (itype::u32 i = 0; i != cnt; ++i) {
-            res[i].resize(cnt2[i]);
-            cnt2[i] = 0;
-        }
-        for (itype::u32 i = 0; i != size(); ++i) {
-            const itype::u32 idx = key[parent[i] < 0 ? i : parent[i]];
-            res[idx][cnt2[idx]++] = i;
-        }
-        return res;
     }
 };
 
-class RollbackUnionFind {
+class RollbackUnionFind : public internal::UnionFindImpl<RollbackUnionFind> {
+    friend class internal::UnionFindImpl<RollbackUnionFind>;
     Arr<itype::i32> parent;
     itype::u32 cnt = 0;
     struct change {
@@ -136,111 +147,37 @@ class RollbackUnionFind {
     }
 public:
     using size_type = itype::u32;
-    constexpr RollbackUnionFind() {}
+    constexpr RollbackUnionFind() noexcept {}
     constexpr explicit RollbackUnionFind(itype::u32 n) : parent(n, -1), cnt(n) {}
-    constexpr void reset() {
-        cnt = size();
+    constexpr void reset() noexcept {
+        cnt = parent.size();
         history.clear();
-        for (itype::u32 i = 0; i != size(); ++i) parent[i] = -1;
+        for (itype::u32 i = 0; i != parent.size(); ++i) parent[i] = -1;
     }
     constexpr void reserve(itype::u32 q) { history.reserve(history.size() + q); }
-    constexpr itype::u32 size() const noexcept { return parent.size(); }
-    [[nodiscard]] constexpr bool empty() const noexcept { return parent.empty(); }
     constexpr void resize(itype::u32 n) {
-        if (n < size()) throw gsh::Exception("gsh::RollbackUnionFind::resize / It cannot be smaller than it is now.");
-        cnt += n - size();
+        if (n < parent.size()) throw gsh::Exception("gsh::RollbackUnionFind::resize / It cannot be smaller than it is now.");
+        cnt += n - parent.size();
         parent.resize(n, -1);
-    }
-    constexpr itype::u32 leader(itype::u32 n) const {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::RollbackUnionFind::leader / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return root(n);
-    }
-    constexpr bool is_leader(itype::u32 n) const {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::RollbackUnionFind::is_leader / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return parent[n] < 0;
-    }
-    constexpr bool same(itype::u32 a, itype::u32 b) const {
-#ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::RollbackUnionFind::same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
-#endif
-        return root(a) == root(b);
     }
     constexpr itype::u32 merge(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::RollbackUnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::RollbackUnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
-        const itype::i32 sa = parent[ar], sb = parent[br];
-        history.emplace_back(ar, br, sa, sb, ar != br);
+        history.emplace_back(ar, br, parent[ar], parent[br], ar != br);
         if (ar == br) return ar;
-        const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
-        parent[tmp1] += parent[tmp2];
-        parent[tmp2] = tmp1;
-        --cnt;
-        return tmp1;
+        return merge_impl(ar, br);
     }
     constexpr bool merge_same(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::RollbackUnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::RollbackUnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
-        const itype::i32 sa = parent[ar], sb = parent[br];
-        history.emplace_back(ar, br, sa, sb, ar != br);
+        history.emplace_back(ar, br, parent[ar], parent[br], ar != br);
         if (ar == br) return true;
-        const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
-        parent[tmp1] += parent[tmp2];
-        parent[tmp2] = tmp1;
-        --cnt;
+        merge_impl(ar, br);
         return false;
-    }
-    constexpr itype::u32 size(itype::u32 n) const {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::RollbackUnionFind::size(itype::u32) / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return -parent[root(n)];
-    }
-    constexpr itype::u32 max_group_size() const noexcept {
-        itype::i32 res = 1;
-        for (itype::u32 i = 0; i != size(); ++i) {
-            res = -parent[i] < res ? res : -parent[i];
-        }
-        return res;
-    }
-    constexpr itype::u32 count_groups() const noexcept { return cnt; }
-    constexpr Arr<itype::u32> extract(itype::u32 n) const {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::RollbackUnionFind::extract / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        const itype::i32 nr = root(n);
-        itype::u32 ccnt = 0;
-        for (itype::u32 i = 0; i != size(); ++i) ccnt += root(i) == nr;
-        Arr<itype::u32> res(ccnt);
-        for (itype::u32 i = 0, j = 0; i != size(); ++i)
-            if (i == static_cast<itype::u32>(nr) || parent[i] == nr) res[j++] = i;
-        return res;
-    }
-    constexpr Arr<Arr<itype::u32>> groups() const {
-        Arr<itype::u32> key(size());
-        itype::u32 cnt = 0;
-        for (itype::u32 i = 0; i != size(); ++i) {
-            if (parent[i] < 0) key[i] = cnt++;
-        }
-        Arr<itype::u32> cnt2(cnt);
-        for (itype::u32 i = 0; i != size(); ++i) ++cnt2[key[root(i)]];
-        Arr<Arr<itype::u32>> res(cnt);
-        for (itype::u32 i = 0; i != cnt; ++i) {
-            res[i].resize(cnt2[i]);
-            cnt2[i] = 0;
-        }
-        for (itype::u32 i = 0; i != size(); ++i) {
-            const itype::u32 idx = key[parent[i] < 0 ? i : parent[i]];
-            res[idx][cnt2[idx]++] = i;
-        }
-        return res;
     }
     constexpr void undo() {
 #ifndef NDEBUG
@@ -251,13 +188,31 @@ public:
         parent[a] = c, parent[b] = d;
         cnt += e;
     }
-    constexpr itype::u32 get_state() const { return history.size(); }
-    constexpr void rollback(itype::u32 s) {
-        while (s < history.size()) undo();
+    class state {
+        friend class RollbackUnionFind;
+        itype::u32 s;
+        state() = delete;
+        constexpr state(itype::u32 n) noexcept : s(n) {}
+    public:
+        constexpr state(const state&) noexcept = default;
+        constexpr state& operator=(const state&) noexcept = default;
+        constexpr state next(itype::i32 n) const noexcept { return state{ s + n }; }
+        constexpr state prev(itype::i32 n) const noexcept { return state{ s - n }; }
+        constexpr void advance(itype::i32 n) noexcept { s += n; }
+    };
+    constexpr state current() const noexcept { return state{ history.size() }; }
+    constexpr void rollback(state st) {
+        while (st.s < history.size()) {
+            auto [a, b, c, d, e] = history.back();
+            history.pop_back();
+            parent[a] = c, parent[b] = d;
+            cnt += e;
+        }
     }
 };
 
-template<class T = itype::i64, class F = Plus, class I = Negate> class PotentializedUnionFind {
+template<class T = itype::i64, class F = Plus, class I = Negate> class PotentializedUnionFind : public internal::UnionFindImpl<PotentializedUnionFind<T, F, I>> {
+    friend class internal::UnionFindImpl<PotentializedUnionFind<T, F, I>>;
     Arr<itype::i32> parent;
     Arr<T> diff;
     itype::u32 cnt = 0;
@@ -271,44 +226,26 @@ template<class T = itype::i64, class F = Plus, class I = Negate> class Potential
         return parent[n] = r;
     }
 public:
+    using value_type = T;
     using size_type = itype::u32;
-    constexpr PotentializedUnionFind() {}
-    constexpr PotentializedUnionFind(F f, I i = I(), const T& e = T()) : el(e), func(f), inv(i) {}
+    constexpr PotentializedUnionFind() noexcept(std::is_nothrow_default_constructible_v<F> && std::is_nothrow_default_constructible_v<I> && std::is_nothrow_default_constructible_v<T>) {}
+    constexpr explicit PotentializedUnionFind(F f, I i = I(), const T& e = T()) : func(f), inv(i), el(e) {}
     constexpr explicit PotentializedUnionFind(itype::u32 n, F f = F(), I i = I(), const T& e = T()) : parent(n, -1), diff(n, e), cnt(n), func(f), inv(i), el(e) {}
     constexpr void reset() {
-        cnt = size();
-        for (itype::u32 i = 0; i != size(); ++i) parent[i] = -1;
-        diff = Arr<T>(size(), el);
+        cnt = parent.size();
+        for (itype::u32 i = 0; i != parent.size(); ++i) parent[i] = -1;
+        diff.assign(parent.size(), el);
     }
-    constexpr itype::u32 size() const noexcept { return parent.size(); }
-    [[nodiscard]] constexpr bool empty() const noexcept { return parent.empty(); }
     constexpr void resize(itype::u32 n) {
-        if (n < size()) throw gsh::Exception("gsh::PotentializedUnionFind::resize / It cannot be smaller than it is now.");
-        cnt += n - size();
+        if (n < parent.size()) throw gsh::Exception("gsh::PotentializedUnionFind::resize / It cannot be smaller than it is now.");
+        cnt += n - parent.size();
         parent.resize(n, -1);
         diff.resize(n, el);
     }
-    constexpr itype::u32 leader(itype::u32 n) {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::leader / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return root(n);
-    }
-    constexpr bool is_leader(itype::u32 n) const {
-#ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::is_leader / The index is out of range. ( n=", n, ", size=", size(), " )");
-#endif
-        return parent[n] < 0;
-    }
-    constexpr bool same(itype::u32 a, itype::u32 b) {
-#ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
-#endif
-        return root(a) == root(b);
-    }
+    constexpr const T& operator[](itype::u32 n) { return potential(n); }
     constexpr const T& potential(itype::u32 n) {
 #ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::potential / The index is out of range. ( n=", n, ", size=", size(), " )");
+        if (n >= parent.size()) throw gsh::Exception("gsh::PotentializedUnionFind::potential / The index is out of range. ( n=", n, ", size=", parent.size(), " )");
 #endif
         root(n);
         return diff[n];
@@ -316,7 +253,7 @@ public:
     // A[a] = func(A[b], result)
     constexpr T potential(itype::u32 a, itype::u32 b) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::potential / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::PotentializedUnionFind::potential / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         root(a);
         root(b);
@@ -325,7 +262,7 @@ public:
     // A[a] = func(A[b], w) return leader(a)
     constexpr itype::u32 merge(const itype::u32 a, const itype::u32 b, const T& w) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
         if (ar == br) return ar;
@@ -334,14 +271,14 @@ public:
         const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
-        diff[tmp2] = func(diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
+        diff[tmp2] = Invoke(func, diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
         --cnt;
         return tmp1;
     }
     // A[a] = func(A[b], w) return same(a, b)
     constexpr bool merge_same(const itype::u32 a, const itype::u32 b, const T& w) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
         if (ar == br) return true;
@@ -350,14 +287,14 @@ public:
         const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
-        diff[tmp2] = func(diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
+        diff[tmp2] = Invoke(func, diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
         --cnt;
         return false;
     }
     // A[a] = func(A[b], w)
     constexpr bool merge_valid(const itype::u32 a, const itype::u32 b, const T& w) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge_valid / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::PotentializedUnionFind::merge_valid / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
         if (ar == br) return diff[a] == Invoke(func, diff[b], w);
@@ -366,54 +303,100 @@ public:
         const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
         parent[tmp1] += parent[tmp2];
         parent[tmp2] = tmp1;
-        diff[tmp2] = func(diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
+        diff[tmp2] = Invoke(func, diff[f ? a : b], Invoke(inv, Invoke(func, diff[f ? b : a], f ? w : Invoke(inv, w))));
         --cnt;
         return true;
     }
-    constexpr itype::u32 size(itype::u32 n) {
+};
+
+template<class T, class F> class MonoidalUnionFind : public internal::UnionFindImpl<MonoidalUnionFind<T, F>> {
+    friend class internal::UnionFindImpl<MonoidalUnionFind<T, F>>;
+    Arr<itype::i32> parent;
+    Arr<T> monoid;
+    [[no_unique_address]] F func;
+    itype::u32 cnt = 0;
+    constexpr itype::i32 root(itype::i32 n) noexcept {
+        if (parent[n] < 0) return n;
+        return parent[n] = root(parent[n]);
+    }
+public:
+    using value_type = T;
+    using size_type = itype::u32;
+    constexpr MonoidalUnionFind() noexcept {}
+    constexpr explicit MonoidalUnionFind(F f) : func(std::move(f)) {}
+    constexpr explicit MonoidalUnionFind(itype::u32 n, F f = F()) : parent(n, -1), monoid(n), func(std::move(f)), cnt(n) {}
+    constexpr MonoidalUnionFind(itype::u32 n, F f, const T& init) : parent(n, -1), monoid(n, init), func(std::move(f)), cnt(n) {}
+    constexpr ~MonoidalUnionFind() {
+        for (itype::u32 i = 0; i != parent.size(); ++i) {
+            if (parent[i] < 0) std::destroy_at(&monoid[i]);
+        }
+        monoid.reset();
+    }
+    constexpr void reset() {
+        cnt = parent.size();
+        for (itype::u32 i = 0; i != parent.size(); ++i) {
+            if (parent[i] < 0) std::destroy_at(&monoid[i]);
+            parent[i] = -1;
+            std::construct_at(&monoid[i]);
+        }
+    }
+    constexpr void reset(const T& init) {
+        cnt = parent.size();
+        for (itype::u32 i = 0; i != parent.size(); ++i) {
+            if (parent[i] < 0) std::destroy_at(&monoid[i]);
+            parent[i] = -1;
+            std::construct_at(&monoid[i], init);
+        }
+    }
+    constexpr void resize(itype::u32 n) {
+        if (n < parent.size()) throw gsh::Exception("gsh::MonoidalUnionFind::resize / It cannot be smaller than it is now.");
+        cnt += n - parent.size();
+        parent.resize(n, -1);
+        monoid.resize(n);
+    }
+    constexpr void resize(itype::u32 n, const T& value) {
+        if (n < parent.size()) throw gsh::Exception("gsh::MonoidalUnionFind::resize / It cannot be smaller than it is now.");
+        cnt += n - parent.size();
+        parent.resize(n, -1);
+        monoid.resize(n, value);
+    }
+    constexpr T& operator[](itype::u32 n) {
 #ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::size(itype::u32) / The index is out of range. ( n=", n, ", size=", size(), " )");
+        if (n >= parent.size()) throw gsh::Exception("gsh::MonoidalUnionFind::operator[] / The index is out of range. ( n=", n, ", size=", parent.size(), " )");
 #endif
-        return -parent[root(n)];
+        return monoid[root(n)];
     }
-    constexpr itype::u32 max_group_size() const noexcept {
-        itype::i32 res = 1;
-        for (itype::u32 i = 0; i != size(); ++i) {
-            res = -parent[i] < res ? res : -parent[i];
-        }
-        return res;
-    }
-    constexpr itype::u32 count_groups() const noexcept { return cnt; }
-    constexpr Arr<itype::u32> extract(itype::u32 n) {
+    constexpr itype::u32 merge(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
-        if (n >= size()) throw gsh::Exception("gsh::PotentializedUnionFind::extract / The index is out of range. ( n=", n, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::MonoidalUnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
-        const itype::i32 nr = root(n);
-        itype::u32 ccnt = 0;
-        for (itype::u32 i = 0; i != size(); ++i) ccnt += root(i) == nr;
-        Arr<itype::u32> res(ccnt);
-        for (itype::u32 i = 0, j = 0; i != size(); ++i)
-            if (i == static_cast<itype::u32>(nr) || parent[i] == nr) res[j++] = i;
-        return res;
+        const itype::i32 ar = root(a), br = root(b);
+        if (ar == br) return ar;
+        const itype::i32 sa = parent[ar], sb = parent[br];
+        const bool f = sa < sb;
+        const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
+        parent[tmp1] += parent[tmp2];
+        parent[tmp2] = tmp1;
+        monoid[tmp1] = Invoke(func, std::move(monoid[tmp1]), std::move(monoid[tmp2]));
+        std::destroy_at(&monoid[tmp2]);
+        --cnt;
+        return tmp1;
     }
-    constexpr Arr<Arr<itype::u32>> groups() {
-        Arr<itype::u32> key(size());
-        itype::u32 cnt = 0;
-        for (itype::u32 i = 0; i != size(); ++i) {
-            if (parent[i] < 0) key[i] = cnt++;
-        }
-        Arr<itype::u32> cnt2(cnt);
-        for (itype::u32 i = 0; i != size(); ++i) ++cnt2[key[root(i)]];
-        Arr<Arr<itype::u32>> res(cnt);
-        for (itype::u32 i = 0; i != cnt; ++i) {
-            res[i].resize(cnt2[i]);
-            cnt2[i] = 0;
-        }
-        for (itype::u32 i = 0; i != size(); ++i) {
-            const itype::u32 idx = key[parent[i] < 0 ? i : parent[i]];
-            res[idx][cnt2[idx]++] = i;
-        }
-        return res;
+    constexpr bool merge_same(const itype::u32 a, const itype::u32 b) {
+#ifndef NDEBUG
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::MonoidalUnionFind::merge / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
+#endif
+        const itype::i32 ar = root(a), br = root(b);
+        if (ar == br) return true;
+        const itype::i32 sa = parent[ar], sb = parent[br];
+        const bool f = sa < sb;
+        const itype::i32 tmp1 = f ? ar : br, tmp2 = f ? br : ar;
+        parent[tmp1] += parent[tmp2];
+        parent[tmp2] = tmp1;
+        monoid[tmp1] = Invoke(func, std::move(monoid[tmp1]), std::move(monoid[tmp2]));
+        std::destroy_at(&monoid[tmp2]);
+        --cnt;
+        return false;
     }
 };
 

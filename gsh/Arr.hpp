@@ -226,14 +226,14 @@ public:
             throw gsh::Exception("gsh::Arr::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
-    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) { return *(ptr + n); }
-    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept { return *(ptr + n); }
     constexpr pointer data() noexcept { return ptr; }
     constexpr const_pointer data() const noexcept { return ptr; }
-    constexpr reference front() { return *ptr; }
-    constexpr const_reference front() const { return *ptr; }
-    constexpr reference back() { return *(ptr + len - 1); }
-    constexpr const_reference back() const { return *(ptr + len - 1); }
+    constexpr reference front() noexcept { return *ptr; }
+    constexpr const_reference front() const noexcept { return *ptr; }
+    constexpr reference back() noexcept { return *(ptr + len - 1); }
+    constexpr const_reference back() const noexcept { return *(ptr + len - 1); }
     template<std::input_iterator InputIter> constexpr void assign(const InputIter first, const InputIter last) {
         const size_type n = std::distance(first, last);
         if (n == 0) {
@@ -280,6 +280,12 @@ public:
     constexpr void clear() {
         if (len != 0) {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+            traits::deallocate(alloc, ptr, len);
+            ptr = nullptr, len = 0;
+        }
+    }
+    constexpr void reset() {
+        if (len != 0) {
             traits::deallocate(alloc, ptr, len);
             ptr = nullptr, len = 0;
         }
@@ -409,14 +415,14 @@ public:
             throw gsh::Exception("gsh::StaticArr::at / The index is out of range. ( n=", n, ", size=", N, " )");
         return elems[n];
     }
-    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) { return elems[n]; }
-    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const { return elems[n]; }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept { return elems[n]; }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept { return elems[n]; }
     constexpr pointer data() noexcept { return elems; }
     constexpr const_pointer data() const noexcept { return elems; }
-    constexpr reference front() { return elems[0]; }
-    constexpr const_reference front() const { return elems[0]; }
-    constexpr reference back() { return elems[N - 1]; }
-    constexpr const_reference back() const { return elems[N - 1]; }
+    constexpr reference front() noexcept { return elems[0]; }
+    constexpr const_reference front() const noexcept { return elems[0]; }
+    constexpr reference back() noexcept { return elems[N - 1]; }
+    constexpr const_reference back() const noexcept { return elems[N - 1]; }
     template<std::input_iterator InputIter> constexpr void assign(InputIter first) {
         for (itype::u32 i = 0; i != N; ++first, ++i) elems[i] = *first;
     }

@@ -1,17 +1,14 @@
 #pragma once
-#include <iterator>         // std::next
 #include <cstdlib>          // std::exit
 #include <tuple>            // std::forward_as_tuple
 #include <source_location>  // std::source_location
+#include <ranges>           // std::ranges
 #include "TypeDef.hpp"      // gsh::itype
 #include "InOut.hpp"        // gsh::BasicWriter, gsh::Formatter
-#include "Range.hpp"        // gsh::RangeTraits
-#include "Option.hpp"       // gsh::Option
-#include "Util.hpp"         // gsh::Step
 
-#define ALL(V)       std::begin(V), std::end(V)
-#define RALL(V)      std::rbegin(V), std::rend(V)
-#define ALLMID(V, n) std::begin(V), std::next(std::begin(V), n), std::end(V)
+#define ALL(V)       std::ranges::begin(V), std::ranges::end(V)
+#define RALL(V)      std::ranges::rbegin(V), std::ranges::rend(V)
+#define ALLMID(V, n) std::ranges::begin(V), std::ranges::next(std::ranges::begin(V), n), std::ranges::end(V)
 #define VALUE(...)   (([&]() __VA_ARGS__)())
 // clang-format off
 #define RET_WITH(...) { __VA_ARGS__; return; } []{}
@@ -19,8 +16,19 @@
 #define BRK_WITH(...) { __VA_ARGS__; break; } []{}
 #define CTN_WITH(...) { __VA_ARGS__; continue; } []{}
 #define EXT_WITH(...) { __VA_ARGS__; std::exit(0); } []{}
-#define ARGS(...) __VA_ARGS__
-#define EXPR(args, ...) [&](auto&&... GSH_EXPR_ARGS){ auto [args] = std::forward_as_tuple(GSH_EXPR_ARGS...); return (__VA_ARGS__); }
+
+#define GSH_INTERNAL_ARGS0() ()
+#define GSH_INTERNAL_ARGS1(a) (auto&& a)
+#define GSH_INTERNAL_ARGS2(a, b) (auto&& a, auto&& b)
+#define GSH_INTERNAL_ARGS3(a, b, c) (auto&& a, auto&& b, auto&& c)
+#define GSH_INTERNAL_ARGS4(a, b, c, d) (auto&& a, auto&& b, auto&& c, auto&& d)
+#define GSH_INTERNAL_ARGS5(a, b, c, d, e) (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e)
+#define GSH_INTERNAL_ARGS6(a, b, c, d, e, f) (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e, auto&& f)
+#define GSH_INTERNAL_ARGS7(a, b, c, d, e, f, g) (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e, auto&& f, auto&& g)
+#define GSH_INTERNAL_ARGS(...) GSH_INTERNAL_SELECT8(__VA_ARGS__, GSH_INTERNAL_ARGS7, GSH_INTERNAL_ARGS6, GSH_INTERNAL_ARGS5, GSH_INTERNAL_ARGS4, GSH_INTERNAL_ARGS3, GSH_INTERNAL_ARGS2, GSH_INTERNAL_ARGS1, GSH_INTERNAL_ARGS0)(__VA_ARGS__)
+#define GSH_INTERNAL_LAMBDA1(...) [&]() { return (__VA_ARGS__); }
+#define GSH_INTERNAL_LAMBDA2(args, ...) [&] GSH_INTERNAL_ARGS##args { return (__VA_ARGS__); }
+#define LAMBDA(...) GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_LAMBDA2, GSH_INTERNAL_LAMBDA1)(__VA_ARGS__)
 // clang-format on
 
 /*
@@ -32,7 +40,7 @@ namespace gsh {
 namespace internal {
     void AssertPrint(const ctype::c8* message, std::source_location loc) {
         BasicWriter<2048> w(2);
-        Formatter<const ctype::c8*>{}(w, "\e[2m[from gsh::internal::AssertPrint]\e[0m\nDuring the execution of \e[1m\e[3m'");
+        Formatter<const ctype::c8*>{}(w, "\e[2m[from gsh::internal::AssertPrint] \e[0mDuring the execution of \e[1m\e[3m'");
         Formatter<const ctype::c8*>{}(w, loc.function_name());
         Formatter<const ctype::c8*>{}(w, "'\e[0m\n");
         Formatter<const ctype::c8*>{}(w, loc.file_name());

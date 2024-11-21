@@ -11,6 +11,7 @@
 #include "Exception.hpp"     // gsh::Exception
 #include "Range.hpp"         // gsh::ViewInterface
 #include "Memory.hpp"        // gsh::Allocator, gsh::AllocatorTraits, gsh::DestroyAt
+#include "Util.hpp"          // gsh::Assume
 #include "internal/UtilMacro.hpp"
 
 namespace gsh {
@@ -207,6 +208,7 @@ public:
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Arr::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
+        Assume(n < len);
         return *(ptr + n);
     }
     GSH_INTERNAL_INLINE constexpr const_reference operator[](const size_type n) const {
@@ -214,6 +216,7 @@ public:
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Arr::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
+        Assume(n < len);
         return *(ptr + n);
     }
     GSH_INTERNAL_INLINE constexpr reference at(const size_type n) {
@@ -226,8 +229,14 @@ public:
             throw gsh::Exception("gsh::Arr::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
-    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept { return *(ptr + n); }
-    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept {
+        Assume(n < len);
+        return *(ptr + n);
+    }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept {
+        Assume(n < len);
+        return *(ptr + n);
+    }
     constexpr pointer data() noexcept { return ptr; }
     constexpr const_pointer data() const noexcept { return ptr; }
     constexpr reference front() noexcept { return *ptr; }
@@ -396,6 +405,7 @@ public:
         if (n >= N) [[unlikely]]
             throw gsh::Exception("gsh::StaticArr::operator[] / The index is out of range. ( n=", n, ", size=", N, " )");
 #endif
+        Assume(n < N);
         return elems[n];
     }
     GSH_INTERNAL_INLINE constexpr const_reference operator[](const size_type n) const {
@@ -403,6 +413,7 @@ public:
         if (n >= N) [[unlikely]]
             throw gsh::Exception("gsh::StaticArr::operator[] / The index is out of range. ( n=", n, ", size=", N, " )");
 #endif
+        Assume(n < N);
         return elems[n];
     }
     GSH_INTERNAL_INLINE constexpr reference at(const size_type n) {
@@ -415,8 +426,14 @@ public:
             throw gsh::Exception("gsh::StaticArr::at / The index is out of range. ( n=", n, ", size=", N, " )");
         return elems[n];
     }
-    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept { return elems[n]; }
-    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept { return elems[n]; }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept {
+        Assume(n < N);
+        return elems[n];
+    }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept {
+        Assume(n < N);
+        return elems[n];
+    }
     constexpr pointer data() noexcept { return elems; }
     constexpr const_pointer data() const noexcept { return elems; }
     constexpr reference front() noexcept { return elems[0]; }

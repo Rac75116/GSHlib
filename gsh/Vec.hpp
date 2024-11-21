@@ -206,6 +206,7 @@ public:
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
+        Assume(n < len);
         return *(ptr + n);
     }
     GSH_INTERNAL_INLINE constexpr const_reference operator[](const size_type n) const {
@@ -213,6 +214,7 @@ public:
         if (n >= len) [[unlikely]]
             throw gsh::Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
 #endif
+        Assume(n < len);
         return *(ptr + n);
     }
     GSH_INTERNAL_INLINE constexpr reference at(const size_type n) {
@@ -225,8 +227,14 @@ public:
             throw gsh::Exception("gsh::Vec::at / The index is out of range. ( n=", n, ", size=", len, " )");
         return *(ptr + n);
     }
-    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept { return *(ptr + n); }
-    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept { return *(ptr + n); }
+    GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept {
+        Assume(n < len);
+        return *(ptr + n);
+    }
+    GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept {
+        Assume(n < len);
+        return *(ptr + n);
+    }
     constexpr pointer data() noexcept { return ptr; }
     constexpr const_pointer data() const noexcept { return ptr; }
     constexpr reference front() noexcept { return *ptr; }

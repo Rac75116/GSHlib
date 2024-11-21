@@ -3,7 +3,7 @@
 #include <ctime>            // std::time, std::clock
 #include <source_location>  // std::source_location
 #include "TypeDef.hpp"      // gsh::itype, gsh::ftype
-#include "Functional.hpp"   // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers
+#include "Functional.hpp"   // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers, gsh::Invoke
 
 namespace gsh {
 
@@ -113,10 +113,10 @@ template<itype::u32 Size, class URBG> class RandBuffer : public URBG {
 public:
     constexpr RandBuffer() { init(); }
     constexpr explicit RandBuffer(URBG::result_type value) : URBG(value) { init(); }
-    constexpr void reload() { x = URBG::operator()(), cnt = 0; }
+    constexpr void reload() { x = Invoke(static_cast<URBG&>(*this)), cnt = 0; }
     constexpr void init() {
-        for (itype::u32 i = 0; i != Size; ++i) buf[i] = URBG::operator()();
-        x = URBG::operator()(), cnt = 0;
+        for (itype::u32 i = 0; i != Size; ++i) buf[i] = Invoke(static_cast<URBG&>(*this));
+        x = Invoke(static_cast<URBG&>(*this)), cnt = 0;
     }
     constexpr URBG::result_type operator()() { return x ^ buf[cnt++]; }
 };
@@ -125,19 +125,19 @@ template<itype::u32 Size> using RandBuffer64 = RandBuffer<Size, Rand64>;
 
 // @brief Generate 32bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr itype::u32 Uniform32(URBG& g, itype::u32 max) {
-    return (static_cast<itype::u64>(g() & 4294967295u) * max) >> 32;
+    return (static_cast<itype::u64>(Invoke(g) & 4294967295u) * max) >> 32;
 }
 // @brief Generate 32bit uniform random numbers in [min, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr itype::u32 Uniform32(URBG& g, itype::u32 min, itype::u32 max) {
-    return static_cast<itype::u32>((static_cast<itype::u64>(g() & 4294967295u) * (max - min)) >> 32) + min;
+    return static_cast<itype::u32>((static_cast<itype::u64>(Invoke(g) & 4294967295u) * (max - min)) >> 32) + min;
 }
 // @brief Generate 64bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr itype::u64 Uniform64(URBG& g, itype::u64 max) {
-    return (static_cast<itype::u128>(g()) * max) >> 64;
+    return (static_cast<itype::u128>(Invoke(g)) * max) >> 64;
 }
 // @brief Generate 64bit uniform random numbers in [min, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr itype::u64 Uniform64(URBG& g, itype::u64 min, itype::u64 max) {
-    return static_cast<itype::u64>((static_cast<itype::u128>(g()) * (max - min)) >> 64) + min;
+    return static_cast<itype::u64>((static_cast<itype::u128>(Invoke(g)) * (max - min)) >> 64) + min;
 }
 
 template<class URBG> constexpr itype::u32 UnbiasedUniform32(URBG& g, itype::u32 max) {
@@ -146,7 +146,7 @@ template<class URBG> constexpr itype::u32 UnbiasedUniform32(URBG& g, itype::u32 
     mask >>= std::countl_zero(max | 1);
     itype::u32 x;
     do {
-        x = g() & mask;
+        x = Invoke(g) & mask;
     } while (x > max);
     return x;
 }
@@ -159,7 +159,7 @@ template<class URBG> constexpr itype::u64 UnbiasedUniform64(URBG& g, itype::u64 
     mask >>= std::countl_zero(max | 1);
     itype::u64 x;
     do {
-        x = g() & mask;
+        x = Invoke(g) & mask;
     } while (x > max);
     return x;
 }
@@ -169,7 +169,7 @@ template<class URBG> constexpr itype::u32 UnbiasedUniform64(URBG& g, itype::u64 
 
 //https://speakerdeck.com/hole/rand01?slide=31
 template<class URBG> constexpr ftype::f32 Canocicaled32(URBG& g) {
-    return std::bit_cast<ftype::f32>((127u << 23) | (static_cast<itype::u32>(g()) & 0x7fffff)) - 1.0f;
+    return std::bit_cast<ftype::f32>((127u << 23) | (static_cast<itype::u32>(Invoke(g)) & 0x7fffff)) - 1.0f;
 }
 template<class URBG> constexpr ftype::f32 Uniformf32(URBG& g, ftype::f32 max) {
     return Canocicaled32(g) * max;
@@ -178,13 +178,23 @@ template<class URBG> constexpr ftype::f32 Uniformf32(URBG& g, ftype::f32 min, ft
     return Canocicaled32(g) * (max - min) + min;
 }
 template<class URBG> constexpr ftype::f64 Canocicaled64(URBG& g) {
-    return std::bit_cast<ftype::f64>((1023ull << 52) | (g() & 0xfffffffffffffull)) - 1.0;
+    return std::bit_cast<ftype::f64>((1023ull << 52) | (static_cast<itype::u64>(Invoke(g)) & 0xfffffffffffffull)) - 1.0;
 }
 template<class URBG> constexpr ftype::f64 Uniformf64(URBG& g, ftype::f64 max) {
     return Canocicaled64(g) * max;
 }
 template<class URBG> constexpr ftype::f64 Uniformf64(URBG& g, ftype::f64 min, ftype::f64 max) {
     return Canocicaled64(g) * (max - min) + min;
+}
+
+template<class URBG> constexpr bool Bernoulli(URBG& g) {
+    return Invoke(g) & 1;
+}
+template<class URBG> constexpr bool Bernoulli32(URBG& g, ftype::f32 p) {
+    return Canocicaled32(g) < p;
+}
+template<class URBG> constexpr bool Bernoulli64(URBG& g, ftype::f64 p) {
+    return Canocicaled64(g) < p;
 }
 
 }  // namespace gsh

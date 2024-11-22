@@ -421,6 +421,7 @@ template<FormatableRange R> class Formatter<R> {
     template<class Stream, class T, class... Args> constexpr void print(Stream&& stream, T&& r, Args&&... args) const {
         auto first = std::ranges::begin(r);
         auto last = std::ranges::end(r);
+        if (first == last) return;
         Formatter<std::decay_t<std::ranges::range_value_t<R>>> formatter;
         while (true) {
             formatter(stream, *first, args...);

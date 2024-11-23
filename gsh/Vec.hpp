@@ -241,23 +241,23 @@ public:
     constexpr const_reference front() const noexcept { return *ptr; }
     constexpr reference back() noexcept { return *(ptr + len - 1); }
     constexpr const_reference back() const noexcept { return *(ptr + len - 1); }
-    template<std::input_iterator InputIter> constexpr void assign(const InputIter first, const InputIter last) {
-        const size_type n = std::distance(first, last);
+    template<std::ranges::range R> constexpr void assign(R&& r) {
+        const size_type n = std::ranges::size(r);
         if (n > cap) {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
             ptr = traits::allocate(alloc, n);
             cap = n;
-            InputIter itr = first;
+            auto itr = std::ranges::begin(r);
             for (size_type i = 0; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
         } else if (n > len) {
             size_type i = 0;
-            InputIter itr = first;
+            auto itr = std::ranges::begin(r);
             for (; i != len; ++itr, ++i) *(ptr + i) = *itr;
             for (; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
         } else {
             for (size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
-            InputIter itr = first;
+            auto itr = std::ranges::begin(r);
             for (size_type i = 0; i != n; ++itr, ++i) *(ptr + i) = *itr;
         }
         len = n;

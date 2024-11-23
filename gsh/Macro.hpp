@@ -40,18 +40,18 @@ namespace gsh {
 namespace internal {
     void AssertPrint(const ctype::c8* message, std::source_location loc) {
         BasicWriter<2048> w(2);
-        Formatter<const ctype::c8*>{}(w, "\e[2m[from gsh::internal::AssertPrint] \e[0mDuring the execution of \e[1m\e[3m'");
-        Formatter<const ctype::c8*>{}(w, loc.function_name());
-        Formatter<const ctype::c8*>{}(w, "'\e[0m\n");
-        Formatter<const ctype::c8*>{}(w, loc.file_name());
-        Formatter<ctype::c8>{}(w, ':');
-        Formatter<itype::u32>{}(w, loc.line());
-        Formatter<ctype::c8>{}(w, ':');
-        Formatter<itype::u32>{}(w, loc.column());
-        Formatter<ctype::c8>{}(w, ':');
-        Formatter<const ctype::c8*>{}(w, " \e[31mAssertion Faild:\e[0m \e[1m\e[3m'");
-        Formatter<const ctype::c8*>{}(w, message);
-        Formatter<const ctype::c8*>{}(w, "'\e[0m\n");
+        w.write("\e[2m[from gsh::internal::Assert] \e[0mDuring the execution of \e[1m\e[3m'");
+        w.write(loc.function_name());
+        w.write("'\e[0m\n");
+        w.write(loc.file_name());
+        w.write(':');
+        w.write(loc.line());
+        w.write(':');
+        w.write(loc.column());
+        w.write(':');
+        w.write(" \e[31mAssertion Failed:\e[0m \e[1m\e[3m'");
+        w.write(message);
+        w.write("'\e[0m\n");
         w.reload();
     }
     GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const ctype::c8* message, std::source_location loc = std::source_location::current()) {

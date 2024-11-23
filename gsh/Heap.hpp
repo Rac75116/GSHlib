@@ -169,18 +169,182 @@ private:
             mx = 1 + Invoke(comp_func, data[1], data[2]);
         else mx = data.size() == 2;
     }
+    template<bool Min, bool SetMax> GSH_INTERNAL_INLINE constexpr void push_down(itype::u32 idx) noexcept(nothrow_op) {
+        itype::u32 lim = (data.size() + 1) / 4 - 1;
+        auto comp = [&](auto&& a, auto&& b) GSH_INTERNAL_INLINE {
+            if constexpr (Min) return static_cast<bool>(Invoke(comp_func, a, b));
+            else return static_cast<bool>(Invoke(comp_func, b, a));
+        };
+        itype::u32 cur = idx;
+        T tmp = std::move(data[idx]);
+        while (true) {
+            itype::u32 grdch = (cur + 1) * 4 - 1;
+            if (cur >= lim) [[unlikely]] {
+                itype::u32 ch = (cur + 1) * 2 - 1;
+                if (grdch < data.size()) [[unlikely]] {
+                    itype::u32 m = ch + comp(data[ch + 1], data[ch]);
+                    switch (data.size() - grdch) {
+                    case 3 :
+                        {
+                            itype::u32 n = grdch + 1 + comp(data[grdch + 2], data[grdch + 1]);
+                            m = comp(data[m], data[grdch]) ? m : grdch;
+                            m = comp(data[m], data[n]) ? m : n;
+                            break;
+                        }
+                    case 2 :
+                        {
+                            itype::u32 n = grdch + comp(data[grdch + 1], data[grdch]);
+                            m = comp(data[m], data[n]) ? m : n;
+                            break;
+                        }
+                    case 1 :
+                        {
+                            m = comp(data[m], data[grdch]) ? m : grdch;
+                            break;
+                        }
+                    default : Unreachable();
+                    };
+                    if (m < grdch) {
+                        if (comp(data[m], tmp)) {
+                            data[cur] = std::move(data[m]);
+                            data[m] = std::move(tmp);
+                        } else {
+                            data[cur] = std::move(tmp);
+                        }
+                    } else {
+                        itype::u32 p = (m + 1) / 2 - 1;
+                        if (comp(data[m], tmp)) {
+                            data[cur] = std::move(data[m]);
+                            if (comp(data[p], tmp)) {
+                                data[m] = std::move(data[p]);
+                                data[p] = std::move(tmp);
+                            } else {
+                                data[m] = std::move(tmp);
+                            }
+                        } else {
+                            data[cur] = std::move(tmp);
+                        }
+                    }
+                } else if (ch >= data.size()) [[likely]] {
+                    data[cur] = std::move(tmp);
+                } else if (ch < data.size() - 1) [[likely]] {
+                    bool f = comp(data[ch + 1], data[ch]);
+                    T m = std::move(f ? data[ch + 1] : data[ch]);
+                    bool g = comp(m, tmp);
+                    data[cur] = std::move(g ? m : tmp);
+                    data[ch + f] = std::move(g ? tmp : m);
+                } else if (comp(data[ch], tmp)) {
+                    data[cur] = std::move(data[ch]);
+                    data[ch] = std::move(tmp);
+                } else {
+                    data[cur] = std::move(tmp);
+                }
+                if constexpr (SetMax) {
+                    Assume(data.size() >= 3);
+                    set_mx();
+                }
+                return;
+            }
+            itype::u32 a = grdch + comp(data[grdch + 1], data[grdch]);
+            itype::u32 b = grdch + 2 + comp(data[grdch + 3], data[grdch + 2]);
+            itype::u32 c = a + comp(data[b], data[a]) * (b - a);
+            itype::u32 p = (c + 1) / 2 - 1;
+            if (!comp(data[c], tmp)) {
+                data[cur] = std::move(tmp);
+                if constexpr (SetMax) {
+                    Assume(data.size() >= 3);
+                    set_mx();
+                }
+                return;
+            }
+            data[cur] = std::move(data[c]);
+            cur = c;
+            bool f = comp(data[p], tmp);
+            T tmp2 = data[p];
+            data[p] = std::move(f ? tmp : tmp2);
+            tmp = std::move(f ? tmp2 : tmp);
+        }
+    }
+    GSH_INTERNAL_INLINE constexpr void pop_front_impl() noexcept(nothrow_op) {
+        if (data.size() <= 3) [[unlikely]] {
+            switch (data.size()) {
+            case 0 : break;
+            case 1 : mx = 0; break;
+            case 2 :
+                {
+                    if (Invoke(comp_func, data[1], data[0])) {
+                        auto tmp = std::move(data[0]);
+                        data[0] = std::move(data[1]);
+                        data[1] = std::move(tmp);
+                    }
+                    mx = 1;
+                    break;
+                }
+            case 3 :
+                {
+                    itype::u32 m = 1 + Invoke(comp_func, data[2], data[1]);
+                    if (Invoke(comp_func, data[m], data[0])) {
+                        auto tmp = std::move(data[0]);
+                        data[0] = std::move(data[m]);
+                        data[m] = std::move(tmp);
+                    }
+                    mx = 1 + Invoke(comp_func, data[1], data[2]);
+                    break;
+                }
+            default : Unreachable();
+            }
+            return;
+        }
+        push_down<true, true>(0);
+    }
+    GSH_INTERNAL_INLINE constexpr void pop_back_impl() noexcept(nothrow_op) {
+        if (data.size() <= 3) [[unlikely]] {
+            set_mx();
+            return;
+        }
+        push_down<false, true>(mx);
+    }
     constexpr void make_heap() noexcept(nothrow_op) {
         if (data.size() <= 1) [[unlikely]]
             return;
-        bool levels = is_min_level(data.size() - 1);
         itype::u32 lim1 = data.size() / 2;
-        if (data.size() % 2 == 1) {
+        if (data.size() % 2 == 0) {
             --lim1;
-            itype::u32 ch = (lim1 + 1) / 2 - 1;
-            if (Invoke(comp_func, data[lim1], data[ch]) ^ levels) {
+            itype::u32 ch = (lim1 + 1) * 2 - 1;
+            if (Invoke(comp_func, data[lim1], data[ch]) ^ is_min_level(lim1)) {
                 auto tmp = std::move(data[lim1]);
                 data[lim1] = std::move(data[ch]);
                 data[ch] = std::move(tmp);
+            }
+        }
+        itype::u32 lim2 = data.size() / 4;
+        Assume(lim2 + 1 != 0);
+        itype::u32 lr = std::bit_floor(lim2 + 1) * 2 - 1;
+        lr = lim1 < lr ? lim1 : lr;
+        bool lim2_min = is_min_level(lim2);
+        for (itype::u32 i = lim2_min ? lim2 : lr, j = lim2_min ? lr : lim1; i < j; ++i) {
+            itype::u32 ch = (i + 1) * 2 - 1;
+            itype::u32 m = ch + static_cast<bool>(Invoke(comp_func, data[ch + 1], data[ch]));
+            bool f = Invoke(comp_func, data[i], data[m]);
+            T tmp1 = std::move(data[i]);
+            T tmp2 = std::move(data[m]);
+            data[i] = std::move(f ? tmp1 : tmp2);
+            data[m] = std::move(f ? tmp2 : tmp1);
+        }
+        for (itype::u32 i = lim2_min ? lr : lim2, j = lim2_min ? lim1 : lr; i < j; ++i) {
+            itype::u32 ch = (i + 1) * 2 - 1;
+            itype::u32 m = ch + static_cast<bool>(Invoke(comp_func, data[ch], data[ch + 1]));
+            bool f = Invoke(comp_func, data[m], data[i]);
+            T tmp1 = std::move(data[i]);
+            T tmp2 = std::move(data[m]);
+            data[i] = std::move(f ? tmp1 : tmp2);
+            data[m] = std::move(f ? tmp2 : tmp1);
+        }
+        for (itype::u32 i = lim2; i--;) {
+            if (is_min_level(i)) {
+                push_down<true, false>(i);
+            } else {
+                push_down<false, false>(i);
             }
         }
         set_mx();
@@ -252,6 +416,10 @@ private:
         }
     }
 public:
+    template<Range R> constexpr void assign(R&& r) {
+        data.assign(std::forward<R>(r));
+        make_heap();
+    }
     constexpr const_reference top() const noexcept { return data[0]; }
     constexpr const_reference front() const noexcept { return data[0]; }
     constexpr const_reference back() const noexcept { return data[mx]; }
@@ -274,214 +442,55 @@ public:
     constexpr void pop_front() noexcept(nothrow_op) {
         data[0] = std::move(data.back());
         data.pop_back();
-        if (data.size() <= 3) [[unlikely]] {
-            switch (data.size()) {
-            case 0 : break;
-            case 1 : mx = 0; break;
-            case 2 :
-                {
-                    if (Invoke(comp_func, data[1], data[0])) {
-                        auto tmp = std::move(data[0]);
-                        data[0] = std::move(data[1]);
-                        data[1] = std::move(tmp);
-                    }
-                    mx = 1;
-                    break;
-                }
-            case 3 :
-                {
-                    itype::u32 m = 1 + Invoke(comp_func, data[2], data[1]);
-                    if (Invoke(comp_func, data[m], data[0])) {
-                        auto tmp = std::move(data[0]);
-                        data[0] = std::move(data[m]);
-                        data[m] = std::move(tmp);
-                    }
-                    mx = 1 + Invoke(comp_func, data[1], data[2]);
-                    break;
-                }
-            default : Unreachable();
-            }
-            return;
-        }
-        itype::u32 lim = (data.size() + 1) / 4 - 1;
-        itype::u32 cur = 0;
-        T tmp = std::move(data[0]);
-        while (true) {
-            itype::u32 grdch = (cur + 1) * 4 - 1;
-            if (cur >= lim) [[unlikely]] {
-                itype::u32 ch = (cur + 1) * 2 - 1;
-                if (grdch < data.size()) [[unlikely]] {
-                    itype::u32 m = ch + Invoke(comp_func, data[ch + 1], data[ch]);
-                    switch (data.size() - grdch) {
-                    case 3 :
-                        {
-                            itype::u32 n = grdch + 1 + Invoke(comp_func, data[grdch + 2], data[grdch + 1]);
-                            m = Invoke(comp_func, data[m], data[grdch]) ? m : grdch;
-                            m = Invoke(comp_func, data[m], data[n]) ? m : n;
-                            break;
-                        }
-                    case 2 :
-                        {
-                            itype::u32 n = grdch + Invoke(comp_func, data[grdch + 1], data[grdch]);
-                            m = Invoke(comp_func, data[m], data[n]) ? m : n;
-                            break;
-                        }
-                    case 1 :
-                        {
-                            m = Invoke(comp_func, data[m], data[grdch]) ? m : grdch;
-                            break;
-                        }
-                    default : Unreachable();
-                    };
-                    if (m < grdch) {
-                        if (Invoke(comp_func, data[m], tmp)) {
-                            data[cur] = std::move(data[m]);
-                            data[m] = std::move(tmp);
-                        } else {
-                            data[cur] = std::move(tmp);
-                        }
-                    } else {
-                        itype::u32 p = (m + 1) / 2 - 1;
-                        if (Invoke(comp_func, data[m], tmp)) {
-                            data[cur] = std::move(data[m]);
-                            if (Invoke(comp_func, data[p], tmp)) {
-                                data[m] = std::move(data[p]);
-                                data[p] = std::move(tmp);
-                            } else {
-                                data[m] = std::move(tmp);
-                            }
-                        } else {
-                            data[cur] = std::move(tmp);
-                        }
-                    }
-                } else if (ch >= data.size()) [[likely]] {
-                    data[cur] = std::move(tmp);
-                } else if (ch < data.size() - 1) [[likely]] {
-                    bool f = Invoke(comp_func, data[ch + 1], data[ch]);
-                    T m = std::move(f ? data[ch + 1] : data[ch]);
-                    bool g = Invoke(comp_func, m, tmp);
-                    data[cur] = std::move(g ? m : tmp);
-                    data[ch + f] = std::move(g ? tmp : m);
-                } else if (Invoke(comp_func, data[ch], tmp)) {
-                    data[cur] = std::move(data[ch]);
-                    data[ch] = std::move(tmp);
-                } else {
-                    data[cur] = std::move(tmp);
-                }
-                Assume(data.size() >= 3);
-                set_mx();
-                return;
-            }
-            itype::u32 a = grdch + Invoke(comp_func, data[grdch + 1], data[grdch]);
-            itype::u32 b = grdch + 2 + Invoke(comp_func, data[grdch + 3], data[grdch + 2]);
-            itype::u32 c = a + Invoke(comp_func, data[b], data[a]) * (b - a);
-            itype::u32 p = (c + 1) / 2 - 1;
-            if (!Invoke(comp_func, data[c], tmp)) {
-                data[cur] = std::move(tmp);
-                Assume(data.size() >= 3);
-                set_mx();
-                return;
-            }
-            data[cur] = std::move(data[c]);
-            cur = c;
-            bool f = Invoke(comp_func, data[p], tmp);
-            T tmp2 = data[p];
-            data[p] = std::move(f ? tmp : tmp2);
-            tmp = std::move(f ? tmp2 : tmp);
-        }
+        pop_front_impl();
     }
     constexpr void pop_back() noexcept(nothrow_op) {
         data[mx] = std::move(data.back());
         data.pop_back();
-        if (data.size() <= 3) [[unlikely]] {
-            set_mx();
-            return;
+        pop_back_impl();
+    }
+    constexpr void replace(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) { replace_front(x); }
+    constexpr void replace(T&& x) noexcept(nothrow_op) { replace_front(std::move(x)); }
+    constexpr void replace_front(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
+        data[0] = x;
+        pop_front_impl();
+    }
+    constexpr void replace_front(T&& x) noexcept(nothrow_op) {
+        data[0] = std::move(x);
+        pop_front_impl();
+    }
+    constexpr void replace_back(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
+        data[mx] = x;
+        pop_back_impl();
+    }
+    constexpr void replace_back(T&& x) noexcept(nothrow_op) {
+        data[mx] = std::move(x);
+        pop_back_impl();
+    }
+    constexpr void pushpop(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) { pushpop_front(x); }
+    constexpr void pushpop(T&& x) noexcept(nothrow_op) { pushpop_front(std::move(x)); }
+    constexpr void pushpop_front(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
+        if (Invoke(comp_func, data[0], x)) {
+            data[0] = x;
+            pop_front_impl();
         }
-        itype::u32 lim = (data.size() + 1) / 4 - 1;
-        itype::u32 cur = mx;
-        T tmp = std::move(data[mx]);
-        while (true) {
-            itype::u32 grdch = (cur + 1) * 4 - 1;
-            if (cur >= lim) [[unlikely]] {
-                itype::u32 ch = (cur + 1) * 2 - 1;
-                if (grdch < data.size()) [[unlikely]] {
-                    itype::u32 m = ch + Invoke(comp_func, data[ch], data[ch + 1]);
-                    switch (data.size() - grdch) {
-                    case 3 :
-                        {
-                            itype::u32 n = grdch + 1 + Invoke(comp_func, data[grdch + 1], data[grdch + 2]);
-                            m = Invoke(comp_func, data[grdch], data[m]) ? m : grdch;
-                            m = Invoke(comp_func, data[n], data[m]) ? m : n;
-                            break;
-                        }
-                    case 2 :
-                        {
-                            itype::u32 n = grdch + Invoke(comp_func, data[grdch], data[grdch + 1]);
-                            m = Invoke(comp_func, data[n], data[m]) ? m : n;
-                            break;
-                        }
-                    case 1 :
-                        {
-                            m = Invoke(comp_func, data[grdch], data[m]) ? m : grdch;
-                            break;
-                        }
-                    default : Unreachable();
-                    };
-                    if (m < grdch) {
-                        if (Invoke(comp_func, tmp, data[m])) {
-                            data[cur] = std::move(data[m]);
-                            data[m] = std::move(tmp);
-                        } else {
-                            data[cur] = std::move(tmp);
-                        }
-                    } else {
-                        itype::u32 p = (m + 1) / 2 - 1;
-                        if (Invoke(comp_func, tmp, data[m])) {
-                            data[cur] = std::move(data[m]);
-                            if (Invoke(comp_func, tmp, data[p])) {
-                                data[m] = std::move(data[p]);
-                                data[p] = std::move(tmp);
-                            } else {
-                                data[m] = std::move(tmp);
-                            }
-                        } else {
-                            data[cur] = std::move(tmp);
-                        }
-                    }
-                } else if (ch >= data.size()) [[likely]] {
-                    data[cur] = std::move(tmp);
-                } else if (ch < data.size() - 1) [[likely]] {
-                    bool f = Invoke(comp_func, data[ch], data[ch + 1]);
-                    T m = std::move(f ? data[ch + 1] : data[ch]);
-                    bool g = Invoke(comp_func, tmp, m);
-                    data[cur] = std::move(g ? m : tmp);
-                    data[ch + f] = std::move(g ? tmp : m);
-                } else if (Invoke(comp_func, tmp, data[ch])) {
-                    data[cur] = std::move(data[ch]);
-                    data[ch] = std::move(tmp);
-                } else {
-                    data[cur] = std::move(tmp);
-                }
-                Assume(data.size() >= 3);
-                set_mx();
-                return;
-            }
-            itype::u32 a = grdch + Invoke(comp_func, data[grdch], data[grdch + 1]);
-            itype::u32 b = grdch + 2 + Invoke(comp_func, data[grdch + 2], data[grdch + 3]);
-            itype::u32 c = a + Invoke(comp_func, data[a], data[b]) * (b - a);
-            itype::u32 p = (c + 1) / 2 - 1;
-            if (!Invoke(comp_func, tmp, data[c])) {
-                data[cur] = std::move(tmp);
-                Assume(data.size() >= 3);
-                set_mx();
-                return;
-            }
-            data[cur] = std::move(data[c]);
-            cur = c;
-            bool f = Invoke(comp_func, tmp, data[p]);
-            T tmp2 = data[p];
-            data[p] = std::move(f ? tmp : tmp2);
-            tmp = std::move(f ? tmp2 : tmp);
+    }
+    constexpr void pushpop_front(T&& x) noexcept(nothrow_op) {
+        if (Invoke(comp_func, data[0], x)) {
+            data[0] = std::move(x);
+            pop_front_impl();
+        }
+    }
+    constexpr void pushpop_back(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
+        if (Invoke(comp_func, x, data[mx])) {
+            data[mx] = x;
+            pop_back_impl();
+        }
+    }
+    constexpr void pushpop_back(T&& x) noexcept(nothrow_op) {
+        if (Invoke(comp_func, x, data[mx])) {
+            data[mx] = std::move(x);
+            pop_back_impl();
         }
     }
 };

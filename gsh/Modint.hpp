@@ -334,15 +334,21 @@ namespace internal {
             if (n <= 1) [[unlikely]]
                 throw Exception("gsh::internal::DynamicModint32Impl::set / Mod must be at least 2.");
             mod_ = n;
-            M_ = std::numeric_limits<itype::u64>::max() / mod_ + std::has_single_bit(mod_);
+            M_ = std::numeric_limits<itype::u64>::max() / mod_ + 1;
         }
         constexpr itype::u32 mod() const noexcept { return mod_; }
+        constexpr itype::u64 build(itype::u32 x) const noexcept {
+            itype::u64 lowbit = M_ * x;
+            return (static_cast<itype::u128>(lowbit) * mod_) >> 64;
+        }
+        constexpr itype::u64 build(itype::u64 x) const noexcept { return x % mod_; }
+        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintImpl::build(x); }
         constexpr itype::u32 mul(itype::u32 x, itype::u32 y) const noexcept {
             Assume(x < mod_ && y < mod_);
             const itype::u64 a = static_cast<itype::u64>(x) * y;
             const itype::u64 b = (static_cast<itype::u128>(M_) * a) >> 64;
             const itype::u64 c = a - b * mod_;
-            return c - (c >= mod_) * mod_;
+            return c + (c >= mod_) * mod_;
         }
     };
 

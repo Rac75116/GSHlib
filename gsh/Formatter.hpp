@@ -21,6 +21,14 @@ namespace itype {
 template<class T> class Formatter;
 
 namespace internal {
+#ifdef GSH_REDUCE_COMPILATION_TIME
+    struct InttoStrT {
+#define GSH_INTERNAL_INCLUDE_INTTOSTR "internal/InttoStr.txt"
+        const ctype::c8* table =
+#include GSH_INTERNAL_INCLUDE_INTTOSTR
+    };
+    template<itype::u32> constexpr InttoStrT InttoStr;
+#else
     template<itype::u32> constexpr auto InttoStr = [] {
         struct {
             ctype::c8 table[40004] = {};
@@ -33,6 +41,7 @@ namespace internal {
         }
         return res;
     }();
+#endif
     template<class Stream> constexpr void Formatu16(Stream& stream, itype::u16 n) {
         auto copy1 = [&](itype::u16 x) {
             itype::u32 off = (x < 10) + (x < 100) + (x < 1000);

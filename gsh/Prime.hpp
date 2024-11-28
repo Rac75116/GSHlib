@@ -192,7 +192,7 @@ namespace internal {
 
 // @brief Prime number determination
 template<bool Prob = true> constexpr bool isPrime(const itype::u64 x) noexcept {
-    if (x < 65546u) {
+    if (x < 65536u) {
         return internal::isPrime16<0>::calc(x);
     } else {
         if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
@@ -313,10 +313,9 @@ namespace internal {
             return res;
         }
         if (n <= 0xffffffff) {
-            itype::u64 c = n;
             for (itype::u32 i = 8; n >= 529; ++i) {
                 itype::u64 m = InvPrime<0>.table[i];
-                if (m * c < m) {
+                if (m * n < m) {
                     itype::u64 p = TinyPrimes<0>.table[i];
                     do {
                         *(res++) = p;
@@ -327,7 +326,34 @@ namespace internal {
             if (n != 1) *(res++) = n;
             return res;
         }
-        const itype::u64 m = n;
+        itype::u64 m = n;
+        {
+            internal::MontgomeryModint64Impl mint;
+            mint.set(n);
+            for (itype::u32 k = 2; m == n; ++k) {
+                itype::u64 f = mint.raw(k);
+                for (itype::u32 i = 1;; i += 64) {
+                    itype::u64 prev = f;
+                    itype::u64 s = mint.one();
+                    for (itype::u32 j = 0; j != 64; ++j) {
+                        f = mint.pow(f, i + j);
+                        s = mint.mul(s, mint.dec(f));
+                    }
+                    itype::u64 g = GCD(mint.val(s), n);
+                    if (g == 1) continue;
+                    if (g == n) {
+                        g = 1;
+                        f = prev;
+                        for (itype::u32 j = 0; g == 1; ++j) {
+                            f = mint.pow(f, i + j);
+                            g = GCD(mint.val(mint.dec(f)), n);
+                        }
+                    }
+                    m = g;
+                    break;
+                }
+            }
+        }
         if (n / m < 529) *(res++) = n / m;
         else res = FactorizeSub64(n / m, res);
         if (m < 529) {
@@ -339,7 +365,7 @@ namespace internal {
 constexpr Arr<itype::u64> Factorize(itype::u64 n) {
     if (n <= 1) [[unlikely]]
         return {};
-    itype::u64 res[63];
+    itype::u64 res[64];
     itype::u64* p = res;
     {
         Assume(n != 0);

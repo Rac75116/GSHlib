@@ -29,32 +29,6 @@ namespace itype {
     using u32 = std::uint32_t;
     using i64 = std::int64_t;
     using u64 = std::uint64_t;
-#ifdef __SIZEOF_INT128__
-    using i128 = __int128_t;
-    using u128 = __uint128_t;
-#elif defined(_MSC_VER)
-    class u128 {
-        u64 a, b;
-    public:
-        constexpr u128() : a(0), b(0) {}
-        constexpr u128(const u128&) = default;
-        constexpr u128(u128&&) = default;
-        constexpr u128& operator=(const u128&) = default;
-        constexpr u128& operator=(u128&&) = default;
-    };
-    class i128 {
-        i64 a;
-        u64 b;
-    public:
-        constexpr u128() : a(0), b(0) {}
-        constexpr u128(const u128&) = default;
-        constexpr u128(u128&&) = default;
-        constexpr u128& operator=(const u128&) = default;
-        constexpr u128& operator=(u128&&) = default;
-    };
-#else
-    static_assert(false, "This library needs __int128_t and __uint128_t.");
-#endif
 }  // namespace itype
 
 namespace ftype {

@@ -462,5 +462,4 @@ template<itype::u32 id = 0> using ThreadLocalDynamicModint32 = internal::ModintI
 template<itype::u32 id = 0> using ThreadLocalDynamicModint64 = internal::ModintInterface<internal::DynamicModint64Impl, id, true>;
 template<itype::u32 id = 0> using ThreadLocalMontgomeryModint64 = internal::ModintInterface<internal::MontgomeryModint64Impl, id, true>;
 
-
 }  // namespace gsh

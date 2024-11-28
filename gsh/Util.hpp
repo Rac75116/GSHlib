@@ -60,7 +60,7 @@ class InPlaceTag {};
 [[maybe_unused]] constexpr InPlaceTag InPlace;
 
 template<class T>
-    requires std::is_trivially_copyable_v<T>
+    requires std::is_trivial_v<T>
 GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, ctype::c8 byte, itype::u32 len) {
     if (std::is_constant_evaluated()) {
         struct mem {
@@ -78,7 +78,7 @@ GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, ctype::c8 byte, itype::u32 le
     } else std::memset(p, byte, len);
 }
 template<class T>
-    requires std::is_trivially_copyable_v<T>
+    requires std::is_trivial_v<T>
 GSH_INTERNAL_INLINE constexpr itype::u32 MemoryChar(T* p, ctype::c8 byte, itype::u32 len) {
     if (std::is_constant_evaluated()) {
         struct mem {
@@ -103,7 +103,7 @@ GSH_INTERNAL_INLINE constexpr itype::u32 MemoryChar(T* p, ctype::c8 byte, itype:
     }
 }
 template<class T, class U>
-    requires std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>
+    requires std::is_trivial_v<T>
 GSH_INTERNAL_INLINE constexpr void MemoryCopy(T* GSH_INTERNAL_RESTRICT dst, U* GSH_INTERNAL_RESTRICT src, itype::u32 len) {
     if (std::is_constant_evaluated()) {
         struct mem1 {

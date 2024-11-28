@@ -1,11 +1,12 @@
 #pragma once
-#include <tuple>          // std::tuple_size, std::tuple_element
-#include <utility>        // std::integer_sequence, std::make_index_sequence
-#include <ranges>         // std::ranges::forward_range
-#include <charconv>       // std::to_chars, std::chars_format, std::errc
-#include "TypeDef.hpp"    // gsh::itype, gsh::ctype
-#include "Util.hpp"       // gsh::MemoryCopy, gsh::StrLen
-#include "Exception.hpp"  // gsh::Exception
+#include <tuple>               // std::tuple_size, std::tuple_element
+#include <utility>             // std::integer_sequence, std::make_index_sequence
+#include <ranges>              // std::ranges::forward_range
+#include <charconv>            // std::to_chars, std::chars_format, std::errc
+#include "TypeDef.hpp"         // gsh::itype, gsh::ctype
+#include "Util.hpp"            // gsh::MemoryCopy, gsh::StrLen
+#include "Exception.hpp"       // gsh::Exception
+#include "FixedPrecision.hpp"  // gsh::itype::u128, gsh::itype::i128
 
 namespace gsh {
 
@@ -128,26 +129,7 @@ namespace internal {
             stream.skip(4);
         };
         auto div_1e16 = [&](itype::u64& rem) -> itype::u64 {
-#if defined(__GNUC__) && defined(__x86_64__)
-            if constexpr (sizeof(void*) == 8) {
-                if (std::is_constant_evaluated()) {
-                    itype::u64 res = n / 10000000000000000;
-                    rem = n - 10000000000000000 * res;
-                    return res;
-                }
-                itype::u64 res;
-                __asm__("divq %[v]" : "=a"(res), "=d"(rem) : [v] "r"(10000000000000000), "a"(static_cast<itype::u64>(n)), "d"(static_cast<itype::u64>(n >> 64)));
-                return res;
-            } else {
-                itype::u64 res = n / 10000000000000000;
-                rem = n - 10000000000000000 * res;
-                return res;
-            }
-#else
-            itype::u64 res = n / 10000000000000000;
-            rem = n - 10000000000000000 * res;
-            return res;
-#endif
+            return Divu128(n >> 64, n, 10000000000000000, rem);
         };
         constexpr itype::u128 t = static_cast<itype::u128>(10000000000000000) * 10000000000000000;
         if (n >= t) {

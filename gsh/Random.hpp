@@ -140,7 +140,7 @@ template<class URBG> constexpr itype::u64 Uniform64(URBG&& g, itype::u64 min, it
     return static_cast<itype::u64>((static_cast<itype::u128>(Invoke(g)) * (max - min)) >> 64) + min;
 }
 
-template<RandomAccessRange R, class URBG> constexpr void Shuffle(R&& r, URBG&& g) {
+template<std::ranges::random_access_range R, class URBG> constexpr void Shuffle(R&& r, URBG&& g) {
     itype::u32 sz = std::ranges::size(r);
     auto itr = std::ranges::begin(r);
     for (itype::u32 i = 0; i != sz; ++i, ++itr) {

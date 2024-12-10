@@ -8,6 +8,7 @@
 #include "Range.hpp"               // gsh::Rangeof, gsh::RangeTraits
 #include "Algorithm.hpp"           // gsh::internal::SortUnsigned64
 #include "Random.hpp"              // gsh::RandBuffer32
+#include "Int128.hpp"              // gsh::internal::Mulu128, gsh::internal::Divu128
 #include "internal/Operation.hpp"  // gsh::internal::ArithmeticInterface
 
 namespace gsh {
@@ -106,7 +107,8 @@ template<Rangeof<Point2<itype::i32>> T> constexpr Arr<Point2<itype::i32>> Argume
         if (x == 0 && y == 0) ord = 4ull << 61;
         else {
             constexpr itype::u64 li = (1ull << 61) - 1;
-            const itype::u64 tmp = (static_cast<itype::u128>(mn) * li) / mx;
+            auto [hi, lo] = internal::Mulu128(mn, li);
+            const itype::u64 tmp = internal::Divu128(hi, lo, mx).first;
             ord = id << 61 | (rev ? li - tmp : tmp);
         }
         v[i++] = static_cast<itype::u128>(std::bit_cast<itype::u64>(p)) << 64 | ord;

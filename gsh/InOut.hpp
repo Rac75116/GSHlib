@@ -201,7 +201,7 @@ public:
 #else
         struct stat st;
         fstat(0, &st);
-        buf = reinterpret_cast<ctype::c8*>(mmap(nullptr, st.st_size + 64, PROT_READ, MAP_PRIVATE, 0, 0));
+        buf = reinterpret_cast<ctype::c8*>(mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, 0, 0));
         cur = buf;
         eof = buf + st.st_size;
 #endif

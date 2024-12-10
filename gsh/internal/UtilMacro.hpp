@@ -13,7 +13,7 @@
 #define GSH_INTERNAL_STR(s)       #s
 #define GSH_INTERNAL_CONCAT(a, b) a##b
 #define GSH_INTERNAL_VA_SIZE(...) GSH_INTERNAL_SELECT8(__VA_ARGS__, 7, 6, 5, 4, 3, 2, 1, 0)
-#if defined __clang__ || defined __INTEL_COMPILER
+#if defined(__clang__) || defined(__ICC)
 #define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(unroll n))
 #elif defined __GNUC__
 #define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(GCC unroll n))
@@ -30,7 +30,7 @@
 #define GSH_INTERNAL_INLINE
 #define GSH_INTERNAL_NOINLINE
 #endif
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__ICC)
 #define GSH_INTERNAL_RESTRICT __restrict__
 #elif defined _MSC_VER
 #define GSH_INTERNAL_RESTRICT __restrict

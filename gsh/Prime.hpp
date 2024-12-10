@@ -5,23 +5,24 @@
 #include "Modint.hpp"
 #include "Vec.hpp"
 #include "Numeric.hpp"
+#include "Int128.hpp"
 
 namespace gsh {
 
 namespace internal {
 
-    template<itype::u32> struct isPrime8 {
+    template<itype::u32> struct IsPrime8 {
         constexpr static itype::u64 flag_table[4] = { 2891462833508853932u, 9223979663092122248u, 9234666804958202376u, 577166812715155618u };
         GSH_INTERNAL_INLINE constexpr static bool calc(const itype::u8 n) noexcept { return (flag_table[n / 64] >> (n % 64)) & 1; }
     };
-    template<itype::u32> struct isPrime16 {
+    template<itype::u32> struct IsPrime16 {
         constexpr static itype::u64 flag_table[512] = {
 #include "internal/PrimeFlag.txt"
         };
         GSH_INTERNAL_INLINE constexpr static bool calc(const itype::u16 x) noexcept { return x == 2 || (x % 2 == 1 && (flag_table[x / 128] & (1ull << (x % 128 / 2)))); }
     };
 
-    template<itype::u32> struct isPrime32 {
+    template<itype::u32> struct IsPrime32 {
         // clang-format off
         constexpr static itype::u16 bases[] = {
 1216,1836,8885,4564,10978,5228,15613,13941,1553,173,3615,3144,10065,9259,233,2362,6244,6431,10863,5920,6408,6841,22124,2290,45597,6935,4835,7652,1051,445,5807,842,1534,22140,1282,1733,347,6311,14081,11157,186,703,9862,15490,1720,17816,10433,49185,2535,9158,2143,2840,664,29074,24924,1035,41482,1065,10189,8417,130,4551,5159,48886,
@@ -51,8 +52,8 @@ namespace internal {
         }
     };
 
-    template<bool Prob, itype::u32> struct isPrime64;
-    template<itype::u32 id> struct isPrime64<false, id> {
+    template<bool Prob, itype::u32> struct IsPrime64;
+    template<itype::u32 id> struct IsPrime64<false, id> {
         constexpr static bool calc(const itype::u64 x) noexcept {
             internal::MontgomeryModint64Impl mint;
             mint.set(x);
@@ -134,7 +135,7 @@ namespace internal {
             } else return test3(2ull, 325ull, 9375ull) && test4(28178ull, 450775ull, 9780504ull, 1795265022ull);
         }
     };
-    template<itype::u32 id> struct isPrime64<true, id> {
+    template<itype::u32 id> struct IsPrime64<true, id> {
         constexpr static itype::u16 bases1[] = {
 #include "internal/MRbase.txt"
         };
@@ -191,13 +192,13 @@ namespace internal {
 }  // namespace internal
 
 // @brief Prime number determination
-template<bool Prob = true> constexpr bool isPrime(const itype::u64 x) noexcept {
+template<bool Prob = true> constexpr bool IsPrime(const itype::u64 x) noexcept {
     if (x < 65536u) {
-        return internal::isPrime16<0>::calc(x);
+        return internal::IsPrime16<0>::calc(x);
     } else {
         if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
-        if (x <= 0xffffffff) return internal::isPrime32<0>::calc(x);
-        else return internal::isPrime64<Prob, 0>::calc(x);
+        if (x <= 0xffffffff) return internal::IsPrime32<0>::calc(x);
+        else return internal::IsPrime64<Prob, 0>::calc(x);
     }
 }
 
@@ -292,7 +293,7 @@ namespace internal {
         } res;
         itype::u32 cnt = 0;
         for (itype::u32 i = 0; i != (1 << 16); ++i) {
-            if (isPrime16<id>::calc(i)) res.table[cnt++] = i;
+            if (IsPrime16<id>::calc(i)) res.table[cnt++] = i;
         }
         return res;
     }();
@@ -308,7 +309,7 @@ namespace internal {
     }();
     constexpr itype::u64* FactorizeSub64(itype::u64 n, itype::u64* res) noexcept {
         Assume(n % 2 != 0 && n % 3 != 0 && n % 5 != 0 && n % 7 != 0 && n % 11 != 0 && n % 13 != 0 && n % 17 != 0 && n % 19 != 0);
-        if (isPrime(n)) {
+        if (IsPrime(n)) {
             *(res++) = n;
             return res;
         }

@@ -1,12 +1,12 @@
 #pragma once
-#include <tuple>               // std::tuple_size, std::tuple_element
-#include <utility>             // std::integer_sequence, std::make_index_sequence
-#include <ranges>              // std::ranges::forward_range
-#include <charconv>            // std::to_chars, std::chars_format, std::errc
-#include "TypeDef.hpp"         // gsh::itype, gsh::ctype
-#include "Util.hpp"            // gsh::MemoryCopy, gsh::StrLen
-#include "Exception.hpp"       // gsh::Exception
-#include "FixedPrecision.hpp"  // gsh::itype::u128, gsh::itype::i128
+#include <tuple>          // std::tuple_size, std::tuple_element
+#include <utility>        // std::integer_sequence, std::make_index_sequence
+#include <ranges>         // std::ranges::forward_range
+#include <charconv>       // std::to_chars, std::chars_format, std::errc
+#include "TypeDef.hpp"    // gsh::itype, gsh::ctype
+#include "Util.hpp"       // gsh::MemoryCopy, gsh::StrLen
+#include "Exception.hpp"  // gsh::Exception
+#include "Int128.hpp"     // gsh::itype::u128, gsh::itype::i128
 
 namespace gsh {
 
@@ -128,9 +128,6 @@ namespace internal {
             MemoryCopy(stream.current(), InttoStr<0>.table + 4 * x, 4);
             stream.skip(4);
         };
-        auto div_1e16 = [&](itype::u64& rem) -> itype::u64 {
-            return Divu128(n >> 64, n, 10000000000000000, rem);
-        };
         constexpr itype::u128 t = static_cast<itype::u128>(10000000000000000) * 10000000000000000;
         if (n >= t) {
             const itype::u32 dv = n / t;
@@ -139,16 +136,14 @@ namespace internal {
                 copy1(dv / 10000);
                 copy2(dv % 10000);
             } else copy1(dv);
-            itype::u64 a, b = 0;
-            a = div_1e16(b);
+            auto [a, b] = Divu128(n >> 64, n, 10000000000000000);
             const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
             copy2(c / 10000), copy2(c % 10000);
             copy2(d / 10000), copy2(d % 10000);
             copy2(e / 10000), copy2(e % 10000);
             copy2(f / 10000), copy2(f % 10000);
         } else {
-            itype::u64 a, b = 0;
-            a = div_1e16(b);
+            auto [a, b] = Divu128(n >> 64, n, 10000000000000000);
             const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
             const itype::u32 g = c / 10000, h = c % 10000, i = d / 10000, j = d % 10000, k = e / 10000, l = e % 10000, m = f / 10000, n = f % 10000;
             if (a == 0) {

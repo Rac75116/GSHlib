@@ -3,6 +3,7 @@
 #include <ranges>       // std::ranges::forward_range
 #include "TypeDef.hpp"  // gsh::itype, gsh::ctype
 #include "Util.hpp"     // gsh::MemoryCopy
+#include "Int128.hpp"   // gsh::itype::u128, gsh::itype::i128
 
 namespace gsh {
 

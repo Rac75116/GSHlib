@@ -382,9 +382,9 @@ public:
         using other = SharedAllocator<typename traits::template rebind_alloc<U>>;
     };
     constexpr SharedAllocator() noexcept {}
-    constexpr SharedAllocator(const SharedAllocator&) noexcept {}
+    constexpr SharedAllocator(const SharedAllocator&) noexcept = default;
     template<class T> constexpr SharedAllocator(const SharedAllocator<T>&) noexcept {}
-    constexpr SharedAllocator& operator=(const SharedAllocator&) noexcept {}
+    constexpr SharedAllocator& operator=(const SharedAllocator&) noexcept = default;
     template<class... Args> auto allocate(Args&&... args) noexcept(noexcept(alloc.allocate(std::forward<Args>(args)...))) { return alloc.allocate(std::forward<Args>(args)...); }
     template<class... Args> void deallocate(Args&&... args) noexcept(noexcept(alloc.deallocate(std::forward<Args>(args)...))) { return alloc.deallocate(std::forward<Args>(args)...); }
     size_type max_size() const noexcept { return alloc.max_size(); }

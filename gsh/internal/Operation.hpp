@@ -50,11 +50,6 @@ namespace internal {
         template<class T> friend constexpr auto operator&(const D& t1, const T& t2) noexcept(noexcept(D(t1) &= t2)) { return D(t1) &= t2; }
         template<class T> friend constexpr auto operator|(const D& t1, const T& t2) noexcept(noexcept(D(t1) |= t2)) { return D(t1) |= t2; }
         template<class T> friend constexpr auto operator^(const D& t1, const T& t2) noexcept(noexcept(D(t1) ^= t2)) { return D(t1) ^= t2; }
-        template<class T>
-            requires(!std::is_convertible_v<T, D>)
-        friend constexpr auto operator-(const D& t1, const T& t2) noexcept(noexcept(D(t1) -= t2)) {
-            return D(t1) -= t2;
-        }
         template<class T> friend constexpr auto operator<<(const D& t1, const T& t2) noexcept(noexcept(D(t1) <<= t2)) { return D(t1) <<= t2; }
         template<class T> friend constexpr auto operator>>(const D& t1, const T& t2) noexcept(noexcept(D(t1) >>= t2)) { return D(t1) >>= t2; }
         template<class T> friend constexpr auto operator==(const D& t1, const T& t2) noexcept(noexcept(t1 == D(t2))) { return t1 == D(t2); }

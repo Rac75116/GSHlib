@@ -441,7 +441,7 @@ namespace internal {
         constexpr bool same(itype::u64 x, itype::u64 y) const noexcept {
             Assume(x < 2 * mod_ && y < 2 * mod_);
             itype::u64 tmp = x - y;
-            return (tmp == 0) | (tmp == mod_) | (tmp == -mod_);
+            return (tmp == 0) || (tmp == mod_) || (tmp == -mod_);
         }
         constexpr itype::u64 abs(itype::u64 x) const noexcept {
             itype::u64 tmp = neg(x);

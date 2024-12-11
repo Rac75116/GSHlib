@@ -9,7 +9,6 @@
 #define ALL(V)       std::ranges::begin(V), std::ranges::end(V)
 #define RALL(V)      std::ranges::rbegin(V), std::ranges::rend(V)
 #define ALLMID(V, n) std::ranges::begin(V), std::ranges::next(std::ranges::begin(V), n), std::ranges::end(V)
-#define VALUE(...)   (([&]() __VA_ARGS__)())
 // clang-format off
 #define RET_WITH(...) { __VA_ARGS__; return; } []{}
 #define RETV_WITH(val, ...) { __VA_ARGS__; return val; } []{}

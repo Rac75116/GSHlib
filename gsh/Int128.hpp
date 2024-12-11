@@ -23,16 +23,19 @@ namespace internal {
             return { high, low };
         }
 #endif
-        itype::u64 ah = muler >> 32, al = muler & 0xffffffff;
-        itype::u64 bh = mulnd >> 32, bl = mulnd & 0xffffffff;
-        itype::u64 chh = ah * bh, cll = al * bl;
-        itype::u64 clh = al * bh, chl = ah * bl;
-        itype::u64 cm = clh + chl;
-        chh += static_cast<itype::u64>(cm < clh) << 32;
-        itype::u64 high = chh + (cm >> 32);
-        itype::u64 low = cll + (cm << 32);
-        high += (low < cll);
-        return { high, low };
+        itype::u64 u1 = (muler & 0xffffffff);
+        itype::u64 v1 = (mulnd & 0xffffffff);
+        itype::u64 t = (u1 * v1);
+        itype::u64 w3 = (t & 0xffffffff);
+        itype::u64 k = (t >> 32);
+        muler >>= 32;
+        t = (muler * v1) + k;
+        k = (t & 0xffffffff);
+        itype::u64 w1 = (t >> 32);
+        mulnd >>= 32;
+        t = (u1 * mulnd) + k;
+        k = (t >> 32);
+        return { (muler * mulnd) + w1 + k, (t << 32) + w3 };
 #endif
     }
     GSH_INTERNAL_INLINE constexpr itype::u64 Mulu128High(itype::u64 muler, itype::u64 mulnd) noexcept {

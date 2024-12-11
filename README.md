@@ -1,1 +1,25 @@
-# Generalized High-Speed Library for Competitive Programming
+# GSHLib
+
+実行速度を最大限まで最適化したC++用の数値計算ライブラリです。
+また、インターフェースはC++の標準ライブラリを模倣して設計しているため、標準ライブラリからの移行が容易に行えます。
+
+# インストール
+
+このライブラリはヘッダオンリーであり、また外部ライブラリに依存していないためインストールは簡単です。
+
+1. ページ上部の緑色の`<> Code ▼`ボタンから`Download ZIP`を選択してダウンロードします。
+2. ZIPファイルを解凍し、解凍先のディレクトリのパスをコピーします。
+3. コピーしたパスをコンパイラのインクルードパスに追加することで使用することができます。
+
+# 使用方法の例
+
+```cpp
+#include <gsh/InOut.hpp>
+
+gsh::BasicReader rd;
+gsh::BasicWriter wt;
+int main() {
+    int n = rd.read<int>();
+    wt.writeln(2 * n);
+}
+```

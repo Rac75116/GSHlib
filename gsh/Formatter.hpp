@@ -22,7 +22,7 @@ namespace itype {
 template<class T> class Formatter;
 
 namespace internal {
-#ifdef GSH_REDUCE_COMPILATION_TIME
+#ifndef GSH_USE_COMPILE_TIME_CALCULATION
     struct InttoStrT {
 #define GSH_INTERNAL_INCLUDE_INTTOSTR "internal/InttoStr.txt"
         const ctype::c8* table =

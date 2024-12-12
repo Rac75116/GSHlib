@@ -6,10 +6,8 @@
 #ifdef _MSC_VER
 #include <intrin.h>
 #include <immintrin.h>
-#pragma intrinsic(_umul128, _umulh, _udiv128, __shiftleft128, __shiftright128)
+#pragma intrinsic(_umul128, __umulh, _udiv128, __shiftleft128, __shiftright128)
 #endif
-
-#undef __SIZEOF_INT128__
 
 namespace gsh {
 
@@ -22,7 +20,7 @@ namespace internal {
 #if defined(_MSC_VER)
         if (!std::is_constant_evaluated()) {
             itype::u64 high;
-            itype::u64 low = _umul128(muler, mulnd, high);
+            itype::u64 low = _umul128(muler, mulnd, &high);
             return { high, low };
         }
 #endif
@@ -46,7 +44,7 @@ namespace internal {
         return static_cast<itype::u64>((static_cast<__uint128_t>(muler) * mulnd) >> 64);
 #else
 #if defined(_MSC_VER)
-        if (!std::is_constant_evaluated()) return _umulh(muler, mulnd);
+        if (!std::is_constant_evaluated()) return __umulh(muler, mulnd);
 #endif
         return Mulu128(muler, mulnd).first;
 #endif
@@ -198,38 +196,28 @@ namespace itype {
             high += low < n.low;
             return *this;
         }
-        template<class T> constexpr u128& operator+=(const T& n) noexcept { return operator+=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator+(const T& a, const u128& b) noexcept { return static_cast<u128>(a) + b; }
         constexpr u128& operator-=(const u128& n) noexcept {
             high -= n.high;
             high -= low < n.low;
             low -= n.low;
             return *this;
         }
-        template<class T> constexpr u128& operator-=(const T& n) noexcept { return operator-=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator-(const T& a, const u128& b) noexcept { return static_cast<u128>(a) - b; }
         constexpr u128& operator*=(const u128& n) noexcept {
             auto [hi, lw] = internal::Mulu128(low, n.low);
             high = low * n.high + high * n.low + hi;
             low = lw;
             return *this;
         }
-        template<class T> constexpr u128& operator*=(const T& n) noexcept { return operator*=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator*(const T& a, const u128& b) noexcept { return static_cast<u128>(a) * b; }
         constexpr u128& operator/=(const u128& n) noexcept {
             auto [hi, lo] = internal::Divu128(high, low, n.high, n.low);
             high = hi, low = lo;
             return *this;
         }
-        template<class T> constexpr u128& operator/=(const T& n) noexcept { return operator/=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator/(const T& a, const u128& b) noexcept { return static_cast<u128>(a) / b; }
         constexpr u128& operator%=(const u128& n) noexcept {
             auto [hi, lo] = internal::Modu128(high, low, n.high, n.low);
             high = hi, low = lo;
             return *this;
         }
-        template<class T> constexpr u128& operator%=(const T& n) noexcept { return operator%=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator%(const T& a, const u128& b) noexcept { return static_cast<u128>(a) % b; }
         constexpr u128& operator++() noexcept {
             ++low;
             high += (low == 0);
@@ -251,22 +239,16 @@ namespace itype {
             low &= n.low;
             return *this;
         }
-        template<class T> constexpr u128& operator&=(const T& n) noexcept { return operator&=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator&(const T& a, const u128& b) noexcept { return static_cast<u128>(a) & b; }
         constexpr u128& operator|=(const u128& n) noexcept {
             high |= n.high;
             low |= n.low;
             return *this;
         }
-        template<class T> constexpr u128& operator|=(const T& n) noexcept { return operator|=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator|(const T& a, const u128& b) noexcept { return static_cast<u128>(a) | b; }
         constexpr u128& operator^=(const u128& n) noexcept {
             high ^= n.high;
             low ^= n.low;
             return *this;
         }
-        template<class T> constexpr u128& operator^=(const T& n) noexcept { return operator^=(static_cast<u128>(n)); }
-        template<class T> friend constexpr u128 operator^(const T& a, const u128& b) noexcept { return static_cast<u128>(a) ^ b; }
         constexpr u128& operator<<=(itype::i32 shift) noexcept {
             if (shift >= 64) {
                 high = low << (shift - 64);
@@ -288,16 +270,12 @@ namespace itype {
             return *this;
         }
         friend constexpr bool operator==(const u128& a, const u128& b) noexcept { return a.high == b.high && a.low == b.low; }
-        template<class T> friend constexpr bool operator==(const u128& a, const T& b) noexcept { return a == static_cast<u128>(b); }
-        template<class T> friend constexpr bool operator==(const T& a, const u128& b) noexcept { return static_cast<u128>(a) == b; }
         friend constexpr std::strong_ordering operator<=>(const u128& a, const u128& b) noexcept {
             if (a.high < b.high || (a.high == b.high && a.low < b.low)) return std::strong_ordering::less;
             if (a.high == b.high && a.low == b.low) return std::strong_ordering::equal;
             if (a.high > b.high || (a.high == b.high && a.low > b.low)) return std::strong_ordering::greater;
             Unreachable();
         }
-        template<class T> friend constexpr auto operator<=>(const u128& a, const T& b) noexcept { return a <=> static_cast<u128>(b); }
-        template<class T> friend constexpr auto operator<=>(const T& a, const u128& b) noexcept { return static_cast<u128>(a) <=> b; }
         constexpr operator bool() const noexcept { return low != 0 || high != 0; }
         template<std::integral T>
             requires(!std::same_as<T, i128>)
@@ -316,28 +294,22 @@ namespace itype {
         constexpr i128& operator=(const i128&) noexcept = default;
         constexpr i128 operator-() const noexcept { return u128::operator-(); }
         constexpr i128& operator+=(const i128& n) noexcept { return static_cast<i128&>(u128::operator+=(n)); }
-        template<class T> constexpr i128& operator+=(const T& n) noexcept { return operator+=(static_cast<i128>(n)); }
-        template<class T> friend constexpr i128 operator+(const T& a, const i128& b) noexcept { return static_cast<i128>(a) + b; }
         constexpr i128& operator-=(const i128& n) noexcept { return static_cast<i128&>(u128::operator-=(n)); }
-        template<class T> constexpr i128& operator-=(const T& n) noexcept { return operator-=(static_cast<i128>(n)); }
-        template<class T> friend constexpr i128 operator-(const T& a, const i128& b) noexcept { return static_cast<i128>(a) - b; }
         constexpr i128& operator*=(const i128& n) noexcept { return static_cast<i128&>(u128::operator*=(n)); }
-        template<class T> constexpr i128& operator*=(const T& n) noexcept { return operator*=(static_cast<i128>(n)); }
-        template<class T> friend constexpr i128 operator*(const T& a, const i128& b) noexcept { return static_cast<i128>(a) * b; }
-        constexpr i128& operator/=(const i128&) noexcept { return *this; }
-        constexpr i128& operator%=(const i128&) noexcept { return *this; }
+        constexpr i128& operator/=(const i128&) noexcept {
+            // TODO
+            return *this;
+        }
+        constexpr i128& operator%=(const i128&) noexcept {
+            // TODO
+            return *this;
+        }
         constexpr i128& operator++() noexcept { return static_cast<i128&>(u128::operator++()); }
         constexpr i128& operator--() noexcept { return static_cast<i128&>(u128::operator--()); }
         constexpr i128 operator~() const noexcept { return static_cast<i128>(u128::operator~()); }
         constexpr i128& operator&=(const i128& n) noexcept { return static_cast<i128&>(u128::operator&=(n)); }
-        template<class T> constexpr i128& operator&=(const T& n) noexcept { return operator&=(static_cast<i128>(n)); }
-        template<class T> friend constexpr i128 operator&(const T& a, const i128& b) noexcept { return static_cast<i128>(a) & b; }
         constexpr i128& operator|=(const i128& n) noexcept { return static_cast<i128&>(u128::operator|=(n)); }
-        template<class T> constexpr i128& operator|=(const T& n) noexcept { return operator|=(static_cast<i128>(n)); }
-        template<class T> friend constexpr i128 operator|(const T& a, const i128& b) noexcept { return static_cast<i128>(a) | b; }
         constexpr i128& operator^=(const i128& n) noexcept { return static_cast<i128&>(u128::operator^=(n)); }
-        template<class T> constexpr i128& operator^=(const T& n) noexcept { return operator^=(static_cast<i128>(n)); }
-        template<class T> friend constexpr i128 operator^(const T& a, const i128& b) noexcept { return static_cast<i128>(a) ^ b; }
         constexpr i128& operator<<=(itype::i32 shift) noexcept { return static_cast<i128&>(u128::operator<<=(shift)); }
         constexpr i128& operator>>=(itype::i32 shift) noexcept { return static_cast<i128&>(u128::operator>>=(shift)); }
         constexpr operator bool() const noexcept { return static_cast<bool>(static_cast<const u128&>(*this)); }
@@ -360,11 +332,8 @@ namespace itype {
         high = n.high, low = n.low;
     }
 }  // namespace itype
-#endif
+}
 
-}  // namespace gsh
-
-#if !defined(__SIZEOF_INT128__)
 namespace std {
 template<> struct common_type<gsh::itype::u128, gsh::itype::i128> {
     using type = gsh::itype::u128;
@@ -397,4 +366,60 @@ template<std::floating_point T> struct common_type<T, gsh::itype::i128> {
     using type = T;
 };
 }  // namespace std
+
+namespace gsh {
+
+namespace internal {
+    template<class T, class U> constexpr bool U128OrI128 = (std::same_as<T, itype::u128> || std::same_as<T, itype::i128> || std::same_as<U, itype::u128> || std::same_as<U, itype::i128>);
+}
+
+namespace itype {
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator+(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) + static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) + static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator-(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) - static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) - static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator*(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) * static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) * static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator/(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) / static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) / static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator&(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) & static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) & static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator|(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) | static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) | static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator^(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) ^ static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) ^ static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator==(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) == static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) == static_cast<std::common_type_t<T, U>>(b);
+    }
+    template<class T, class U>
+        requires internal::U128OrI128<T, U>
+    constexpr auto operator<=>(const T& a, const U& b) noexcept(noexcept(static_cast<std::common_type_t<T, U>>(a) <=> static_cast<std::common_type_t<T, U>>(b))) {
+        return static_cast<std::common_type_t<T, U>>(a) <=> static_cast<std::common_type_t<T, U>>(b);
+    }
+}  // namespace itype
 #endif
+
+}  // namespace gsh

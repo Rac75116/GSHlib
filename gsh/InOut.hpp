@@ -1,20 +1,19 @@
 #pragma once
-#include <cstdlib>  // std::exit
-#include <cstring>  // std::memcpy, std::memmove
-#include <utility>  // std::forward
-#include <tuple>    // std::tuple, std::make_tuple
-#if __has_include(<unistd.h>)
-#include <unistd.h>  // read, write
-#endif
-#ifndef _WIN32
-#include <sys/mman.h>  // mmap
-#include <sys/stat.h>  // stat, fstat
-#endif
+#include <cstdlib>         // std::exit
+#include <cstring>         // std::memcpy, std::memmove
+#include <utility>         // std::forward
+#include <tuple>           // std::tuple, std::make_tuple
 #include "TypeDef.hpp"     // gsh::itype, gsh::ctype
 #include "Parser.hpp"      // gsh::Parser
 #include "Formatter.hpp"   // gsh::Formatter
 #include "Functional.hpp"  // gsh::Invoke
 #include "Util.hpp"        // gsh::TypeArr
+#include "FileSystem.hpp"  // gsh::FileDescriptor
+
+#if defined(__linux__)
+#include <sys/mman.h>  // mmap
+#include <sys/stat.h>  // stat, fstat
+#endif
 
 namespace gsh {
 
@@ -195,7 +194,7 @@ class MmapReader : public internal::IstreamInterface<MmapReader> {
     [[maybe_unused]] ctype::c8 *buf, *cur, *eof;
 public:
     MmapReader() : fh(0) {
-#ifdef _WIN32
+#if !defined(__linux__)
         write(1, "gsh::MmapReader / gsh::MmapReader is not available for Windows.\n", 64);
         std::exit(1);
 #else

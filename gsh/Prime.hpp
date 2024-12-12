@@ -277,7 +277,7 @@ constexpr itype::u32 CountPrimes(itype::u64 N) {
 //constexpr auto EnumeratePrimes(itype::u32 N, itype::u32 gap, itype::u32 start) {}
 
 namespace internal {
-#ifdef GSH_REDUCE_COMPILATION_TIME
+#ifndef GSH_USE_COMPILE_TIME_CALCULATION
     struct TinyPrimesT {
         itype::u16 table[6548] = {
 #define GSH_INTERNAL_INCLUDE_TINYPRIMES "internal/TinyPrimes.txt"

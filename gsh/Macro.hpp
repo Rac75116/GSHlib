@@ -37,34 +37,46 @@
 
 namespace gsh {
 namespace internal {
-    void AssertPrint(const ctype::c8* message, std::source_location loc) {
-        BasicWriter<2048> w(2);
-        w.write("\e[2m[from gsh::internal::Assert] \e[0mDuring the execution of \e[1m\e[3m'");
-        w.write(loc.function_name());
-        w.write("'\e[0m\n");
-        w.write(loc.file_name());
-        w.write(':');
-        w.write(loc.line());
-        w.write(':');
-        w.write(loc.column());
-        w.write(':');
-        w.write(" \e[31mAssertion Failed:\e[0m \e[1m\e[3m'");
-        w.write(message);
-        w.write("'\e[0m\n");
-        w.reload();
-    }
-    GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const ctype::c8* message, std::source_location loc = std::source_location::current()) {
+    template<itype::u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const ctype::c8* message, std::source_location loc = std::source_location::current()) {
         if (!cond) [[unlikely]] {
             if (std::is_constant_evaluated()) {
                 throw 0;
             } else {
-                AssertPrint(message, loc);
+                BasicWriter<2048> w(2);
+#if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
+                w.write("\e[2m[from gsh::internal::Assert] \e[0mDuring the execution of \e[1m\e[3m'");
+                w.write(loc.function_name());
+                w.write("'\e[0m\n");
+                w.write(loc.file_name());
+                w.write(':');
+                w.write(loc.line());
+                w.write(':');
+                w.write(loc.column());
+                w.write(':');
+                w.write(" \e[31mAssertion Failed:\e[0m \e[1m\e[3m'");
+                w.write(message);
+                w.write("'\e[0m\n");
+                w.reload();
+#else
+                w.write("[from gsh::internal::Assert] During the execution of '");
+                w.writeln(loc.function_name());
+                w.write(loc.file_name());
+                w.write(':');
+                w.write(loc.line());
+                w.write(':');
+                w.write(loc.column());
+                w.write(':');
+                w.write(" Assertion Failed: '");
+                w.write(message);
+                w.writeln("'");
+                w.reload();
+#endif
                 std::exit(1);
             }
         }
     }
 }  // namespace internal
 }  // namespace gsh
-#define GSH_INTERNAL_ASSERT1(cond)          gsh::internal::Assert(cond, #cond)
-#define GSH_INTERNAL_ASSERT2(cond, message) gsh::internal::Assert(cond, message)
+#define GSH_INTERNAL_ASSERT1(cond)          gsh::internal::Assert<0>(cond, #cond)
+#define GSH_INTERNAL_ASSERT2(cond, message) gsh::internal::Assert<0>(cond, message)
 #define ASSERT(...)                         GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_ASSERT2, GSH_INTERNAL_ASSERT1)(__VA_ARGS__)

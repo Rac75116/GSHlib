@@ -5,10 +5,12 @@
 #include <ranges>           // std::ranges
 #include "TypeDef.hpp"      // gsh::itype
 #include "InOut.hpp"        // gsh::BasicWriter, gsh::Formatter
+#include "Range.hpp"        // gsh::Subrange
 
-#define ALL(V)       std::ranges::begin(V), std::ranges::end(V)
-#define RALL(V)      std::ranges::rbegin(V), std::ranges::rend(V)
-#define ALLMID(V, n) std::ranges::begin(V), std::ranges::next(std::ranges::begin(V), n), std::ranges::end(V)
+#define RANGE(V)  gsh::Subrange(std::ranges::begin(V), std::ranges::end(V));
+#define RRANGE(V) gsh::Subrange(std::ranges::rbegin(V), std::ranges::rend(V));
+#define NMIN(T)   (std::numeric_limits<T>::lowest())
+#define NMAX(T)   (std::numeric_limits<T>::max())
 // clang-format off
 #define RET_WITH(...) { __VA_ARGS__; return; } []{}
 #define RETV_WITH(val, ...) { __VA_ARGS__; return val; } []{}
@@ -30,10 +32,8 @@
 #define LAMBDA(...) GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_LAMBDA2, GSH_INTERNAL_LAMBDA1)(__VA_ARGS__)
 // clang-format on
 
-/*
-#define REP(var_name, ...)  for ([[maybe_unused]] auto var_name : gsh::Step(__VA_ARGS__))
-#define RREP(var_name, ...) for (auto var_name : gsh::Step(__VA_ARGS__) | std::ranges::reverse)
-*/
+#define REP(var_name, ...)  for ([[maybe_unused]] auto var_name : std::views::iota(__VA_ARGS__))
+#define RREP(var_name, ...) for (auto var_name : std::views::iota(__VA_ARGS__) | std::ranges::reverse)
 
 namespace gsh {
 namespace internal {

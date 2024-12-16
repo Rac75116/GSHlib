@@ -8,6 +8,7 @@
 #include "Exception.hpp"     // gsh::Exception
 #include "Range.hpp"         // gsh::ViewInterface
 #include "Memory.hpp"        // gsh::Allocator, gsh::AllocatorTraits
+#include "Str.hpp"           // gsh::Str
 #include "internal/UtilMacro.hpp"
 
 namespace gsh {
@@ -82,9 +83,6 @@ public:
         }
     }
     constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Vec(il.begin(), il.end(), a) {}
-    template<ForwardRange R>
-        requires(!std::same_as<Vec, std::remove_cvref_t<R>>)
-    constexpr Vec(R&& r, const allocator_type& a = Allocator()) : Vec(RangeTraits<R>::begin(r), RangeTraits<R>::end(r), a) {}
     constexpr ~Vec() {
         if (cap != 0) {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
@@ -355,7 +353,23 @@ public:
     friend constexpr void swap(Vec& x, Vec& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
 template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Alloc = Alloc()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Alloc>;
-template<Range R, class Alloc = Allocator<typename RangeTraits<R>::value_type>> Vec(R, Alloc = Alloc()) -> Vec<typename RangeTraits<R>::value_type, Alloc>;
 
+template<class T, class Alloc = Allocator<T>> using Vec2 = Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>;
+template<class T, class Alloc = Allocator<T>> using Vec3 = Vec<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>>>;
+template<class Alloc = Allocator<bool>> using Vb = Vec<bool, Alloc>;
+template<class Alloc = Allocator<itype::i32>> using Vi = Vec<itype::i32, Alloc>;
+template<class Alloc = Allocator<itype::u32>> using Vu = Vec<itype::u32, Alloc>;
+template<class Alloc = Allocator<itype::i64>> using Vl = Vec<itype::i64, Alloc>;
+template<class Alloc = Allocator<itype::u64>> using Vul = Vec<itype::u64, Alloc>;
+template<class Alloc = Allocator<bool>> using Vvb = Vec2<bool, Alloc>;
+template<class Alloc = Allocator<itype::i32>> using Vvi = Vec2<itype::i32, Alloc>;
+template<class Alloc = Allocator<itype::u32>> using Vvu = Vec2<itype::u32, Alloc>;
+template<class Alloc = Allocator<itype::i64>> using Vvl = Vec2<itype::i64, Alloc>;
+template<class Alloc = Allocator<itype::u64>> using Vvul = Vec2<itype::u64, Alloc>;
+template<class Alloc = Allocator<bool>> using Vvvb = Vec3<bool, Alloc>;
+template<class Alloc = Allocator<itype::i32>> using Vvvi = Vec3<itype::i32, Alloc>;
+template<class Alloc = Allocator<itype::u32>> using Vvvu = Vec3<itype::u32, Alloc>;
+template<class Alloc = Allocator<itype::i64>> using Vvvl = Vec3<itype::i64, Alloc>;
+template<class Alloc = Allocator<itype::u64>> using Vvvul = Vec3<itype::u64, Alloc>;
 
 }  // namespace gsh

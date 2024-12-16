@@ -8,8 +8,8 @@
 #include "Formatter.hpp"   // gsh::Formatter
 #include "Functional.hpp"  // gsh::Invoke
 #include "Util.hpp"        // gsh::TypeArr
-#include "FileSystem.hpp"  // gsh::FileDescriptor
 
+#include <unistd.h>
 #if defined(__linux__)
 #include <sys/mman.h>  // mmap
 #include <sys/stat.h>  // stat, fstat

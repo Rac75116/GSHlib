@@ -99,9 +99,6 @@ public:
         }
     }
     constexpr Arr(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Arr(il.begin(), il.end(), a) {}
-    template<ForwardRange R>
-        requires(!std::same_as<Arr, std::remove_cvref_t<R>>)
-    constexpr Arr(R&& r, const allocator_type& a = Allocator()) : Arr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r), a) {}
     constexpr ~Arr() {
         if (len != 0) {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
@@ -314,7 +311,6 @@ public:
     friend constexpr void swap(Arr& x, Arr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
 template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
-template<Range R, class Alloc = Allocator<typename RangeTraits<R>::value_type>> Arr(R, Alloc = Alloc()) -> Arr<typename RangeTraits<R>::value_type, Alloc>;
 
 template<class T, itype::u32 N>
     requires std::same_as<T, std::remove_cv_t<T>>
@@ -352,7 +348,6 @@ public:
         if (n != N) throw gsh::Exception("gsh::StaticArr::StaticArr / The size of the given range differs from the size of the array.");
         for (itype::u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
     }
-    template<Rangeof<value_type> R> constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r)) {}
     constexpr StaticArr(const value_type (&a)[N]) {
         for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, a[i]);
     }
@@ -366,9 +361,6 @@ public:
         for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, std::move(y.elems[i]));
     }
     constexpr StaticArr(std::initializer_list<value_type> il) : StaticArr(il.begin(), il.end()) {}
-    template<ForwardRange R>
-        requires(!std::same_as<StaticArr, std::remove_cvref_t<R>>)
-    constexpr StaticArr(R&& r) : StaticArr(RangeTraits<R>::begin(r), RangeTraits<R>::end(r)) {}
     constexpr ~StaticArr() noexcept {
         if constexpr (!std::is_trivially_destructible_v<value_type>)
             for (itype::u32 i = 0; i != N; ++i) std::destroy_at(elems + i);

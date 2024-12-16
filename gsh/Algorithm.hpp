@@ -50,7 +50,7 @@ constexpr bool Chmax(T& a, const Args&... b) {
     return Chmax(a, Max(b...));
 }
 
-template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less>
+template<std::ranges::forward_range R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less>
     requires std::indirectly_copyable_storable<std::ranges::iterator_t<R>, std::ranges::range_value_t<R>*>
 constexpr auto MinValue(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     auto first = std::ranges::begin(r);
@@ -64,7 +64,7 @@ constexpr auto MinValue(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     }
     return res;
 }
-template<ForwardRange R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less>
+template<std::ranges::forward_range R, class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less>
     requires std::indirectly_copyable_storable<std::ranges::iterator_t<R>, std::ranges::range_value_t<R>*>
 constexpr auto MaxValue(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     if constexpr (std::same_as<std::remove_cvref_t<Comp>, Less>) return MinValue(std::forward<R>(r), Greater(), proj);
@@ -76,12 +76,12 @@ namespace internal {
     template<class F, class T, class I, class U> concept IndirectlyBinaryLeftFoldableImpl = std::movable<T> && std::movable<U> && std::convertible_to<T, U> && std::invocable<F&, U, std::iter_reference_t<I>> && std::assignable_from<U&, std::invoke_result_t<F&, U, std::iter_reference_t<I>>>;
     template<class F, class T, class I> concept IndirectlyBinaryLeftFoldable = std::copy_constructible<F> && std::indirectly_readable<I> && std::invocable<F&, T, std::iter_reference_t<I>> && std::convertible_to<std::invoke_result_t<F&, T, std::iter_reference_t<I>>, std::decay_t<std::invoke_result_t<F&, T, std::iter_reference_t<I>>>> && IndirectlyBinaryLeftFoldableImpl<F, T, I, std::decay_t<std::invoke_result_t<F&, T, std::iter_reference_t<I>>>>;
 }  // namespace internal
-template<ForwardRange R, class T = std::ranges::range_value_t<R>, internal::IndirectlyBinaryLeftFoldable<T, std::ranges::iterator_t<R>> F = Plus> constexpr auto Fold(R&& r, T init = {}, F&& f = {}) {
+template<std::ranges::forward_range R, class T = std::ranges::range_value_t<R>, internal::IndirectlyBinaryLeftFoldable<T, std::ranges::iterator_t<R>> F = Plus> constexpr auto Fold(R&& r, T init = {}, F&& f = {}) {
     for (auto&& x : std::forward<R>(r)) init = Invoke(f, std::move(init), std::forward<decltype(x)>(x));
     return init;
 }
 
-template<BidirectionalRange R>
+template<std::ranges::bidirectional_range R>
     requires std::permutable<std::ranges::iterator_t<R>>
 void Reverse(R&& r) {
     std::ranges::reverse(std::forward<R>(r));
@@ -225,7 +225,7 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
         }
     }
 }  // namespace internal
-template<Range R, class Comp = Less, class Proj = Identity>
+template<std::ranges::random_access_range R, class Comp = Less, class Proj = Identity>
     requires std::sortable<std::ranges::iterator_t<R>, Comp, Proj>
 constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     if constexpr (!PointerObtainable<R>) {
@@ -352,7 +352,7 @@ constexpr Arr<itype::u32> Compress(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
 }
 */
 
-template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
+template<std::ranges::forward_range R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
     auto st = std::ranges::begin(r);
     for (auto len = std::ranges::size(r) + 1; len > 1;) {
         auto half = len / 2;
@@ -363,7 +363,7 @@ template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_we
     }
     return st;
 }
-template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto UpperBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
+template<std::ranges::forward_range R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto UpperBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
     auto st = std::ranges::begin(r);
     for (auto len = std::ranges::size(r) + 1; len > 1;) {
         auto half = len / 2;
@@ -375,7 +375,7 @@ template<ForwardRange R, class T, class Proj = Identity, std::indirect_strict_we
     return st;
 }
 
-template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     using T = std::ranges::range_value_t<R>;
     Arr<itype::u32> idx(std::ranges::size(r));
     itype::u32 len = 0;
@@ -403,7 +403,7 @@ template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr Arr
     }
     return res;
 }
-template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr itype::u32 LongestIncreasingSubsequenceLength(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less> constexpr itype::u32 LongestIncreasingSubsequenceLength(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     using T = std::ranges::range_value_t<R>;
     Arr<T> dp(std::ranges::size(r));
     T *begin = dp.data(), *last = dp.data();
@@ -419,7 +419,7 @@ template<ForwardRange R, class Proj = Identity, class Comp = Less> constexpr ity
     return last - begin;
 }
 
-template<RandomAccessRange R> constexpr Arr<itype::u32> LongestCommonPrefixArray(R&& r) {
+template<std::ranges::random_access_range R> constexpr Arr<itype::u32> LongestCommonPrefixArray(R&& r) {
     const itype::u32 n = std::ranges::size(r);
     Arr<itype::u32> res(n);
     if (n == 0) return res;
@@ -444,7 +444,9 @@ template<RandomAccessRange R> constexpr Arr<itype::u32> LongestCommonPrefixArray
     return res;
 }
 
-template<class T = itype::u64, Rangeof<itype::u32> R> constexpr T CountDistinctSubsequences(R&& r) {
+template<class T = itype::u64, std::ranges::range R>
+    requires std::same_as<std::ranges::range_value_t<R>, itype::u32>
+constexpr T CountDistinctSubsequences(R&& r) {
     const itype::u32 n = std::ranges::size(r);
     if (n == 0) return 0;
     Arr<itype::u64> s(n);
@@ -472,7 +474,7 @@ template<class T = itype::u64, Rangeof<itype::u32> R> constexpr T CountDistinctS
     return dp[n] - dp[0];
 }
 
-template<Range R> constexpr auto Majority(R&& r) {
+template<std::ranges::forward_range R> constexpr auto Majority(R&& r) {
     itype::u32 c = 0;
     itype::u32 len = 0;
     auto i = std::ranges::begin(r);

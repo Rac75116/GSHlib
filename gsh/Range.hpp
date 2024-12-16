@@ -1,102 +1,16 @@
 #pragma once
-#include <type_traits>  // std::is_class_v, std::remove_cv_t, std::common_reference_t, std::is_lvalue_reference
-#include <concepts>     // std::same_as, std::predicate, std::convertible_to
-#include <utility>      // std::move, std::declval
-#include <iterator>     // std::next, std::iter_value_t, std::iter_reference_t, std::input_iterator
-#include <ranges>       // std::ranges::iterator_t, std::sentinel_for, std::ranges::reverse, std::ranges::range, std::ranges::range_value_t, std::ranges::subrange_kind, std::sized_sentinel_for
-#include <tuple>        // std::tuple_element
-#include "TypeDef.hpp"  // gsh::itype
+#include <type_traits>             // std::is_class_v, std::remove_cv_t, std::common_reference_t, std::is_lvalue_reference
+#include <concepts>                // std::same_as, std::predicate, std::convertible_to
+#include <utility>                 // std::move, std::declval
+#include <iterator>                // std::next, std::iter_value_t, std::iter_reference_t, std::input_iterator
+#include <ranges>                  // std::ranges::iterator_t, std::sentinel_for, std::ranges::reverse, std::ranges::range, std::ranges::range_value_t, std::ranges::subrange_kind, std::sized_sentinel_for
+#include <tuple>                   // std::tuple_element
+#include "TypeDef.hpp"             // gsh::itype
+#include "internal/Operation.hpp"  //gsh::internal::IteratorInterface
 
 namespace gsh {
 
-template<class R> concept Range = std::ranges::range<R>;
-template<class R, class T> concept Rangeof = Range<R> && std::same_as<T, std::ranges::range_value_t<R>>;
-template<class R> concept InputRange = std::ranges::input_range<R>;
-template<class R, class T> concept OutputRange = Range<R> && std::ranges::output_range<R, T>;
-template<class R> concept ForwardRange = std::ranges::forward_range<R>;
-template<class R> concept BidirectionalRange = std::ranges::bidirectional_range<R>;
-template<class R> concept RandomAccessRange = std::ranges::random_access_range<R>;
 enum class RangeKind { Sized, Unsized };
-template<class R> concept PointerObtainable = requires(R r) { std::ranges::data(r); };
-
-namespace internal {
-    template<class T, class U> concept same_ncvr = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
-}
-template<Range R> class RangeTraits {
-public:
-    using value_type = std::ranges::range_value_t<R>;
-    using iterator = std::ranges::iterator_t<R>;
-    using sentinel = std::ranges::sentinel_t<R>;
-    using const_iterator = decltype(std::ranges::cbegin(std::declval<R&>()));
-    using const_sentinel = decltype(std::ranges::cend(std::declval<R&>()));
-    using size_type = std::ranges::range_size_t<R>;
-    using difference_type = std::ranges::range_difference_t<R>;
-    using reference = std::ranges::range_reference_t<R>;
-    using const_reference = std::common_reference_t<const std::iter_value_t<iterator>&&, std::iter_reference_t<iterator>>;
-    using rvalue_reference = std::ranges::range_rvalue_reference_t<R>;
-    using range_type = std::remove_cvref_t<R>;
-    constexpr static RangeKind range_kind = std::ranges::sized_range<R> ? RangeKind::Sized : RangeKind::Unsized;
-    constexpr static bool pointer_obtainable = requires(R r) { std::ranges::data(r); };
-    constexpr static bool is_borrowed_range = std::ranges::borrowed_range<R>;
-
-    template<internal::same_ncvr<R> T> static constexpr itype::u32 size(T&& r) { return std::ranges::size(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr itype::u32 ssize(T&& r) { return std::ranges::ssize(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr bool empty(T&& r) { return std::ranges::empty(std::forward<T>(r)); }
-
-    template<internal::same_ncvr<R> T> static constexpr auto begin(T&& r) { return std::ranges::begin(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto end(T&& r) { return std::ranges::end(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto cbegin(T&& r) { return std::ranges::cbegin(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto cend(T&& r) { return std::ranges::cend(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto rbegin(T&& r) { return std::ranges::rbegin(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto rend(T&& r) { return std::ranges::rend(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto crbegin(T&& r) { return std::ranges::crbegin(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto crend(T&& r) { return std::ranges::crend(std::forward<T>(r)); }
-
-    template<internal::same_ncvr<R> T> static constexpr auto mbegin(T&& r) { return std::move_iterator(begin(std::forward<T>(r))); }
-    template<internal::same_ncvr<R> T> static constexpr auto mend(T&& r) { return std::move_sentinel(end(std::forward<T>(r))); }
-    template<internal::same_ncvr<R> T> static constexpr auto mcbegin(T&& r) { return std::move_iterator(cbegin(std::forward<T>(r))); }
-    template<internal::same_ncvr<R> T> static constexpr auto mcend(T&& r) { return std::move_sentinel(cend(std::forward<T>(r))); }
-    template<internal::same_ncvr<R> T> static constexpr auto mrbegin(T&& r) { return std::move_iterator(rbegin(std::forward<T>(r))); }
-    template<internal::same_ncvr<R> T> static constexpr auto mrend(T&& r) { return std::move_sentinel(rend(std::forward<T>(r))); }
-    template<internal::same_ncvr<R> T> static constexpr auto mcrbegin(T&& r) { return std::move_iterator(crbegin(std::forward<T>(r))); }
-    template<internal::same_ncvr<R> T> static constexpr auto mcrend(T&& r) { return std::move_sentinel(crend(std::forward<T>(r))); }
-
-    template<internal::same_ncvr<R> T> static constexpr auto fbegin(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return begin(std::forward<T>(r));
-        else return mbegin(std::forward<T>(r));
-    }
-    template<internal::same_ncvr<R> T> static constexpr auto fend(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return end(std::forward<T>(r));
-        else return mend(std::forward<T>(r));
-    }
-    template<internal::same_ncvr<R> T> static constexpr auto fcbegin(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return cbegin(std::forward<T>(r));
-        else return mcbegin(std::forward<T>(r));
-    }
-    template<internal::same_ncvr<R> T> static constexpr auto fcend(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return cend(std::forward<T>(r));
-        else return mcend(std::forward<T>(r));
-    }
-    template<internal::same_ncvr<R> T> static constexpr auto frbegin(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return rbegin(std::forward<T>(r));
-        else return mrbegin(std::forward<T>(r));
-    }
-    template<internal::same_ncvr<R> T> static constexpr auto frend(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return rend(std::forward<T>(r));
-        else return mrend(std::forward<T>(r));
-    }
-    template<internal::same_ncvr<R> T> static constexpr auto fcrbegin(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return crbegin(std::forward<T>(r));
-        else return mcrbegin(std::forward<T>(r));
-    }
-    template<internal::same_ncvr<R> T> static constexpr auto fcrend(T&& r) {
-        if constexpr (!std::ranges::borrowed_range<std::remove_cvref_t<T>>) return crend(std::forward<T>(r));
-        else return mcrend(std::forward<T>(r));
-    }
-
-    template<internal::same_ncvr<R> T> static constexpr auto data(T&& r) { return std::ranges::data(std::forward<T>(r)); }
-    template<internal::same_ncvr<R> T> static constexpr auto cdata(T&& r) { return std::ranges::cdata(std::forward<T>(r)); }
-};
 
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
@@ -302,3 +216,69 @@ template<std::ranges::borrowed_range R> Subrange(R&&, std::make_unsigned_t<std::
 namespace std::ranges {
 template<class I, class S, gsh::RangeKind K> constexpr bool enable_borrowed_range<gsh::Subrange<I, S, K>> = true;
 }
+
+/*
+namespace gsh {
+
+namespace internal {
+    template<class T> class StepIterator : public IteratorInterface<StepIterator<T>> {
+        T current;
+        constexpr StepIterator() noexcept(std::is_nothrow_default_constructible_v<T>) : current() {}
+        constexpr StepIterator(const T& x) noexcept(std::is_nothrow_copy_constructible_v<T>) : current(x) {}
+        constexpr StepIterator(T&& x) noexcept(std::is_nothrow_move_constructible_v<T>) : current(std::move(x)) {}
+    public:
+        using difference_type = T;
+        using size_type = T;
+        using value_type = T;
+        using reference = T&;
+        using pointer = decltype(&std::declval<const T&>());
+        using iterator_category = std::random_access_iterator_tag;
+        constexpr const T& operator*() const noexcept { return current; }
+        constexpr iterator& operator++() noexcept(noexcept(++current)) {
+            ++current;
+            return *this;
+        }
+        constexpr iterator& operator--() noexcept(noexcept(--current)) {
+            --current;
+            return *this;
+        }
+        constexpr iterator& operator+=(const T& n) noexcept(noexcept(current += n)) {
+            current += n;
+            return *this;
+        }
+        constexpr iterator& operator-=(const T& n) noexcept(noexcept(current -= n)) {
+            current -= n;
+            return *this;
+        }
+        friend constexpr auto operator-(const StepIterator& a, const StepIterator& b) noexcept(noexcept(a.current - b.current)) { return a.current - b.current; }
+        friend constexpr bool operator==(const StepIterator& a, const StepIterator& b) noexcept(noexcept(a.current == b.current)) { return a.current == b.current; }
+        friend constexpr auto operator<=>(const StepIterator& a, const StepIterator& b) noexcept(noexcept(a.current <=> b.current)) { return a.current <=> b.current; }
+    };
+    template<class T> class StepSentinel : public SentinelInterface<StepSentinel<T>> {
+        const T& current;
+        constexpr StepSentinel(const T& x) noexcept : current(x) {}
+    public:
+        template<class U> friend constexpr auto operator-(const StepSentinel& a, const StepIterator<U>& b) noexcept(noexcept(a.current - b.current)) { return a.current - b.current; }
+        template<class U> friend constexpr auto operator-(const StepIterator<U>& a, const StepSentinel& b) noexcept(noexcept(a.current - b.current)) { return a.current - b.current; }
+        template<class U> friend constexpr bool operator==(const StepSentinel& a, const StepIterator<U>& b) noexcept(noexcept(a.current == b.current)) { return a.current == b.current; }
+        template<class U> friend constexpr bool operator<=>(const StepSentinel& a, const StepIterator<U>& b) noexcept(noexcept(a.current <=> b.current)) { return a.current <=> b.current; }
+    };
+    template<class T> class Step1 : public ViewInterface<Step1<T>> {
+        T last;
+        constexpr Step1(const T& x) : last(x) {}
+        constexpr Step1(T&& x) : last(std::move(x)) {}
+    public:
+        using iterator = StepIterator<T>;
+        using sentinel = StepSentinel<T>;
+        constexpr iterator begin() const noexcept { return iterator(); }
+        constexpr sentinel end() const noexcept { return sentinel(last); }
+        template<class U> friend constexpr StepImpl(U&& x) noexcept(noexcept(internal::Step1(std::forward<U>(x)))) { return internal::Step1(std::forward<U>(x)); }
+    };
+}  // namespace internal
+
+template<class U> constexpr auto Step(U&& x) noexcept(noexcept(internal::Step1(std::forward<U>(x)))) {
+    internal::StepImpl(x);
+}
+
+}  // namespace gsh
+*/

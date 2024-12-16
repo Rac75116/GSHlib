@@ -5,6 +5,7 @@
 #include <utility>      // std::make_integer_sequence
 #include "TypeDef.hpp"
 #include "internal/UtilMacro.hpp"
+#include "internal/Operation.hpp"
 
 namespace gsh {
 

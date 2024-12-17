@@ -96,7 +96,8 @@
     "stdfloat": "cpp",
     "lazysegtree": "cpp",
     "rope": "cpp",
-    "cfloat": "cpp"
+    "cfloat": "cpp",
+    "*.txt": "cpp"
   },
   "C_Cpp.errorSquiggles": "enabledIfIncludesResolve",
   "code-runner.executorMap": {

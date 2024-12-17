@@ -4,6 +4,7 @@
 #include <bit>            // std::countr_zero, std::has_single_bit
 #include "TypeDef.hpp"    // gsh::itype
 #include "Exception.hpp"  // gsh::Exception
+#include "Int128.hpp"     //gsh::itype::u128
 
 namespace gsh {
 

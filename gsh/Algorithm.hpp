@@ -228,7 +228,7 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
 template<std::ranges::random_access_range R, class Comp = Less, class Proj = Identity>
     requires std::sortable<std::ranges::iterator_t<R>, Comp, Proj>
 constexpr void Sort(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
-    if constexpr (!PointerObtainable<R>) {
+    if constexpr (!requires { std::ranges::data(r); }) {
         Arr tmp(std::move_iterator(std::ranges::begin(r)), std::move_sentinel(std::ranges::end(r)));
         Sort(tmp, std::forward<Comp>(comp), std::forward<Proj>(proj));
         for (itype::u32 i = 0; auto&& el : r) el = std::move(tmp[i++]);

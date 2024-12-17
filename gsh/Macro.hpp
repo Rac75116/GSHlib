@@ -32,8 +32,11 @@
 #define LAMBDA(...) GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_LAMBDA2, GSH_INTERNAL_LAMBDA1)(__VA_ARGS__)
 // clang-format on
 
-#define REP(var_name, ...)  for ([[maybe_unused]] auto var_name : std::views::iota(__VA_ARGS__))
-#define RREP(var_name, ...) for (auto var_name : std::views::iota(__VA_ARGS__) | std::ranges::reverse)
+
+#define GSH_INTERNAL_REP1(n)    std::views::iota(decltype(n)(), n)
+#define GSH_INTERNAL_REP2(n, m) std::views::iota(static_cast<std::common_type_t<decltype(n), decltype(m)>>(n), static_cast<std::common_type_t<decltype(n), decltype(m)>>(m))
+#define REP(varname, ...)       for ([[maybe_unused]] const auto& varname : GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_REP2, GSH_INTERNAL_REP1)(__VA_ARGS__))
+#define RREP(varname, ...)      for ([[maybe_unused]] const auto& varname : GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_REP2, GSH_INTERNAL_REP1)(__VA_ARGS__) | std::ranges::reverse)
 
 namespace gsh {
 namespace internal {

@@ -33,7 +33,31 @@ clang_option = [
 ]
 try:
     path = sys.argv[1]
-    exepath = os.path.splitext(path)[0] + ".exe"
+    base, ext = os.path.splitext(path)
+    if ext == ".hpp":
+        gchpath = path + ".gch"
+        option = [compiler]
+        if compiler == "g++":
+            option += gcc_option
+        elif compiler == "clang++":
+            option += clang_option
+        else:
+            assert False
+        option += ["-x", "c++-header"]
+        option += ["-o", gchpath, path]
+        st = time.perf_counter()
+        cp = subprocess.run(option)
+        ed = time.perf_counter()
+        if cp.returncode != 0:
+            print("\033[31mCompilation failed\033[0m")
+            sys.exit(1)
+        print(
+            "\033[32mCompilation succeeded  ["
+            + str(max(0, round((ed - st) * 1000) - 10))
+            + "ms]\033[0m"
+        )
+        sys.exit(0)
+    exepath = base + ".exe"
     option = [compiler]
     if compiler == "g++":
         option += gcc_option
@@ -55,18 +79,19 @@ try:
     )
     try:
         subprocess.run(exepath, timeout=0)
-    except:
+    except subprocess.TimeoutExpired:
         pass
-    st = time.perf_counter()
-    cp = subprocess.run(exepath)
-    ed = time.perf_counter()
-    if cp.returncode != 0:
-        print("\033[31mExecusion failed\033[0m")
-        sys.exit(2)
-    print(
-        "\033[32mExecusion succeeded  ["
-        + str(max(0, round((ed - st) * 1000) - 10))
-        + "ms]\033[0m"
-    )
-except:
+    for i in range(10):
+        st = time.perf_counter()
+        cp = subprocess.run(exepath)
+        ed = time.perf_counter()
+        if cp.returncode != 0:
+            print(f"\033[31m#{i+1} Execusion failed\033[0m")
+            sys.exit(2)
+        print(
+            f"\033[32m#{i+1} Execusion succeeded  ["
+            + str(max(0, round((ed - st) * 1000) - 10))
+            + "ms]\033[0m"
+        )
+except KeyboardInterrupt:
     pass

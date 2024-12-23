@@ -169,8 +169,8 @@ namespace internal {
 }  // namespace internal
 
 namespace itype {
-    class i128;
-    class u128 : protected internal::SwitchEndian128, public internal::ArithmeticInterface<u128> {
+    class alignas(16) i128;
+    class alignas(16) u128 : protected internal::SwitchEndian128, public internal::ArithmeticInterface<u128> {
     public:
         constexpr u128() noexcept { high = 0, low = 0; }
         constexpr u128(const i128& n) noexcept;

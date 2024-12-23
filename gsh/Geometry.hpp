@@ -94,7 +94,9 @@ template<class T, class U> constexpr Point3<T> Cross(const Point3<U>& a, const P
 }
 
 
-template<Rangeof<Point2<itype::i32>> T> constexpr Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
+template<std::ranges::input_range T>
+    requires std::same_as<std::ranges::range_value_t<T>, Point2<itype::i32>>
+constexpr Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
     Arr<itype::u128> v(RangeTraits<T>::size(r));
     for (itype::u32 i = 0; auto&& p : r) {
         auto [x, y] = p;
@@ -119,15 +121,17 @@ template<Rangeof<Point2<itype::i32>> T> constexpr Arr<Point2<itype::i32>> Argume
     return res;
 }
 
-template<Rangeof<Point2<itype::i32>> T> constexpr Arr<Point2<itype::i32>> ConvexHull(T&& r) {
-    const itype::u32 n = RangeTraits<T>::size(r);
+template<std::ranges::input_range T>
+    requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<T>>, Point2<itype::i32>>
+constexpr Arr<Point2<itype::i32>> ConvexHull(T&& r) {
+    const itype::u32 n = std::ranges::size(r);
     if (n <= 1) return r;
     itype::u32 m = 1;
     Arr<Point2<itype::i32>> p(n);
     {
         Arr<itype::u64> sorted(n);
-        for (itype::u32 i = 0; auto e : r) sorted[i++] = std::bit_cast<itype::u64>(e) ^ 0x8000000080000000;
-        if (n < 5000) std::sort(sorted.begin(), sorted.end());
+        for (itype::u32 i = 0; auto&& e : r) sorted[i++] = std::bit_cast<itype::u64>(e) ^ 0x8000000080000000;
+        if (n < 5000) std::ranges::sort(sorted);
         else internal::SortUnsigned64(sorted.data(), n);
         p[0] = std::bit_cast<Point2<itype::i32>>(sorted[0] ^ 0x8000000080000000);
         for (itype::u32 i = 1; i != n; ++i) {
@@ -151,46 +155,45 @@ template<Rangeof<Point2<itype::i32>> T> constexpr Arr<Point2<itype::i32>> Convex
     return ch;
 }
 
-template<RandomAccessRange T>
-    requires Rangeof<T, Point2<itype::i32>>
+template<std::ranges::random_access_range T>
+    requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<T>>, Point2<itype::i32>>
 constexpr auto ConvexDiameter(T&& p) {
-    using traits = RangeTraits<T>;
     struct result_type {
         Point2<itype::i32> a, b;
         template<class U = ftype::f64> constexpr auto distance() const noexcept { return Norm<U>(a - b); }
         constexpr const auto& first() const noexcept { return a; }
         constexpr const auto& second() const noexcept { return b; }
     };
-    const itype::u32 n = traits::size(p);
+    const itype::u32 n = std::ranges::size(p);
     if (n == 0) throw Exception("gsh::ConvexDiameter / Input is empty.");
-    const auto bg = traits::begin(p);
+    const auto bg = std::ranges::begin(p);
     if (n <= 2) {
         if (n == 1) return result_type{ *bg, *bg };
-        else return result_type{ *bg, *std::next(bg) };
+        else return result_type{ *bg, *std::ranges::next(bg) };
     }
     itype::u32 is = 0, js = 0;
     for (itype::u32 i = 1; i != n; i++) {
-        auto a = std::next(bg, i)->y, b = std::next(bg, is)->y, c = std::next(bg, js)->y;
+        auto a = std::ranges::next(bg, i)->y, b = std::ranges::next(bg, is)->y, c = std::ranges::next(bg, js)->y;
         is = (a > b ? i : is);
         js = (a < c ? i : js);
     }
-    itype::i64 maxdis = NormSquare<itype::i64>(*std::next(bg, is) - *std::next(bg, js));
+    itype::i64 maxdis = NormSquare<itype::i64>(*std::ranges::next(bg, is) - *std::ranges::next(bg, js));
     itype::u32 maxi = is, maxj = js, i = is, j = js;
     do {
         const itype::u32 in = (i + 1 == n ? 0 : i + 1), jn = (j + 1 == n ? 0 : j + 1);
-        const bool f = Cross<itype::i64>(*std::next(bg, in) - *std::next(bg, i), *std::next(bg, jn) - *std::next(bg, j)) > 0;
+        const bool f = Cross<itype::i64>(*std::ranges::next(bg, in) - *std::ranges::next(bg, i), *std::ranges::next(bg, jn) - *std::ranges::next(bg, j)) > 0;
         j = f ? jn : j;
         i = f ? i : in;
-        const itype::i64 tmp = NormSquare<itype::i64>(*std::next(bg, i) - *std::next(bg, j));
+        const itype::i64 tmp = NormSquare<itype::i64>(*std::ranges::next(bg, i) - *std::ranges::next(bg, j));
         const bool g = tmp > maxdis;
         maxdis = g ? tmp : maxdis;
         maxi = g ? i : maxi;
         maxj = g ? j : maxj;
     } while (i != is || j != js);
-    return result_type{ *std::next(bg, maxi), *std::next(bg, maxj) };
+    return result_type{ *std::ranges::next(bg, maxi), *std::ranges::next(bg, maxj) };
 }
 
-template<Rangeof<Point2<itype::i32>> T> auto FurthestPair(T&& r) {
+template<std::ranges::range T> auto FurthestPair(T&& r) {
     return ConvexDiameter(ConvexHull(r));
 }
 

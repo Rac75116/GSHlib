@@ -31,10 +31,11 @@ clang_option = [
     "-fuse-ld=lld",
     "-I.",
 ]
+includes = [r"C:\Users\tsout\Desktop\Projects\GSHlib\Test\lib\oldlib\oldlib.hpp"]
 try:
     path = sys.argv[1]
     base, ext = os.path.splitext(path)
-    if ext == ".hpp":
+    if ext != ".cpp":
         gchpath = path + ".gch"
         option = [compiler]
         if compiler == "g++":
@@ -65,6 +66,8 @@ try:
         option += clang_option
     else:
         assert False
+    for p in includes:
+        option += ["-include", p]
     option += ["-o", exepath, path]
     st = time.perf_counter()
     cp = subprocess.run(option)

@@ -18,8 +18,7 @@
         "-mtune=native",
         "-fconstexpr-depth=2147483647",
         "-fconstexpr-loop-limit=2147483647",
-        "-fconstexpr-ops-limit=2147483647",
-        "-include C:\\Users\\tsout\\Desktop\\Projects\\GSHlib\\Test\\lib\\oldlib\\oldlib.hpp"
+        "-fconstexpr-ops-limit=2147483647"
       ]
     }
   ],

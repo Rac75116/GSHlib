@@ -190,11 +190,12 @@ public:
     void skip(itype::u32 n) { cur += n; }
 };
 class MmapReader : public internal::IstreamInterface<MmapReader> {
-    [[maybe_unused]] const itype::i32 fh;
-    [[maybe_unused]] ctype::c8 *buf, *cur, *eof;
+    const itype::i32 fh;
+    ctype::c8 *buf, *cur, *eof;
 public:
     MmapReader() : fh(0) {
 #if !defined(__linux__)
+        buf = nullptr;
         write(1, "gsh::MmapReader / gsh::MmapReader is not available for Windows.\n", 64);
         std::exit(1);
 #else

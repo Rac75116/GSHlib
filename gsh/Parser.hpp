@@ -355,7 +355,6 @@ public:
 };
 template<> class Parser<ctype::c8*> {
 public:
-    using value_type = void;
     template<class Stream> constexpr ctype::c8* operator()(Stream& stream, ctype::c8* s) const {
         stream.reload(16);
         ctype::c8* c = s;

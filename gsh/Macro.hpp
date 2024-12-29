@@ -1,11 +1,13 @@
 #pragma once
-#include <cstdlib>          // std::exit
-#include <tuple>            // std::forward_as_tuple
+#include <cstdlib>  // std::exit
+#include <tuple>    // std::forward_as_tuple
+#if __has_include(<source_location>)
 #include <source_location>  // std::source_location
-#include <ranges>           // std::ranges
-#include "TypeDef.hpp"      // gsh::itype
-#include "InOut.hpp"        // gsh::BasicWriter, gsh::Formatter
-#include "Range.hpp"        // gsh::Subrange
+#endif
+#include <ranges>       // std::ranges
+#include "TypeDef.hpp"  // gsh::itype
+#include "InOut.hpp"    // gsh::BasicWriter, gsh::Formatter
+#include "Range.hpp"    // gsh::Subrange
 
 #define RANGE(V)  gsh::Subrange(std::ranges::begin(V), std::ranges::end(V));
 #define RRANGE(V) gsh::Subrange(std::ranges::rbegin(V), std::ranges::rend(V));
@@ -40,6 +42,7 @@
 
 namespace gsh {
 namespace internal {
+#ifdef __cpp_lib_source_location
     template<itype::u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const ctype::c8* message, std::source_location loc = std::source_location::current()) {
         if (!cond) [[unlikely]] {
             if (std::is_constant_evaluated()) {
@@ -78,6 +81,31 @@ namespace internal {
             }
         }
     }
+#else
+    template<itype::u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const ctype::c8* message) {
+        if (!cond) [[unlikely]] {
+            if (std::is_constant_evaluated()) {
+                throw 0;
+            } else {
+                BasicWriter<2048> w(2);
+#if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
+                w.write("\e[2m[from gsh::internal::Assert]\e[0m ");
+                w.write("\e[31mAssertion Failed:\e[0m \e[1m\e[3m'");
+                w.write(message);
+                w.write("'\e[0m\n");
+                w.reload();
+#else
+                w.write("[from gsh::internal::Assert] ");
+                w.write(" Assertion Failed: '");
+                w.write(message);
+                w.writeln("'");
+                w.reload();
+#endif
+                std::exit(1);
+            }
+        }
+    }
+#endif
 }  // namespace internal
 }  // namespace gsh
 #define GSH_INTERNAL_ASSERT1(cond)          gsh::internal::Assert<0>(cond, #cond)

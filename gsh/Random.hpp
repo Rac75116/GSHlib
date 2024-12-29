@@ -1,9 +1,11 @@
 #pragma once
-#include <bit>              // std::rotr, std::bit_cast
-#include <ctime>            // std::time, std::clock
+#include <bit>    // std::rotr, std::bit_cast
+#include <ctime>  // std::time, std::clock
+#if __has_include(<source_location>)
 #include <source_location>  // std::source_location
-#include "TypeDef.hpp"      // gsh::itype, gsh::ftype
-#include "Functional.hpp"   // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers, gsh::Invoke
+#endif
+#include "TypeDef.hpp"     // gsh::itype, gsh::ftype
+#include "Functional.hpp"  // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers, gsh::Invoke
 
 namespace gsh {
 
@@ -73,6 +75,7 @@ public:
 };
 
 // @brief Generate random numbers from std::time, std::clock, and std::source_location.
+#ifdef __cpp_lib_source_location
 class RandomDevice {
     Rand64 engine;
     constexpr itype::u64 from_time() {
@@ -106,6 +109,34 @@ public:
     static constexpr result_type min() { return 0; }
     constexpr result_type operator()(const std::source_location& loc = std::source_location::current()) { return engine() ^ get_val(loc); }
 };
+#else
+class RandomDevice {
+    Rand64 engine;
+    constexpr itype::u64 from_time() {
+        if (!std::is_constant_evaluated()) {
+            itype::u64 a = internal::Splitmix(static_cast<itype::u64>(std::time(nullptr)));
+            itype::u64 b = Hash{}(internal::Splitmix(static_cast<itype::u64>(std::clock())));
+            return a ^ b;
+        } else return 0x9e3779b97f4a7c15;
+    }
+    constexpr itype::u64 from_compile_time() {
+        itype::u64 a = internal::Splitmix(Hash{}(internal::HashBytes(__DATE__)));
+        itype::u64 b = Hash{}(internal::Splitmix(internal::HashBytes(__TIME__)));
+        itype::u64 c = internal::Splitmix(internal::Splitmix(internal::HashBytes(__TIMESTAMP__)));
+        return internal::Splitmix(internal::MixIntegers(a, c)) ^ b;
+    }
+    constexpr itype::u64 get_val() { return internal::Splitmix(from_time()) ^ (Hash{}(from_compile_time())); }
+public:
+    using result_type = itype::u64;
+    constexpr RandomDevice() : engine(internal::Splitmix(get_val())) {}
+    constexpr RandomDevice(const RandomDevice&) = default;
+    constexpr RandomDevice& operator=(const RandomDevice&) = default;
+    constexpr ftype::f64 entropy() const noexcept { return 0.0; }
+    static constexpr result_type max() { return 0xffffffffffffffff; }
+    static constexpr result_type min() { return 0; }
+    constexpr result_type operator()() { return engine() ^ get_val(); }
+};
+#endif
 
 template<itype::u32 Size, class URBG> class RandBuffer : public URBG {
     typename URBG::result_type buf[Size];

@@ -356,20 +356,20 @@ template<std::input_iterator InputIter, class Alloc = Allocator<typename std::it
 
 template<class T, class Alloc = Allocator<T>> using Vec2 = Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>;
 template<class T, class Alloc = Allocator<T>> using Vec3 = Vec<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>>>;
-template<class Alloc = Allocator<bool>> using Vb = Vec<bool, Alloc>;
-template<class Alloc = Allocator<itype::i32>> using Vi = Vec<itype::i32, Alloc>;
-template<class Alloc = Allocator<itype::u32>> using Vu = Vec<itype::u32, Alloc>;
-template<class Alloc = Allocator<itype::i64>> using Vl = Vec<itype::i64, Alloc>;
-template<class Alloc = Allocator<itype::u64>> using Vul = Vec<itype::u64, Alloc>;
-template<class Alloc = Allocator<bool>> using Vvb = Vec2<bool, Alloc>;
-template<class Alloc = Allocator<itype::i32>> using Vvi = Vec2<itype::i32, Alloc>;
-template<class Alloc = Allocator<itype::u32>> using Vvu = Vec2<itype::u32, Alloc>;
-template<class Alloc = Allocator<itype::i64>> using Vvl = Vec2<itype::i64, Alloc>;
-template<class Alloc = Allocator<itype::u64>> using Vvul = Vec2<itype::u64, Alloc>;
-template<class Alloc = Allocator<bool>> using Vvvb = Vec3<bool, Alloc>;
-template<class Alloc = Allocator<itype::i32>> using Vvvi = Vec3<itype::i32, Alloc>;
-template<class Alloc = Allocator<itype::u32>> using Vvvu = Vec3<itype::u32, Alloc>;
-template<class Alloc = Allocator<itype::i64>> using Vvvl = Vec3<itype::i64, Alloc>;
-template<class Alloc = Allocator<itype::u64>> using Vvvul = Vec3<itype::u64, Alloc>;
+using Vb = Vec<bool>;
+using Vi = Vec<itype::i32>;
+using Vu = Vec<itype::u32>;
+using Vl = Vec<itype::i64>;
+using Vul = Vec<itype::u64>;
+using Vvb = Vec2<bool>;
+using Vvi = Vec2<itype::i32>;
+using Vvu = Vec2<itype::u32>;
+using Vvl = Vec2<itype::i64>;
+using Vvul = Vec2<itype::u64>;
+using Vvvb = Vec3<bool>;
+using Vvvi = Vec3<itype::i32>;
+using Vvvu = Vec3<itype::u32>;
+using Vvvl = Vec3<itype::i64>;
+using Vvvul = Vec3<itype::u64>;
 
 }  // namespace gsh

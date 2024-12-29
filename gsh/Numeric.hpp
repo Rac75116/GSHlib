@@ -62,7 +62,19 @@ constexpr bool isSquare64(const itype::u64 x) {
     return tmp * tmp == x;
 }
 
-template<class T> constexpr T IntPow(const T x, itype::u64 e) {
+template<class T, class U> constexpr auto Umod(const T& x, const U& m) {
+    if ((m >= 0) ^ (x >= 0)) {
+        m = m >= 0 ? m : -m;
+        auto res = x % m + m;
+        res = res >= m ? res - m : res;
+        return static_cast<std::make_unsigned_t<decltype(res)>>(res);
+    } else {
+        auto res = x % m;
+        return static_cast<std::make_unsigned_t<decltype(res)>>(res);
+    }
+}
+
+template<class T> constexpr T IntPow(const T& x, itype::u64 e) {
     T res = 1, pow = x;
     while (e != 0) {
         const T tmp = pow * pow;
@@ -72,7 +84,7 @@ template<class T> constexpr T IntPow(const T x, itype::u64 e) {
     }
     return res;
 }
-template<class T> constexpr T ModPow(const T x, itype::u64 e, const T mod) {
+template<class T, class U> constexpr T ModPow(const T& x, itype::u64 e, const U& mod) {
     T res = 1, pow = x % mod;
     while (e != 0) {
         const T tmp = (pow * pow) % mod;
@@ -81,6 +93,10 @@ template<class T> constexpr T ModPow(const T x, itype::u64 e, const T mod) {
         e >>= 1;
     }
     return res;
+}
+
+template<class T, class U> constexpr auto DivCeil(const T& a, const U& b) {
+    return (a + b - 1) / b;
 }
 
 // @brief Find the greatest common divisor as in std::gcd. (https://lpha-z.hatenablog.com/entry/2020/05/24/231500)

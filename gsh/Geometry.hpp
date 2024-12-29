@@ -97,7 +97,7 @@ template<class T, class U> constexpr Point3<T> Cross(const Point3<U>& a, const P
 template<std::ranges::input_range T>
     requires std::same_as<std::ranges::range_value_t<T>, Point2<itype::i32>>
 constexpr Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
-    Arr<itype::u128> v(RangeTraits<T>::size(r));
+    Arr<itype::u128> v(std::ranges::size(r));
     for (itype::u32 i = 0; auto&& p : r) {
         auto [x, y] = p;
         itype::u64 ord = 0;
@@ -160,7 +160,7 @@ template<std::ranges::random_access_range T>
 constexpr auto ConvexDiameter(T&& p) {
     struct result_type {
         Point2<itype::i32> a, b;
-        template<class U = ftype::f64> constexpr auto distance() const noexcept { return Norm<U>(a - b); }
+        constexpr auto distance() const noexcept { return Norm<ftype::f64>(a - b); }
         constexpr const auto& first() const noexcept { return a; }
         constexpr const auto& second() const noexcept { return b; }
     };

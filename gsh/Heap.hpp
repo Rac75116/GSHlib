@@ -416,7 +416,7 @@ private:
         }
     }
 public:
-    template<Range R> constexpr void assign(R&& r) {
+    template<std::ranges::range R> constexpr void assign(R&& r) {
         data.assign(std::forward<R>(r));
         make_heap();
     }

@@ -342,7 +342,7 @@ public:
 namespace internal {
     template<class T> class FloatFormatter {
     public:
-        template<class Stream> constexpr void FormatFloat(Stream& stream, T f, std::chars_format fmt, itype::i32 precision) {
+        template<class Stream> constexpr void operator()(Stream& stream, T f, std::chars_format fmt = std::chars_format::general, itype::i32 precision = 6) {
             stream.reload(32);
             auto [ptr, err] = std::to_chars(stream.current(), stream.current() + stream.avail(), f, fmt, precision);
             if (err != std::errc{}) [[unlikely]] {
@@ -355,18 +355,31 @@ namespace internal {
             }
         }
     };
-    template<> class FloatFormatter<ftype::InvalidFloat16Tag> {};
-    template<> class FloatFormatter<ftype::InvalidBfloat16Tag> {};
-    template<> class FloatFormatter<ftype::InvalidFloat128Tag> {};
-#ifdef __SIZEOF_FLOAT128__
-    template<> class FloatFormatter<__float128> {};
-#endif
 }  // namespace internal
-template<> class Formatter<ftype::f16> : public internal::FloatFormatter<ftype::f16> {};
-template<> class Formatter<ftype::f32> : public internal::FloatFormatter<ftype::f32> {};
-template<> class Formatter<ftype::f64> : public internal::FloatFormatter<ftype::f64> {};
-template<> class Formatter<ftype::f128> : public internal::FloatFormatter<ftype::f128> {};
-template<> class Formatter<ftype::bf16> : public internal::FloatFormatter<ftype::bf16> {};
+template<> class Formatter<float> : public internal::FloatFormatter<float> {};
+template<> class Formatter<double> : public internal::FloatFormatter<double> {};
+template<> class Formatter<long double> : public internal::FloatFormatter<long double> {};
+#ifdef __STDCPP_FLOAT16_T__
+template<> class Formatter<std::float16_t> : public internal::FloatFormatter<std::float16_t> {};
+#endif
+#ifdef __STDCPP_FLOAT32_T__
+template<> class Formatter<std::float32_t> : public internal::FloatFormatter<std::float32_t> {};
+#endif
+#ifdef __STDCPP_FLOAT64_T__
+template<> class Formatter<std::float64_t> : public internal::FloatFormatter<std::float64_t> {};
+#endif
+#ifdef __STDCPP_FLOAT128_T__
+template<> class Formatter<std::float128_t> : public internal::FloatFormatter<std::float128_t> {};
+#endif
+#ifdef __STDCPP_BFLOAT16_T__
+template<> class Formatter<std::bfloat16_t> : public internal::FloatFormatter<std::bfloat16_t> {};
+#endif
+#ifdef __SIZEOF_FLOAT128__
+template<> class Formatter<__float128> : public internal::FloatFormatter<__float128> {};
+#endif
+template<> class Formatter<ftype::InvalidFloat16Tag> {};
+template<> class Formatter<ftype::InvalidFloat128Tag> {};
+template<> class Formatter<ftype::InvalidBfloat16Tag> {};
 template<> class Formatter<bool> {
 public:
     template<class Stream> constexpr void operator()(Stream& stream, bool b) const {

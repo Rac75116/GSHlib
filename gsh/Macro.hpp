@@ -43,40 +43,43 @@
 namespace gsh {
 namespace internal {
 #ifdef __cpp_lib_source_location
+    void AssertPrint(const ctype::c8* message, std::source_location loc) {
+        BasicWriter<2048> w(2);
+#if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
+        w.write("\e[2m[Assert] \e[0mDuring the execution of \e[1m\e[3m'");
+        w.write(loc.function_name());
+        w.write("'\e[0m\n");
+        w.write(loc.file_name());
+        w.write(':');
+        w.write(loc.line());
+        w.write(':');
+        w.write(loc.column());
+        w.write(':');
+        w.write(" \e[31mAssertion Failed:\e[0m \e[1m\e[3m'");
+        w.write(message);
+        w.write("'\e[0m\n");
+        w.reload();
+#else
+        w.write("[Assert] During the execution of '");
+        w.writeln(loc.function_name());
+        w.write(loc.file_name());
+        w.write(':');
+        w.write(loc.line());
+        w.write(':');
+        w.write(loc.column());
+        w.write(':');
+        w.write(" Assertion Failed: '");
+        w.write(message);
+        w.writeln("'");
+        w.reload();
+#endif
+    }
     template<itype::u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const ctype::c8* message, std::source_location loc = std::source_location::current()) {
         if (!cond) [[unlikely]] {
+            AssertPrint(message, loc);
             if (std::is_constant_evaluated()) {
                 throw 0;
             } else {
-                BasicWriter<2048> w(2);
-#if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
-                w.write("\e[2m[from gsh::internal::Assert] \e[0mDuring the execution of \e[1m\e[3m'");
-                w.write(loc.function_name());
-                w.write("'\e[0m\n");
-                w.write(loc.file_name());
-                w.write(':');
-                w.write(loc.line());
-                w.write(':');
-                w.write(loc.column());
-                w.write(':');
-                w.write(" \e[31mAssertion Failed:\e[0m \e[1m\e[3m'");
-                w.write(message);
-                w.write("'\e[0m\n");
-                w.reload();
-#else
-                w.write("[from gsh::internal::Assert] During the execution of '");
-                w.writeln(loc.function_name());
-                w.write(loc.file_name());
-                w.write(':');
-                w.write(loc.line());
-                w.write(':');
-                w.write(loc.column());
-                w.write(':');
-                w.write(" Assertion Failed: '");
-                w.write(message);
-                w.writeln("'");
-                w.reload();
-#endif
                 std::exit(1);
             }
         }
@@ -89,13 +92,13 @@ namespace internal {
             } else {
                 BasicWriter<2048> w(2);
 #if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
-                w.write("\e[2m[from gsh::internal::Assert]\e[0m ");
+                w.write("\e[2m[Assert]\e[0m ");
                 w.write("\e[31mAssertion Failed:\e[0m \e[1m\e[3m'");
                 w.write(message);
                 w.write("'\e[0m\n");
                 w.reload();
 #else
-                w.write("[from gsh::internal::Assert] ");
+                w.write("[Assert] ");
                 w.write(" Assertion Failed: '");
                 w.write(message);
                 w.writeln("'");

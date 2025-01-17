@@ -9,6 +9,7 @@
 #include "Range.hpp"         // gsh::ViewInterface
 #include "Memory.hpp"        // gsh::Allocator, gsh::AllocatorTraits
 #include "Str.hpp"           // gsh::Str
+#include "Util.hpp"          // gsh::Assume
 #include "internal/UtilMacro.hpp"
 
 namespace gsh {
@@ -356,20 +357,5 @@ template<std::input_iterator InputIter, class Alloc = Allocator<typename std::it
 
 template<class T, class Alloc = Allocator<T>> using Vec2 = Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>;
 template<class T, class Alloc = Allocator<T>> using Vec3 = Vec<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>>>;
-using Vb = Vec<bool>;
-using Vi = Vec<itype::i32>;
-using Vu = Vec<itype::u32>;
-using Vl = Vec<itype::i64>;
-using Vul = Vec<itype::u64>;
-using Vvb = Vec2<bool>;
-using Vvi = Vec2<itype::i32>;
-using Vvu = Vec2<itype::u32>;
-using Vvl = Vec2<itype::i64>;
-using Vvul = Vec2<itype::u64>;
-using Vvvb = Vec3<bool>;
-using Vvvi = Vec3<itype::i32>;
-using Vvvu = Vec3<itype::u32>;
-using Vvvl = Vec3<itype::i64>;
-using Vvvul = Vec3<itype::u64>;
 
 }  // namespace gsh

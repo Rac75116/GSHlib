@@ -39,12 +39,14 @@ public:
     }
     constexpr itype::u32 size() const noexcept { return bit.size(); }
     constexpr void resize(itype::u32 sz) { resize(sz, value_type{}); }
+    /*
     constexpr void resize(itype::u32 sz, const value_type& c) {
         itype::u32 n = bit.size();
         bit.resize(sz);
         if (n >= sz) return;
         // TODO
     }
+    */
     [[nodiscard]] constexpr bool empty() const noexcept { return bit.empty(); }
     constexpr value_type operator[](itype::u32 n) const {
         value_type res = bit[n];

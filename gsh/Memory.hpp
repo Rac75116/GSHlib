@@ -1,12 +1,13 @@
 #pragma once
-#include <type_traits>  // std::make_unsigned, std::is_empty, std::true_type, std::false_type, std::is_array_v, std::is_trivially_(***)
-#include <limits>       // std::numeric_limits
-#include <utility>      // std::forward
-#include <iterator>     // std::begin, std::end
-#include <cstdlib>      // std::malloc, std::free, std::realloc, std::aligned_alloc
-#include <new>          // ::operator new
-#include <memory>       // std::construct_at, std::destroy_at
-#include "TypeDef.hpp"  // gsh::itype
+#include <type_traits>    // std::make_unsigned, std::is_empty, std::true_type, std::false_type, std::is_array_v, std::is_trivially_(***)
+#include <limits>         // std::numeric_limits
+#include <utility>        // std::forward
+#include <iterator>       // std::begin, std::end
+#include <cstdlib>        // std::malloc, std::free, std::realloc, std::aligned_alloc
+#include <new>            // ::operator new
+#include <memory>         // std::construct_at, std::destroy_at
+#include "TypeDef.hpp"    // gsh::itype
+#include "Exception.hpp"  // gsh::Exception
 
 namespace gsh {
 

@@ -6,6 +6,7 @@
 #include <bit>                     // std::bit_cast
 #include <typeindex>               // std::hash
 #include "TypeDef.hpp"             // gsh::itype
+#include "Int128.hpp"              // gsh::itype::u128
 #include "internal/UtilMacro.hpp"  // GSH_INTERNAL_INLINE
 
 namespace gsh {

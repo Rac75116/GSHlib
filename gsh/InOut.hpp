@@ -1,6 +1,7 @@
 #pragma once
-#include <cstdlib>         // std::exit
-#include <cstring>         // std::memcpy, std::memmove
+#include <cstdlib>  // std::exit
+#include <cstring>  // std::memcpy, std::memmove
+#include <source_location>
 #include <utility>         // std::forward
 #include <tuple>           // std::tuple, std::make_tuple
 #include "TypeDef.hpp"     // gsh::itype, gsh::ctype
@@ -190,7 +191,7 @@ public:
     void skip(itype::u32 n) { cur += n; }
 };
 class MmapReader : public internal::IstreamInterface<MmapReader> {
-    const itype::i32 fh;
+    [[maybe_unused]] const itype::i32 fh;
     ctype::c8 *buf, *cur, *eof;
 public:
     MmapReader() : fh(0) {

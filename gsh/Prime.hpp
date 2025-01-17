@@ -52,8 +52,7 @@ namespace internal {
         }
     };
 
-    template<bool Prob, itype::u32> struct IsPrime64;
-    template<itype::u32 id> struct IsPrime64<false, id> {
+    template<itype::u32> struct IsPrime64 {
         GSH_INTERNAL_INLINE constexpr static bool calc(const itype::u64 x) noexcept {
             internal::MontgomeryModint64Impl mint;
             mint.set(x);
@@ -135,70 +134,17 @@ namespace internal {
             } else return test3(2ull, 325ull, 9375ull) && test4(28178ull, 450775ull, 9780504ull, 1795265022ull);
         }
     };
-    template<itype::u32 id> struct IsPrime64<true, id> {
-        constexpr static itype::u16 bases1[] = {
-#include "internal/MRbase.txt"
-        };
-        constexpr static itype::u64 bases2 = 15ull | (135ull << 8) | (13ull << 16) | (60ull << 24) | (15ull << 32) | (117ull << 40) | (65ull << 48) | (29ull << 56);
-        GSH_INTERNAL_INLINE constexpr static bool calc(const itype::u64 x) noexcept {
-            internal::MontgomeryModint64Impl mint;
-            mint.set(x);
-            const itype::u32 S = std::countr_zero(x - 1);
-            const itype::u64 D = (x - 1) >> S;
-            const auto one = mint.one(), mone = mint.neg(one);
-            auto test2 = [&](itype::u32 base1, itype::u32 base2) {
-                auto a = one, b = one;
-                auto c = mint.raw(base1), d = mint.raw(base2);
-                itype::u64 ex = D;
-                while (ex) {
-                    auto e = mint.mul(c, c), f = mint.mul(d, d);
-                    if (ex & 1) a = mint.mul(a, e), b = mint.mul(b, f);
-                    c = e, d = f;
-                    ex >>= 1;
-                }
-                bool res1 = mint.same(a, one) || mint.same(a, mone);
-                bool res2 = mint.same(b, one) || mint.same(b, mone);
-                for (itype::u32 i = 0; i != S - 1; ++i) {
-                    a = mint.mul(a, a), b = mint.mul(b, b);
-                    res1 |= mint.same(a, mone), res2 |= mint.same(b, mone);
-                }
-                return res1 && res2;
-            };
-            auto test3 = [&](itype::u32 base1, itype::u32 base2, itype::u32 base3) {
-                auto a = one, b = one, c = one;
-                auto d = mint.raw(base1), e = mint.raw(base2), f = mint.raw(base3);
-                itype::u64 ex = D;
-                while (ex) {
-                    const auto g = mint.mul(d, d), h = mint.mul(e, e), i = mint.mul(f, f);
-                    if (ex & 1) a = mint.mul(a, d), b = mint.mul(b, e), c = mint.mul(c, f);
-                    d = g, e = h, f = i;
-                    ex >>= 1;
-                }
-                bool res1 = mint.same(a, one) || mint.same(a, mone);
-                bool res2 = mint.same(b, one) || mint.same(b, mone);
-                bool res3 = mint.same(c, one) || mint.same(c, mone);
-                for (itype::u32 i = 0; i != S - 1; ++i) {
-                    a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
-                    res1 |= mint.same(a, mone), res2 |= mint.same(b, mone), res3 |= mint.same(c, mone);
-                }
-                return res1 && res2 && res3;
-            };
-            const itype::u32 base = bases1[(0xad625b89u * static_cast<itype::u32>(x)) >> 18];
-            if (x < (1ull << 49)) return test2(2, base);
-            else return test3(2, base, (bases2 >> (8 * (base >> 13))) & 0xff);
-        }
-    };
 
 }  // namespace internal
 
 // @brief Prime number determination
-template<bool Prob = true> constexpr bool IsPrime(const itype::u64 x) noexcept {
+constexpr bool IsPrime(const itype::u64 x) noexcept {
     if (x < 65536u) {
         return internal::IsPrime16<0>::calc(x);
     } else {
         if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
         if (x <= 0xffffffff) return internal::IsPrime32<0>::calc(x);
-        else return internal::IsPrime64<Prob, 0>::calc(x);
+        else return internal::IsPrime64<0>::calc(x);
     }
 }
 

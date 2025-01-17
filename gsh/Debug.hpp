@@ -10,7 +10,12 @@ namespace internal {
     template<class... Args> void DebugPrintImpl(std::source_location loc, Args&&... args) {
         DebugPrinter.write("[Debug] ");
         DebugPrinter.write_sep(" / ", std::forward<Args>(args)...);
-        DebugPrinter.writeln(" | ", loc.function_name(), ' ', loc.file_name(), ':', loc.line(), ':', loc.column());
+        DebugPrinter.write(" |", loc.function_name(), loc.file_name());
+        DebugPrinter.write(':');
+        DebugPrinter.write(loc.line());
+        DebugPrinter.write(':');
+        DebugPrinter.writeln(loc.column());
+        DebugPrinter.reload();
     }
     template<class... Args> constexpr void DebugPrint(std::source_location loc, Args&&... args) {
         if (std::is_constant_evaluated()) {

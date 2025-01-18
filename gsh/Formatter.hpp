@@ -415,6 +415,13 @@ public:
 };
 template<> class Formatter<ctype::c8*> : public Formatter<const ctype::c8*> {};
 
+class NoOutTag {};
+constexpr NoOutTag NoOut;
+template<> class Formatter<NoOutTag> {
+public:
+    template<class Stream> constexpr void operator()(Stream&&, NoOutTag) const {}
+};
+
 template<class R> concept FormatableRange = std::ranges::forward_range<R> && requires { sizeof(Formatter<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
 template<FormatableRange R> class Formatter<R> {
     template<class Stream, class T, class... Args> constexpr void print(Stream&& stream, T&& r, Args&&... args) const {

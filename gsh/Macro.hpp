@@ -1,8 +1,9 @@
 #pragma once
-#include <cstdlib>    // std::exit
-#include <tuple>      // std::forward_as_tuple
-#include <ranges>     // std::ranges
-#include "Range.hpp"  // gsh::Subrange
+#include <cstdlib>     // std::exit
+#include <tuple>       // std::forward_as_tuple
+#include <ranges>      // std::ranges
+#include "Range.hpp"   // gsh::Subrange
+#include "Parser.hpp"  // gsh::Parser
 
 #define RANGE(V)  gsh::Subrange(std::ranges::begin(V), std::ranges::end(V));
 #define RRANGE(V) gsh::Subrange(std::ranges::rbegin(V), std::ranges::rend(V));
@@ -38,6 +39,7 @@
 namespace gsh {
 namespace internal {
     template<class T> class InputAdapter {
+        T& ref;
         template<class... Args> class with_options {
             friend class InputAdapter;
             T& ref;
@@ -50,16 +52,39 @@ namespace internal {
                 }(std::make_index_sequence<sizeof...(Args)>{});
             }
         };
-        T& ref;
     public:
         constexpr InputAdapter(T& r) noexcept : ref(r) {}
         template<class U> constexpr operator U() const { return ref.template read<U>().val(); }
         template<class... Args> constexpr auto operator()(Args&&... args) const { return with_options<Args...>(ref, std::forward<Args>(args)...); }
+        template<class... Args> constexpr auto tied_containers(itype::u32 n) const {
+            std::tuple<Args...> containers;
+            std::tuple<Parser<typename Args::value_type>...> parsers;
+            [&]<std::size_t... I>(std::index_sequence<I...>) {
+                auto reserve = [&](auto& container) {
+                    if constexpr (requires { container.reserve(n); }) container.reserve(n);
+                };
+                (..., reserve(std::get<I>(containers)));
+            }(std::make_index_sequence<sizeof...(Args)>());
+            for (itype::u32 i = 0; i != n; ++i) {
+                [&]<std::size_t... I>(std::index_sequence<I...>) {
+                    auto add_value = [&]<class C>(C& container, auto& parser) {
+                        if constexpr (requires { container.push_back(parser(ref)); }) container.push_back(parser(ref));
+                        else if constexpr (requires { container.insert(parser(ref)); }) container.insert(parser(ref));
+                        else if constexpr (requires { container.push(parser(ref)); }) container.push(parser(ref));
+                        else static_assert((container, false));
+                    };
+                    (..., add_value(std::get<I>(containers), std::get<I>(parsers)));
+                }(std::make_index_sequence<sizeof...(Args)>());
+            }
+            return containers;
+        }
     };
 }  // namespace internal
 }  // namespace gsh
+
 // clang-format off
-#define DEF_INPUT_STREAM(name)                   [[maybe_unused]] gsh::internal::InputAdapter GSH_INTERNAL_INPUT{ name };
+#define DECLARE_INPUT_STREAM(name) [[maybe_unused]] const gsh::internal::InputAdapter GSH_INTERNAL_INPUT{ name }; [](){}
+// clang-format on
 #define GSH_INTERNAL_INPUT1(a)                   a = GSH_INTERNAL_INPUT
 #define GSH_INTERNAL_INPUT2(a, b)                a = GSH_INTERNAL_INPUT, b = GSH_INTERNAL_INPUT
 #define GSH_INTERNAL_INPUT3(a, b, c)             a = GSH_INTERNAL_INPUT, b = GSH_INTERNAL_INPUT, c = GSH_INTERNAL_INPUT
@@ -68,4 +93,4 @@ namespace internal {
 #define GSH_INTERNAL_INPUT6(a, b, c, d, e, f)    a = GSH_INTERNAL_INPUT, b = GSH_INTERNAL_INPUT, c = GSH_INTERNAL_INPUT, d = GSH_INTERNAL_INPUT, e = GSH_INTERNAL_INPUT, f = GSH_INTERNAL_INPUT
 #define GSH_INTERNAL_INPUT7(a, b, c, d, e, f, g) a = GSH_INTERNAL_INPUT, b = GSH_INTERNAL_INPUT, c = GSH_INTERNAL_INPUT, d = GSH_INTERNAL_INPUT, e = GSH_INTERNAL_INPUT, f = GSH_INTERNAL_INPUT, g = GSH_INTERNAL_INPUT
 #define INPUT(...)                               GSH_INTERNAL_SELECT8(__VA_ARGS__, GSH_INTERNAL_INPUT7, GSH_INTERNAL_INPUT6, GSH_INTERNAL_INPUT5, GSH_INTERNAL_INPUT4, GSH_INTERNAL_INPUT3, GSH_INTERNAL_INPUT2, GSH_INTERNAL_INPUT1)(__VA_ARGS__)
-// clang-format on
+#define TIED(...)                                auto [__VA_ARGS__] = GSH_INTERNAL_INPUT.tied_containers

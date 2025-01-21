@@ -296,9 +296,7 @@ public:
         make_heap();
     }
     constexpr const_reference top() const noexcept { return data[0]; }
-    constexpr const_reference front() const noexcept { return data[0]; }
     constexpr const_reference min() const noexcept { return data[0]; }
-    constexpr const_reference back() const noexcept { return data[mx]; }
     constexpr const_reference max() const noexcept { return data[mx]; }
     [[nodiscard]] constexpr bool empty() const noexcept { return data.empty(); }
     constexpr itype::u32 size() const noexcept { return data.size(); }
@@ -326,21 +324,21 @@ public:
         data.pop_max();
         pop_max_impl();
     }
-    constexpr void replace(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) { replace_front(x); }
-    constexpr void replace(T&& x) noexcept(nothrow_op) { replace_front(std::move(x)); }
-    constexpr void replace_front(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
+    constexpr void replace(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) { replace_min(x); }
+    constexpr void replace(T&& x) noexcept(nothrow_op) { replace_min(std::move(x)); }
+    constexpr void replace_min(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
         data[0] = x;
         pop_min_impl();
     }
-    constexpr void replace_front(T&& x) noexcept(nothrow_op) {
+    constexpr void replace_min(T&& x) noexcept(nothrow_op) {
         data[0] = std::move(x);
         pop_min_impl();
     }
-    constexpr void replace_back(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
+    constexpr void replace_max(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
         data[mx] = x;
         pop_max_impl();
     }
-    constexpr void replace_back(T&& x) noexcept(nothrow_op) {
+    constexpr void replace_max(T&& x) noexcept(nothrow_op) {
         data[mx] = std::move(x);
         pop_max_impl();
     }

@@ -7,61 +7,88 @@
 #include <tuple>                   // std::tuple_element
 #include "TypeDef.hpp"             // gsh::itype
 #include "internal/Operation.hpp"  //gsh::internal::IteratorInterface
+#include "Functional.hpp"          // gsh::Less, gsh::Identity
 
 namespace gsh {
 
 enum class RangeKind { Sized, Unsized };
 
-template<class D, class V>
-    requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
-class ViewInterface;
+namespace internal {
+    template<class F, class T, class I, class U> concept IndirectlyBinaryLeftFoldableImpl = std::movable<T> && std::movable<U> && std::convertible_to<T, U> && std::invocable<F&, U, std::iter_reference_t<I>> && std::assignable_from<U&, std::invoke_result_t<F&, U, std::iter_reference_t<I>>>;
+    template<class F, class T, class I> concept IndirectlyBinaryLeftFoldable = std::copy_constructible<F> && std::indirectly_readable<I> && std::invocable<F&, T, std::iter_reference_t<I>> && std::convertible_to<std::invoke_result_t<F&, T, std::iter_reference_t<I>>, std::decay_t<std::invoke_result_t<F&, T, std::iter_reference_t<I>>>> && IndirectlyBinaryLeftFoldableImpl<F, T, I, std::decay_t<std::invoke_result_t<F&, T, std::iter_reference_t<I>>>>;
 
-template<class Iter> class SlicedRange : public ViewInterface<SlicedRange<Iter>, std::iter_value_t<Iter>> {
-public:
-    using iterator = Iter;
-    using value_type = std::iter_value_t<Iter>;
-    static_assert(std::sentinel_for<iterator, iterator>, "gsh::SlicedRange / The iterator cannot behave as sentinel.");
-private:
-    iterator first, last;
-public:
-    constexpr SlicedRange(iterator beg, iterator end) : first(beg), last(end) {}
-    constexpr iterator begin() const { return first; }
-    constexpr iterator end() const { return last; }
-    constexpr auto rbegin() const { return std::reverse_iterator{ last }; }
-    constexpr auto rend() const { return std::reverse_iterator{ first }; }
-};
+    // These functions are defined in gsh/Algorithm.hpp
+    template<class R, class Comp, class Proj> constexpr auto MinImpl(R&& r, Comp&& comp, Proj&& proj);
+    template<class R, class Comp, class Proj> constexpr auto MaxImpl(R&& r, Comp&& comp, Proj&& proj);
+    template<class R, class T, class F> constexpr auto FoldImpl(R&& r, T init, F&& f);
+    template<class R, class F> constexpr auto SumImpl(const R& r, F&& f);
+    template<class R, class F> constexpr auto SumImpl(R&& r, F&& f);
+    template<class R> constexpr void ReverseImpl(R&& r);
+    template<class R, class Comp = Less, class Proj = Identity> constexpr void SortImpl(R&& r, Comp&& comp = {}, Proj&& proj = {});
+    template<class R, class Comp, class Proj> constexpr auto SortIndexImpl(R&& r, Comp&& comp, Proj&& proj);
+}  // namespace internal
 
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
 class ViewInterface {
     constexpr D& derived() { return *static_cast<D*>(this); }
     constexpr const D& derived() const { return *static_cast<const D*>(this); }
-    constexpr auto get_begin() { return derived().begin(); }
-    constexpr auto get_begin() const { return derived().cbegin(); }
-    constexpr auto get_end() { return derived().end(); }
-    constexpr auto get_end() const { return derived().cend(); }
-    constexpr auto get_rbegin() { return derived().rbegin(); }
-    constexpr auto get_rbegin() const { return derived().crbegin(); }
-    constexpr auto get_rend() { return derived().rend(); }
-    constexpr auto get_rend() const { return derived().crend(); }
-public:
+    constexpr auto get_begin() { return std::ranges::begin(derived()); }
+    constexpr auto get_begin() const { return std::ranges::begin(derived()); }
+    constexpr auto get_end() { return std::ranges::end(derived()); }
+    constexpr auto get_end() const { return std::ranges::end(derived()); }
+    constexpr auto get_rbegin() { return std::ranges::rbegin(derived()); }
+    constexpr auto get_rbegin() const { return std::ranges::rbegin(derived()); }
+    constexpr auto get_rend() { return std::ranges::rend(derived()); }
+    constexpr auto get_rend() const { return std::ranges::rend(derived()); }
     using derived_type = D;
+public:
     using value_type = V;
     constexpr derived_type copy() const& { return derived(); }
     constexpr derived_type copy() & { return derived(); }
     constexpr derived_type copy() && { return std::move(derived()); }
-    constexpr auto slice(itype::u32 a, itype::u32 b) {
-        auto beg = std::next(get_begin(), a);
-        auto end = std::next(beg, b - a);
-        return SlicedRange{ beg, end };
+    constexpr derived_type slice(itype::u32 start) const& { return derived_type(std::ranges::next(get_begin(), start), get_end()); }
+    constexpr derived_type slice(itype::u32 start, itype::u32 end) const& { return derived_type(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
+    constexpr derived_type slice(itype::u32 start) const&&
+        requires(!std::ranges::borrowed_range<derived_type>)
+    {
+        return derived_type(std::move_iterator(std::ranges::next(get_begin(), start)), std::move_sentinel(get_end()));
     }
-    constexpr auto slice(itype::u32 a, itype::u32 b) const {
-        auto beg = std::next(get_begin(), a);
-        auto end = std::next(beg, b - a);
-        return SlicedRange{ beg, end };
+    constexpr derived_type slice(itype::u32 start, itype::u32 end) const&&
+        requires(!std::ranges::borrowed_range<derived_type>)
+    {
+        return derived_type(std::move_iterator(std::ranges::next(get_begin(), start)), std::move_iterator(std::ranges::next(get_begin(), end)));
     }
-    constexpr auto slice(itype::u32 a) { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
-    constexpr auto slice(itype::u32 a) const { return SlicedRange{ std::next(get_begin(), a), get_end() }; }
+    template<class Proj = Identity, std::indirect_unary_predicate<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Pred>
+        requires std::ranges::input_range<derived_type> && std::ranges::view<derived_type> && std::is_object_v<Proj>
+    [[nodiscard]] constexpr derived_type filter(Pred&& pred = {}, Proj&& proj = {}) const {
+        if constexpr (std::same_as<Proj, Identity>) {
+            auto v = derived() | std::views::filter(std::forward<Pred>(pred));
+            return derived_type(v.begin(), v.end());
+        } else {
+            auto v = derived() | std::views::transform(std::forward<Proj>(proj)) | std::views::filter(std::forward<Pred>(pred));
+            return derived_type(v.begin(), v.end());
+        }
+    }
+    template<class Proj = Identity, std::indirect_unary_predicate<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Pred>
+        requires std::ranges::forward_range<derived_type> && std::permutable<std::ranges::iterator_t<derived_type>>
+    constexpr auto erase_if(Pred&& pred = {}, Proj&& proj = {}) {
+        auto [itr, sent] = std::ranges::remove_if(get_begin(), get_end(), std::forward<Pred>(pred), std::forward<Proj>(proj));
+        auto len = std::ranges::distance(itr, sent);
+        derived().erase(itr, sent);
+        return len;
+    }
+    template<std::invocable<value_type> Proj>
+        requires std::same_as<value_type, std::invoke_result_t<Proj, value_type>>
+    [[nodiscard]] constexpr derived_type transform(Proj&& proj = {}) const {
+        auto v = derived() | std::views::transform(std::forward<Proj>(proj));
+        return derived_type(v.begin(), v.end());
+    }
+    template<std::invocable<value_type> Proj>
+        requires std::same_as<value_type, std::invoke_result_t<Proj, value_type>>
+    constexpr void apply(Proj&& proj = {}) {
+        for (auto& x : derived()) x = Invoke(proj, std::move(x));
+    }
     template<std::predicate<value_type> Pred> constexpr bool all_of(Pred f) const {
         for (const auto& el : derived())
             if (!f(el)) return false;
@@ -107,6 +134,55 @@ public:
         itype::u32 res = 0;
         for (const auto& el : derived()) res += (el == x);
         return res;
+    }
+    template<class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
+        requires std::ranges::forward_range<derived_type> && std::indirectly_copyable_storable<std::ranges::iterator_t<derived_type>, value_type*>
+    constexpr auto min(Comp&& comp = {}, Proj&& proj = {}) const {
+        return internal::MinImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
+        requires std::ranges::forward_range<derived_type> && std::indirectly_copyable_storable<std::ranges::iterator_t<derived_type>, value_type*>
+    constexpr auto max(Comp&& comp = {}, Proj&& proj = {}) const {
+        return internal::MaxImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class T = value_type, internal::IndirectlyBinaryLeftFoldable<T, std::ranges::iterator_t<derived_type>> F = Plus>
+        requires std::ranges::forward_range<derived_type>
+    constexpr auto fold(T&& init = {}, F&& f = {}) const {
+        return internal::FoldImpl(derived(), std::forward<T>(init), std::forward<F>(f));
+    }
+    template<internal::IndirectlyBinaryLeftFoldable<value_type, std::ranges::iterator_t<derived_type>> F = Plus>
+        requires std::ranges::forward_range<derived_type>
+    constexpr auto sum(F&& f = {}) const {
+        return internal::SumImpl(derived(), std::forward<F>(f));
+    }
+    void reverse()
+        requires std::ranges::bidirectional_range<derived_type> && std::permutable<std::ranges::iterator_t<derived_type>>
+    {
+        internal::ReverseImpl(derived());
+    }
+    [[nodiscard]] auto reversed() const
+        requires std::ranges::bidirectional_range<derived_type> && std::permutable<std::ranges::iterator_t<derived_type>>
+    {
+        auto res = copy();
+        internal::ReverseImpl(res);
+        return res;
+    }
+    template<class Comp = Less, class Proj = Identity>
+        requires std::ranges::forward_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
+    constexpr void sort(Comp&& comp = {}, Proj&& proj = {}) {
+        internal::SortImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class Comp = Less, class Proj = Identity>
+        requires std::ranges::forward_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
+    [[nodiscard]] constexpr auto sorted(Comp&& comp = {}, Proj&& proj = {}) const {
+        auto res = copy();
+        internal::SortImpl(res, std::forward<Comp>(comp), std::forward<Proj>(proj));
+        return res;
+    }
+    template<class Comp = Less, class Proj = Identity>
+        requires std::ranges::random_access_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
+    constexpr auto sort_index(Comp&& comp = {}, Proj&& proj = {}) const {
+        return internal::SortIndexImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
     }
 };
 
@@ -216,69 +292,3 @@ template<std::ranges::borrowed_range R> Subrange(R&&, std::make_unsigned_t<std::
 namespace std::ranges {
 template<class I, class S, gsh::RangeKind K> constexpr bool enable_borrowed_range<gsh::Subrange<I, S, K>> = true;
 }
-
-/*
-namespace gsh {
-
-namespace internal {
-    template<class T> class StepIterator : public IteratorInterface<StepIterator<T>> {
-        T current;
-        constexpr StepIterator() noexcept(std::is_nothrow_default_constructible_v<T>) : current() {}
-        constexpr StepIterator(const T& x) noexcept(std::is_nothrow_copy_constructible_v<T>) : current(x) {}
-        constexpr StepIterator(T&& x) noexcept(std::is_nothrow_move_constructible_v<T>) : current(std::move(x)) {}
-    public:
-        using difference_type = T;
-        using size_type = T;
-        using value_type = T;
-        using reference = T&;
-        using pointer = decltype(&std::declval<const T&>());
-        using iterator_category = std::random_access_iterator_tag;
-        constexpr const T& operator*() const noexcept { return current; }
-        constexpr iterator& operator++() noexcept(noexcept(++current)) {
-            ++current;
-            return *this;
-        }
-        constexpr iterator& operator--() noexcept(noexcept(--current)) {
-            --current;
-            return *this;
-        }
-        constexpr iterator& operator+=(const T& n) noexcept(noexcept(current += n)) {
-            current += n;
-            return *this;
-        }
-        constexpr iterator& operator-=(const T& n) noexcept(noexcept(current -= n)) {
-            current -= n;
-            return *this;
-        }
-        friend constexpr auto operator-(const StepIterator& a, const StepIterator& b) noexcept(noexcept(a.current - b.current)) { return a.current - b.current; }
-        friend constexpr bool operator==(const StepIterator& a, const StepIterator& b) noexcept(noexcept(a.current == b.current)) { return a.current == b.current; }
-        friend constexpr auto operator<=>(const StepIterator& a, const StepIterator& b) noexcept(noexcept(a.current <=> b.current)) { return a.current <=> b.current; }
-    };
-    template<class T> class StepSentinel : public SentinelInterface<StepSentinel<T>> {
-        const T& current;
-        constexpr StepSentinel(const T& x) noexcept : current(x) {}
-    public:
-        template<class U> friend constexpr auto operator-(const StepSentinel& a, const StepIterator<U>& b) noexcept(noexcept(a.current - b.current)) { return a.current - b.current; }
-        template<class U> friend constexpr auto operator-(const StepIterator<U>& a, const StepSentinel& b) noexcept(noexcept(a.current - b.current)) { return a.current - b.current; }
-        template<class U> friend constexpr bool operator==(const StepSentinel& a, const StepIterator<U>& b) noexcept(noexcept(a.current == b.current)) { return a.current == b.current; }
-        template<class U> friend constexpr bool operator<=>(const StepSentinel& a, const StepIterator<U>& b) noexcept(noexcept(a.current <=> b.current)) { return a.current <=> b.current; }
-    };
-    template<class T> class Step1 : public ViewInterface<Step1<T>> {
-        T last;
-        constexpr Step1(const T& x) : last(x) {}
-        constexpr Step1(T&& x) : last(std::move(x)) {}
-    public:
-        using iterator = StepIterator<T>;
-        using sentinel = StepSentinel<T>;
-        constexpr iterator begin() const noexcept { return iterator(); }
-        constexpr sentinel end() const noexcept { return sentinel(last); }
-        template<class U> friend constexpr StepImpl(U&& x) noexcept(noexcept(internal::Step1(std::forward<U>(x)))) { return internal::Step1(std::forward<U>(x)); }
-    };
-}  // namespace internal
-
-template<class U> constexpr auto Step(U&& x) noexcept(noexcept(internal::Step1(std::forward<U>(x)))) {
-    internal::StepImpl(x);
-}
-
-}  // namespace gsh
-*/

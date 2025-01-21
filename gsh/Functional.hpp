@@ -111,6 +111,7 @@ public:
 template<class F, class... G> class BindFront {
     [[no_unique_address]] F func;
     [[no_unique_address]] BindFront<G...> bind;
+public:
     constexpr BindFront() noexcept(std::is_nothrow_default_constructible_v<F> && noexcept(BindFront<G...>())) : func(), bind() {}
     template<class Arg, class... Args>
         requires(sizeof...(Args) == sizeof...(G))

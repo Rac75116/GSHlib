@@ -1,6 +1,7 @@
 #pragma once
 #include <bit>    // std::rotr, std::bit_cast
 #include <ctime>  // std::time, std::clock
+#include <ranges>
 #if __has_include(<source_location>)
 #include <source_location>  // std::source_location
 #endif

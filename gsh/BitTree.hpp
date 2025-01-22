@@ -310,8 +310,8 @@ class CountableBitTree : private BitTree<Size> {
         fw.assign(cnt.begin(), cnt.end());
     }
 public:
-    constexpr CountableBitTree() noexcept(noexcept(RangeSumQuery<itype::u32>())) {}
-    constexpr CountableBitTree(itype::u64 val) : bt(val), fw(1) { fw.add(0, std::popcount(val)); }
+    constexpr CountableBitTree() noexcept(noexcept(RangeSumQuery<itype::u32>())) : fw(bt::s3) {}
+    constexpr CountableBitTree(itype::u64 val) : bt(val), fw(bt::s3) { fw.add(0, std::popcount(val)); }
     constexpr CountableBitTree(const ctype::c8* p) : bt(p) { init_fw(); }
     constexpr CountableBitTree(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') : bt(p, sz, one) { init_fw(); }
     constexpr CountableBitTree& operator=(const CountableBitTree&) = default;
@@ -413,6 +413,14 @@ public:
     friend constexpr CountableBitTree operator|(const CountableBitTree& lhs, const CountableBitTree& rhs) noexcept { return CountableBitTree(lhs) |= rhs; }
     friend constexpr CountableBitTree operator^(const CountableBitTree& lhs, const CountableBitTree& rhs) noexcept { return CountableBitTree(lhs) ^= rhs; }
     constexpr static itype::u32 npos = -1;
+    constexpr itype::u32 nth_element(itype::u32 n) const {
+        itype::u32 idx = fw.upper_bound(n);
+        if (idx == bt::s3) return npos;
+        itype::u32 rem = n - fw.sum(idx);
+        itype::u64 f = bt::v3[idx];
+        for (itype::u32 i = 0; i != rem; ++i) f &= f - 1;  // Can be improved
+        return idx * 64 + std::countr_zero(f);
+    }
     constexpr itype::u32 find_next(itype::u32 pos) const { return bt::find_next(pos); }
     constexpr itype::u32 find_first() const noexcept { return bt::find_first(); }
     constexpr itype::u32 find_prev(itype::u32 pos) const { return bt::find_prev(pos); }

@@ -6,7 +6,7 @@
 #include "Range.hpp"               // gsh::Rangeof
 #include "Arr.hpp"                 // gsh::Arr
 #include "Range.hpp"               // gsh::Rangeof, gsh::RangeTraits
-#include "Algorithm.hpp"           // gsh::internal::SortUnsigned64
+#include "Algorithm.hpp"           // gsh::ViewInterface::sort
 #include "Random.hpp"              // gsh::RandBuffer32
 #include "Int128.hpp"              // gsh::internal::Mulu128, gsh::internal::Divu128
 #include "internal/Operation.hpp"  // gsh::internal::ArithmeticInterface
@@ -115,7 +115,7 @@ constexpr Arr<Point2<itype::i32>> ArgumentSort(T&& r) {
         }
         v[i++] = static_cast<itype::u128>(std::bit_cast<itype::u64>(p)) << 64 | ord;
     }
-    internal::SortUnsigned64(v.data(), v.size());
+    v.sort({}, [](itype::u128 x) { return static_cast<itype::u64>(x); });
     Arr<Point2<itype::i32>> res(v.size());
     for (itype::u32 i = 0, j = v.size(); i != j; ++i) res[i] = std::bit_cast<Point2<itype::i32>>(static_cast<itype::u64>(v[i] >> 64));
     return res;
@@ -131,8 +131,7 @@ constexpr Arr<Point2<itype::i32>> ConvexHull(T&& r) {
     {
         Arr<itype::u64> sorted(n);
         for (itype::u32 i = 0; auto&& e : r) sorted[i++] = std::bit_cast<itype::u64>(e) ^ 0x8000000080000000;
-        if (n < 5000) std::ranges::sort(sorted);
-        else internal::SortUnsigned64(sorted.data(), n);
+        sorted.sort();
         p[0] = std::bit_cast<Point2<itype::i32>>(sorted[0] ^ 0x8000000080000000);
         for (itype::u32 i = 1; i != n; ++i) {
             p[m] = std::bit_cast<Point2<itype::i32>>(sorted[i] ^ 0x8000000080000000);

@@ -26,6 +26,7 @@ namespace internal {
     template<class R> constexpr void ReverseImpl(R&& r);
     template<class R, class Comp = Less, class Proj = Identity> constexpr void SortImpl(R&& r, Comp&& comp = {}, Proj&& proj = {});
     template<class R, class Comp, class Proj> constexpr auto SortIndexImpl(R&& r, Comp&& comp, Proj&& proj);
+    template<class R, class Comp, class Proj> constexpr auto OrderImpl(R&& r, Comp&& comp, Proj&& proj);
 }  // namespace internal
 
 template<class D, class V>
@@ -183,6 +184,11 @@ public:
         requires std::ranges::random_access_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
     constexpr auto sort_index(Comp&& comp = {}, Proj&& proj = {}) const {
         return internal::SortIndexImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class Comp = Less, class Proj = Identity>
+        requires std::ranges::random_access_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
+    constexpr auto order(Comp&& comp = {}, Proj&& proj = {}) const {
+        return internal::OrderImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
     }
 };
 

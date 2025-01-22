@@ -395,6 +395,23 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
         SortImpl(res, std::forward<Comp>(comp), [start = std::ranges::begin(r), pj = std::forward<Proj>(proj)](itype::u32 n) { return Invoke(pj, *std::ranges::next(start, n)); });
         return res;
     }
+    template<class R, class Comp, class Proj> constexpr auto OrderImpl(R&& r, Comp&& comp, Proj&& proj) {
+        itype::u32 n = std::ranges::size(r);
+        if (n == 0) return Arr<itype::u32>();
+        Arr<itype::u32> idx(n);
+        for (itype::u32 i = 0; i != n; ++i) idx[i] = i;
+        auto new_proj = [start = std::ranges::begin(r), pj = std::forward<Proj>(proj)](itype::u32 n) {
+            return Invoke(pj, *std::ranges::next(start, n));
+        };
+        SortImpl(idx, comp, new_proj);
+        Arr<itype::u32> res(n);
+        itype::u32 cnt = 0;
+        for (itype::u32 i = 1; i != n; ++i) {
+            cnt += Invoke(comp, new_proj(idx[i - 1]), new_proj(idx[i]));
+            res[idx[i]] = cnt;
+        }
+        return res;
+    }
 
 }  // namespace internal
 
@@ -500,7 +517,7 @@ constexpr T CountDistinctSubsequences(R&& r) {
         s[i] = static_cast<itype::u64>(i) << 32 | x;
         ++i;
     }
-    internal::SortUnsigned32(s.data(), n);
+    s.sort({}, [](itype::u64 x) { return static_cast<itype::u32>(x); });
     Arr<itype::u32> rank(n);
     rank[s[0] >> 32] = 0;
     itype::u32 cnt = 0, end = s[0];

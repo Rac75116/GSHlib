@@ -33,7 +33,7 @@ namespace internal {
 
 // clang-format off
 #ifdef NDEBUG
-#define DEBUG(...) [](){}
+#define DEBUG(...) [](){}()
 #else
 #define DEBUG(...) gsh::internal::DebugPrint(std::source_location::current(), __VA_ARGS__)
 #endif

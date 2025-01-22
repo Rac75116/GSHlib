@@ -1,17 +1,19 @@
 #pragma once
-#include <bit>            // std::popcount
-#include <cstring>        // std::memset
-#include <type_traits>    // std::is_constant_evaluated
-#include "TypeDef.hpp"    // gsh::itype
-#include "Util.hpp"       // gsh::Assume, gsh::StrLen
-#include "Exception.hpp"  // gsh::Exception
+#include <bit>              // std::popcount
+#include <cstring>          // std::memset
+#include <type_traits>      // std::is_constant_evaluated
+#include "TypeDef.hpp"      // gsh::itype
+#include "Util.hpp"         // gsh::Assume, gsh::StrLen
+#include "Exception.hpp"    // gsh::Exception
+#include "FenwickTree.hpp"  // gsh::RangeSumQuery
 #include <immintrin.h>
 
 namespace gsh {
 
 template<itype::u32 Size>
     requires(Size <= (1u << 24))
-class BitTree24 {
+class BitTree {
+protected:
     constexpr static itype::u32 s1 = ((Size + 262143) / 262144 + 63) / 64 * 64, s2 = ((Size + 4095) / 4096 + 63) / 64 * 64, s3 = ((Size + 63) / 64 + 63) / 64 * 64;
     itype::u64 v0;
     alignas(32) itype::u64 v1[s1], v2[s2], v3[s3];
@@ -49,16 +51,16 @@ class BitTree24 {
         for (itype::u32 i = 0; i != s1; ++i) v0 |= (static_cast<itype::u64>(v1[i] != 0) << (i % 64));
     }
 public:
-    constexpr BitTree24() noexcept : v0{}, v1{}, v2{}, v3{} {}
-    constexpr BitTree24(itype::u64 val) noexcept : v0{}, v1{}, v2{}, v3{} {
+    constexpr BitTree() noexcept : v0{}, v1{}, v2{}, v3{} {}
+    constexpr BitTree(itype::u64 val) noexcept : v0{}, v1{}, v2{}, v3{} {
         if (val != 0) {
             v0 = v1[0] = v2[0] = 1ull;
             v3[0] = val;
         }
     }
-    constexpr BitTree24(const ctype::c8* p) { assign(p); }
-    constexpr BitTree24(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') { assign(p, sz, one); }
-    constexpr BitTree24& operator=(const BitTree24&) noexcept = default;
+    constexpr BitTree(const ctype::c8* p) { assign(p); }
+    constexpr BitTree(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') { assign(p, sz, one); }
+    constexpr BitTree& operator=(const BitTree&) noexcept = default;
     constexpr void assign(const ctype::c8* p) { assign(p, StrLen(p)); }
     constexpr void assign(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') {
         sz = sz < Size ? sz : Size;
@@ -90,26 +92,26 @@ public:
         }
         build();
     }
-    constexpr BitTree24& operator&=(const BitTree24& rhs) noexcept {
+    constexpr BitTree& operator&=(const BitTree& rhs) noexcept {
         for (itype::u32 i = 0; i != s3; ++i) v3[i] &= rhs.v3[i];
         build();
         return *this;
     }
-    constexpr BitTree24& operator|=(const BitTree24& rhs) noexcept {
+    constexpr BitTree& operator|=(const BitTree& rhs) noexcept {
         v0 |= rhs.v0;
         for (itype::u32 i = 0; i != s1; ++i) v1[i] |= rhs.v1[i];
         for (itype::u32 i = 0; i != s2; ++i) v2[i] |= rhs.v2[i];
         for (itype::u32 i = 0; i != s3; ++i) v3[i] |= rhs.v3[i];
         return *this;
     }
-    constexpr BitTree24& operator^=(const BitTree24& rhs) noexcept {
+    constexpr BitTree& operator^=(const BitTree& rhs) noexcept {
         for (itype::u32 i = 0; i != s3; ++i) v3[i] ^= rhs.v3[i];
         build();
         return *this;
     }
-    constexpr BitTree24& operator<<=(itype::u32 pos) noexcept;
-    constexpr BitTree24& operator>>=(itype::u32 pos) noexcept;
-    constexpr BitTree24& set() noexcept {
+    constexpr BitTree& operator<<=(itype::u32 pos) noexcept;
+    constexpr BitTree& operator>>=(itype::u32 pos) noexcept;
+    constexpr BitTree& set() noexcept {
         for (itype::u32 i = 0; i != (Size + 4095) / 262144; ++i) v1[i] = 0xffffffffffffffff;
         for (itype::u32 i = 0; i != (Size + 63) / 4096; ++i) v2[i] = 0xffffffffffffffff;
         for (itype::u32 i = 0; i != Size / 64; ++i) v3[i] = 0xffffffffffffffff;
@@ -120,22 +122,22 @@ public:
         if constexpr (Size % 64 != 0) v3[Size / 64] = (1ull << (Size % 64)) - 1;
         return *this;
     }
-    constexpr BitTree24& set(itype::u32 pos) {
+    constexpr BitTree& set(itype::u32 pos) {
         v0 |= (1ull << (pos / 262144));
         v1[pos / 262144] |= (1ull << (pos / 4096) % 64);
         v2[pos / 4096] |= (1ull << ((pos / 64) % 64));
         v3[pos / 64] |= (1ull << (pos % 64));
         return *this;
     }
-    constexpr BitTree24& set(itype::u32 pos, bool val) {
+    constexpr BitTree& set(itype::u32 pos, bool val) {
         if (val) return set(pos);
         else return reset(pos);
     }
-    constexpr BitTree24& reset() noexcept {
-        std::memset(this, 0, sizeof(BitTree24));
+    constexpr BitTree& reset() noexcept {
+        std::memset(this, 0, sizeof(BitTree));
         return *this;
     }
-    constexpr BitTree24& reset(itype::u32 pos) {
+    constexpr BitTree& reset(itype::u32 pos) {
         const itype::u64 m1 = (1ull << ((pos / 4096) % 64)), m2 = (1ull << ((pos / 64) % 64)), m3 = (1ull << (pos % 64));
         const bool f1 = v1[pos / 262144] == m1, f2 = v2[pos / 4096] == m2, f3 = v3[pos / 64] == m3;
         v3[pos / 64] &= ~m3;
@@ -144,16 +146,16 @@ public:
         v0 &= (f1 && f2 && f3 ? ~(1ull << (pos / 262144)) : 0xffffffffffffffff);
         return *this;
     }
-    constexpr BitTree24& flip() noexcept {
+    constexpr BitTree& flip() noexcept {
         for (itype::u32 i = 0; i != s3; ++i) v3[i] = ~v3[i];
         build();
     }
-    constexpr BitTree24& flip(itype::u32 pos) noexcept { return set(pos, !test(pos)); }
+    constexpr BitTree& flip(itype::u32 pos) noexcept { return set(pos, !test(pos)); }
     class reference {
-        friend class BitTree24;
-        BitTree24& ref;
+        friend class BitTree;
+        BitTree& ref;
         itype::u32 idx;
-        constexpr reference(BitTree24& ref_, itype::u32 idx_) noexcept : ref(ref_), idx(idx_) {}
+        constexpr reference(BitTree& ref_, itype::u32 idx_) noexcept : ref(ref_), idx(idx_) {}
     public:
         constexpr ~reference() noexcept {}
         constexpr reference& operator=(bool x) noexcept {
@@ -211,7 +213,7 @@ public:
     }
     constexpr unsigned long to_ulong() const { return to_u64(); }
     constexpr unsigned long long to_ullong() const { return to_u64(); }
-    constexpr bool operator==(const BitTree24& rhs) const noexcept {
+    constexpr bool operator==(const BitTree& rhs) const noexcept {
         if (v0 != rhs.v0) return false;
         if (std::is_constant_evaluated()) {
             for (itype::u32 i = 0; i != s1; ++i)
@@ -236,12 +238,12 @@ public:
         }
         return true;
     }
-    constexpr bool operator!=(const BitTree24& rhs) const noexcept { return !operator==(rhs); }
-    constexpr BitTree24 operator<<(itype::u32 pos) const noexcept { return BitTree24(*this) <<= pos; }
-    constexpr BitTree24 operator>>(itype::u32 pos) const noexcept { return BitTree24(*this) >>= pos; }
-    friend constexpr BitTree24 operator&(const BitTree24& lhs, const BitTree24& rhs) noexcept { return BitTree24(lhs) &= rhs; }
-    friend constexpr BitTree24 operator|(const BitTree24& lhs, const BitTree24& rhs) noexcept { return BitTree24(lhs) |= rhs; }
-    friend constexpr BitTree24 operator^(const BitTree24& lhs, const BitTree24& rhs) noexcept { return BitTree24(lhs) ^= rhs; }
+    constexpr bool operator!=(const BitTree& rhs) const noexcept { return !operator==(rhs); }
+    constexpr BitTree operator<<(itype::u32 pos) const noexcept { return BitTree(*this) <<= pos; }
+    constexpr BitTree operator>>(itype::u32 pos) const noexcept { return BitTree(*this) >>= pos; }
+    friend constexpr BitTree operator&(const BitTree& lhs, const BitTree& rhs) noexcept { return BitTree(lhs) &= rhs; }
+    friend constexpr BitTree operator|(const BitTree& lhs, const BitTree& rhs) noexcept { return BitTree(lhs) |= rhs; }
+    friend constexpr BitTree operator^(const BitTree& lhs, const BitTree& rhs) noexcept { return BitTree(lhs) ^= rhs; }
     constexpr static itype::u32 npos = -1;
     constexpr itype::u32 find_next(itype::u32 pos) const {
         if (const itype::u64 tmp = v3[pos / 64] & -(1ull << (pos % 64)); tmp != 0) return pos / 64 * 64 + std::countr_zero(tmp);
@@ -295,6 +297,126 @@ public:
         return npos;
     }
     constexpr itype::u32 find_last() const noexcept { return find_prev(Size - 1); }
+};
+
+template<itype::u32 Size>
+    requires(Size <= (1u << 24))
+class CountableBitTree : private BitTree<Size> {
+    using bt = BitTree<Size>;
+    RangeSumQuery<itype::u32> fw;
+    constexpr void init_fw() {
+        Arr<itype::u32> cnt(bt::s3);
+        for (itype::u32 i = 0; i != bt::s3; ++i) cnt[i] = std::popcount(bt::v3[i]);
+        fw.assign(cnt.begin(), cnt.end());
+    }
+public:
+    constexpr CountableBitTree() noexcept(noexcept(RangeSumQuery<itype::u32>())) {}
+    constexpr CountableBitTree(itype::u64 val) : bt(val), fw(1) { fw.add(0, std::popcount(val)); }
+    constexpr CountableBitTree(const ctype::c8* p) : bt(p) { init_fw(); }
+    constexpr CountableBitTree(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') : bt(p, sz, one) { init_fw(); }
+    constexpr CountableBitTree& operator=(const CountableBitTree&) = default;
+    constexpr void assign(const ctype::c8* p) {
+        bt::assign(p);
+        init_fw();
+    }
+    constexpr void assign(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') {
+        bt::assign(p, sz, one);
+        init_fw();
+    }
+    constexpr CountableBitTree& operator&=(const CountableBitTree& rhs) {
+        bt::operator&=(rhs);
+        init_fw();
+        return *this;
+    }
+    constexpr CountableBitTree& operator|=(const CountableBitTree& rhs) {
+        bt::operator|=(rhs);
+        init_fw();
+        return *this;
+    }
+    constexpr CountableBitTree& operator^=(const CountableBitTree& rhs) {
+        bt::operator^=(rhs);
+        init_fw();
+        return *this;
+    }
+    constexpr CountableBitTree& set() {
+        bt::set();
+        init_fw();  // Can be improved
+        return *this;
+    }
+    constexpr CountableBitTree& set(itype::u32 pos) {
+        if (!bt::test(pos)) {
+            bt::set(pos);
+            fw.inc(pos / 64);
+        }
+        return *this;
+    }
+    constexpr CountableBitTree& set(itype::u32 pos, bool val) {
+        if (val) return set(pos);
+        else return reset(pos);
+    }
+    constexpr CountableBitTree& reset() {
+        bt::reset();
+        fw.assign(bt::s3, 0);
+        return *this;
+    }
+    constexpr CountableBitTree& reset(itype::u32 pos) {
+        if (bt::test(pos)) {
+            bt::reset(pos);
+            fw.dec(pos / 64);
+        }
+        return *this;
+    }
+    constexpr CountableBitTree& flip() {
+        bt::flip();
+        init_fw();
+        return *this;
+    }
+    constexpr CountableBitTree& flip(itype::u32 pos) { return set(pos, !bt::test(pos)); }
+    class reference {
+        friend class CountableBitTree;
+        CountableBitTree& ref;
+        itype::u32 idx;
+        constexpr reference(CountableBitTree& ref_, itype::u32 idx_) noexcept : ref(ref_), idx(idx_) {}
+    public:
+        constexpr ~reference() noexcept {}
+        constexpr reference& operator=(bool x) {
+            ref.set(idx, x);
+            return *this;
+        }
+        constexpr reference& operator=(const reference& x) {
+            ref.set(idx, x);
+            return *this;
+        }
+        constexpr bool operator~() const noexcept { return ~ref.test(idx); }
+        constexpr operator bool() const noexcept { return ref.test(idx); }
+        constexpr reference& flip() const {
+            ref.flip(idx);
+            return *this;
+        }
+    };
+    constexpr bool operator[](itype::u32 pos) const { return bt::test(pos); }
+    constexpr reference operator[](itype::u32 pos) { return reference(*this, pos); }
+    constexpr itype::u32 count() const { return fw.sum(bt::s3); }
+    constexpr itype::u32 count(itype::u32 pos) const { return fw.sum(pos / 64) + std::popcount(bt::v3[pos / 64] & ((1ull << (pos % 64)) - 1)); }
+    constexpr itype::u32 count(itype::u32 l, itype::u32 r) const { return count(r) - count(l); /* Can be improved */ }
+    constexpr itype::u32 size() const noexcept { return Size; }
+    constexpr bool test(itype::u32 pos) const { return bt::test(pos); }
+    constexpr bool all() const { return count() == size(); }
+    constexpr bool any() const noexcept { return bt::any(); }
+    constexpr bool none() const noexcept { return bt::none(); }
+    constexpr itype::u64 to_u64() const { return bt::to_u64(); }
+    constexpr unsigned long to_ulong() const { return bt::to_ulong(); }
+    constexpr unsigned long long to_ullong() const { return bt::to_ullong(); }
+    constexpr bool operator==(const CountableBitTree& rhs) const noexcept { return bt::operator==(rhs); }
+    constexpr bool operator!=(const CountableBitTree& rhs) const noexcept { return bt::operator!=(rhs); }
+    friend constexpr CountableBitTree operator&(const CountableBitTree& lhs, const CountableBitTree& rhs) noexcept { return CountableBitTree(lhs) &= rhs; }
+    friend constexpr CountableBitTree operator|(const CountableBitTree& lhs, const CountableBitTree& rhs) noexcept { return CountableBitTree(lhs) |= rhs; }
+    friend constexpr CountableBitTree operator^(const CountableBitTree& lhs, const CountableBitTree& rhs) noexcept { return CountableBitTree(lhs) ^= rhs; }
+    constexpr static itype::u32 npos = -1;
+    constexpr itype::u32 find_next(itype::u32 pos) const { return bt::find_next(pos); }
+    constexpr itype::u32 find_first() const noexcept { return bt::find_first(); }
+    constexpr itype::u32 find_prev(itype::u32 pos) const { return bt::find_prev(pos); }
+    constexpr itype::u32 find_last() const noexcept { return bt::find_last(); }
 };
 
 }  // namespace gsh

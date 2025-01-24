@@ -7,9 +7,9 @@ namespace gsh {
 
 namespace internal {
 
-    template<class CharT> using StrImpl = std::basic_string<CharT, std::char_traits<CharT>, Allocator<CharT>>;
+    template<class CharT> using StrImpl = std::basic_string<CharT>;
 
-    template<class CharT> using StrViewImpl = std::basic_string_view<CharT, std::char_traits<CharT>>;
+    template<class CharT> using StrViewImpl = std::basic_string_view<CharT>;
 
 }  // namespace internal
 

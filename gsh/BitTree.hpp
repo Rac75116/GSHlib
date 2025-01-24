@@ -60,6 +60,7 @@ public:
     }
     constexpr BitTree(const ctype::c8* p) { assign(p); }
     constexpr BitTree(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') { assign(p, sz, one); }
+    constexpr BitTree(const itype::u64* p, itype::u32 sz) { assign(p, sz); }
     constexpr BitTree& operator=(const BitTree&) noexcept = default;
     constexpr void assign(const ctype::c8* p) { assign(p, StrLen(p)); }
     constexpr void assign(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') {
@@ -90,6 +91,11 @@ public:
         case 1 : v3[(b + 0) / 64] |= static_cast<itype::u64>(p[b + 0] == one) << ((b + 0) % 64); [[fallthrough]];
         default : break;
         }
+        build();
+    }
+    constexpr void assign(const itype::u64* p, itype::u32 sz) {
+        sz = sz < s3 ? sz : s3;
+        for (itype::u32 i = 0; i != sz; ++i) v3[i] = p[i];
         build();
     }
     constexpr BitTree& operator&=(const BitTree& rhs) noexcept {
@@ -134,7 +140,7 @@ public:
         else return reset(pos);
     }
     constexpr BitTree& reset() noexcept {
-        std::memset(this, 0, sizeof(BitTree));
+        MemorySet(this, 0, sizeof(BitTree));
         return *this;
     }
     constexpr BitTree& reset(itype::u32 pos) {
@@ -301,19 +307,26 @@ public:
 
 template<itype::u32 Size>
     requires(Size <= (1u << 24))
-class CountableBitTree : private BitTree<Size> {
+class CountableBitTree : private BitTree<Size>, private RangeSumQuery<itype::u32> {
     using bt = BitTree<Size>;
-    RangeSumQuery<itype::u32> fw;
+    using fw = RangeSumQuery<itype::u32>;
     constexpr void init_fw() {
-        Arr<itype::u32> cnt(bt::s3);
-        for (itype::u32 i = 0; i != bt::s3; ++i) cnt[i] = std::popcount(bt::v3[i]);
-        fw.assign(cnt.begin(), cnt.end());
+        fw::bit.resize(bt::s3);
+        for (itype::u32 i = 0; i != bt::s3; ++i) fw::bit[i] = std::popcount(bt::v3[i]);
+        if (bt::s3 == 0) return;
+        const auto tmp = fw::bit[0];
+        for (itype::u32 i = 0; i != bt::s3 - 1; ++i) {
+            const itype::u32 j = i + ((i + 1) & -(i + 1));
+            fw::bit[j < bt::s3 ? j : 0] += fw::bit[i];
+        }
+        fw::bit[0] = tmp;
     }
 public:
     constexpr CountableBitTree() noexcept(noexcept(RangeSumQuery<itype::u32>())) : fw(bt::s3) {}
-    constexpr CountableBitTree(itype::u64 val) : bt(val), fw(bt::s3) { fw.add(0, std::popcount(val)); }
+    constexpr CountableBitTree(itype::u64 val) : bt(val), fw(bt::s3) { fw::add(0, std::popcount(val)); }
     constexpr CountableBitTree(const ctype::c8* p) : bt(p) { init_fw(); }
     constexpr CountableBitTree(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') : bt(p, sz, one) { init_fw(); }
+    constexpr CountableBitTree(const itype::u64* p, itype::u32 sz) : bt(p, sz) { init_fw(); }
     constexpr CountableBitTree& operator=(const CountableBitTree&) = default;
     constexpr void assign(const ctype::c8* p) {
         bt::assign(p);
@@ -321,6 +334,10 @@ public:
     }
     constexpr void assign(const ctype::c8* p, itype::u32 sz, const ctype::c8 one = '1') {
         bt::assign(p, sz, one);
+        init_fw();
+    }
+    constexpr void assign(const itype::u64* p, itype::u32 sz) {
+        bt::assign(p, sz);
         init_fw();
     }
     constexpr CountableBitTree& operator&=(const CountableBitTree& rhs) {
@@ -346,7 +363,7 @@ public:
     constexpr CountableBitTree& set(itype::u32 pos) {
         if (!bt::test(pos)) {
             bt::set(pos);
-            fw.inc(pos / 64);
+            fw::inc(pos / 64);
         }
         return *this;
     }
@@ -356,13 +373,13 @@ public:
     }
     constexpr CountableBitTree& reset() {
         bt::reset();
-        fw.assign(bt::s3, 0);
+        fw::assign(bt::s3, 0);
         return *this;
     }
     constexpr CountableBitTree& reset(itype::u32 pos) {
         if (bt::test(pos)) {
             bt::reset(pos);
-            fw.dec(pos / 64);
+            fw::dec(pos / 64);
         }
         return *this;
     }
@@ -396,8 +413,8 @@ public:
     };
     constexpr bool operator[](itype::u32 pos) const { return bt::test(pos); }
     constexpr reference operator[](itype::u32 pos) { return reference(*this, pos); }
-    constexpr itype::u32 count() const { return fw.sum(bt::s3); }
-    constexpr itype::u32 count(itype::u32 pos) const { return fw.sum(pos / 64) + std::popcount(bt::v3[pos / 64] & ((1ull << (pos % 64)) - 1)); }
+    constexpr itype::u32 count() const { return fw::sum(bt::s3); }
+    constexpr itype::u32 count(itype::u32 pos) const { return fw::sum(pos / 64) + std::popcount(bt::v3[pos / 64] & ((1ull << (pos % 64)) - 1)); }
     constexpr itype::u32 count(itype::u32 l, itype::u32 r) const { return count(r) - count(l); /* Can be improved */ }
     constexpr itype::u32 size() const noexcept { return Size; }
     constexpr bool test(itype::u32 pos) const { return bt::test(pos); }
@@ -413,18 +430,29 @@ public:
     friend constexpr CountableBitTree operator|(const CountableBitTree& lhs, const CountableBitTree& rhs) noexcept { return CountableBitTree(lhs) |= rhs; }
     friend constexpr CountableBitTree operator^(const CountableBitTree& lhs, const CountableBitTree& rhs) noexcept { return CountableBitTree(lhs) ^= rhs; }
     constexpr static itype::u32 npos = -1;
-    constexpr itype::u32 nth_element(itype::u32 n) const {
-        itype::u32 idx = fw.upper_bound(n);
-        if (idx == bt::s3) return npos;
-        itype::u32 rem = n - fw.sum(idx);
-        itype::u64 f = bt::v3[idx];
-        for (itype::u32 i = 0; i != rem; ++i) f &= f - 1;  // Can be improved
-        return idx * 64 + std::countr_zero(f);
-    }
     constexpr itype::u32 find_next(itype::u32 pos) const { return bt::find_next(pos); }
     constexpr itype::u32 find_first() const noexcept { return bt::find_first(); }
     constexpr itype::u32 find_prev(itype::u32 pos) const { return bt::find_prev(pos); }
     constexpr itype::u32 find_last() const noexcept { return bt::find_last(); }
+    constexpr itype::u32 nth_element(itype::u32 n) const {
+        itype::u32 idx = 0, rem = n;
+        for (itype::u32 len = std::bit_floor(bt::s3); len != 0; len >>= 1) {
+            itype::u32 tmp = fw::bit[idx + len - 1];
+            if (idx + len <= bt::s3 && rem >= tmp) {
+                rem -= tmp;
+                idx += len;
+            }
+        }
+        if (idx == bt::s3) return npos;
+        itype::u64 f = bt::v3[idx];
+#ifdef __BMI2__
+        f = _pdep_u64(1ull << rem, f);
+#else
+        for (itype::u32 i = 0; i != rem; ++i) f &= f - 1;
+#endif
+        Assume(f != 0);
+        return idx * 64 + std::countr_zero(f);
+    }
 };
 
 }  // namespace gsh

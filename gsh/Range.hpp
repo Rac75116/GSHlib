@@ -27,6 +27,12 @@ namespace internal {
     template<class R, class Comp = Less, class Proj = Identity> constexpr void SortImpl(R&& r, Comp&& comp = {}, Proj&& proj = {});
     template<class R, class Comp, class Proj> constexpr auto SortIndexImpl(R&& r, Comp&& comp, Proj&& proj);
     template<class R, class Comp, class Proj> constexpr auto OrderImpl(R&& r, Comp&& comp, Proj&& proj);
+    template<class R, class Comp, class Proj> constexpr auto IsSortedImpl(R&& r, Comp&& comp, Proj&& proj);
+    template<class R, class Comp, class Proj> constexpr auto IsSortedUntilImpl(R&& r, Comp&& comp, Proj&& proj);
+    template<class R, class Equal> constexpr auto IsPalindromeImpl(R&& r, Equal&& equal);
+    // These functions are defined in gsh/Numeric.hpp
+    template<class R, class Proj> constexpr auto GCDImpl(R&& r, Proj&& proj);
+    template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj);
 }  // namespace internal
 
 template<class D, class V>
@@ -168,27 +174,52 @@ public:
         internal::ReverseImpl(res);
         return res;
     }
-    template<class Comp = Less, class Proj = Identity>
+    template<class Proj = Identity, class Comp = Less>
         requires std::ranges::forward_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
     constexpr void sort(Comp&& comp = {}, Proj&& proj = {}) {
         internal::SortImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
     }
-    template<class Comp = Less, class Proj = Identity>
+    template<class Proj = Identity, class Comp = Less>
         requires std::ranges::forward_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
     [[nodiscard]] constexpr auto sorted(Comp&& comp = {}, Proj&& proj = {}) const {
         auto res = copy();
         internal::SortImpl(res, std::forward<Comp>(comp), std::forward<Proj>(proj));
         return res;
     }
-    template<class Comp = Less, class Proj = Identity>
+    template<class Proj = Identity, class Comp = Less>
         requires std::ranges::random_access_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
     constexpr auto sort_index(Comp&& comp = {}, Proj&& proj = {}) const {
         return internal::SortIndexImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
     }
-    template<class Comp = Less, class Proj = Identity>
+    template<class Proj = Identity, class Comp = Less>
         requires std::ranges::random_access_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
     constexpr auto order(Comp&& comp = {}, Proj&& proj = {}) const {
         return internal::OrderImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
+        requires std::ranges::forward_range<derived_type>
+    constexpr auto is_sorted(Comp&& comp = {}, Proj&& proj = {}) const {
+        return internal::IsSortedImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
+        requires std::ranges::forward_range<derived_type>
+    constexpr auto is_sorted_until(Comp&& comp = {}, Proj&& proj = {}) const {
+        return internal::IsSortedUntilImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<std::indirect_binary_predicate<std::ranges::iterator_t<derived_type>, std::ranges::iterator_t<derived_type>> Equal = EqualTo>
+        requires std::ranges::bidirectional_range<derived_type>
+    constexpr auto is_palindrome(Equal&& equal = {}) const {
+        return internal::IsPalindromeImpl(derived(), std::forward<Equal>(equal));
+    }
+    template<class Proj = Identity>
+        requires std::ranges::input_range<derived_type> && std::invocable<Proj, value_type>
+    constexpr auto gcd(Proj&& proj = {}) const {
+        return internal::GCDImpl(derived(), std::forward<Proj>(proj));
+    }
+    template<class Proj = Identity>
+        requires std::ranges::input_range<derived_type> && std::invocable<Proj, value_type>
+    constexpr auto lcm(Proj&& proj = {}) const {
+        return internal::LCMImpl(derived(), std::forward<Proj>(proj));
     }
 };
 

@@ -127,18 +127,36 @@ template<class T, class U> constexpr std::common_type_t<T, U> GCD(T x, U y) {
         return GCD<std::common_type_t<T, U>, std::common_type_t<T, U>>(x, y);
     }
 }
-// @brief Find the greatest common divisor of multiple numbers.
+// Find the greatest common divisor of multiple numbers.
 template<class T, class... Args> constexpr auto GCD(T x, Args... y) {
     return GCD(x, GCD(y...));
 }
-// @brief Find the  least common multiple as in std::lcm.
+// Find the least common multiple as in std::lcm.
 template<class T, class U> constexpr auto LCM(T x, U y) {
     return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y);
 }
-// @brief Find the least common multiple of multiple numbers.
+// Find the least common multiple of multiple numbers.
 template<class T, class... Args> constexpr auto LCM(T x, Args... y) {
     return LCM(x, LCM(y...));
 }
+namespace internal {
+    template<class R, class Proj> constexpr auto GCDImpl(R&& r, Proj&& proj) {
+        auto itr = std::ranges::begin(r);
+        auto sent = std::ranges::end(r);
+        if (!(itr != sent)) throw Exception("The container is empty.");
+        auto res = Invoke(proj, *itr);
+        for (++itr; itr != sent; ++itr) res = GCD(res, Invoke(proj, *itr));
+        return res;
+    }
+    template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj) {
+        auto itr = std::ranges::begin(r);
+        auto sent = std::ranges::end(r);
+        if (!(itr != sent)) throw Exception("The container is empty.");
+        auto res = Invoke(proj, *itr);
+        for (++itr; itr != sent; ++itr) res = LCM(res, Invoke(proj, *itr));
+        return res;
+    }
+}  // namespace internal
 
 namespace internal {
     template<itype::u32> struct KthRootImpl {
@@ -261,6 +279,7 @@ constexpr itype::u64 KthRoot(itype::u64 n, itype::u64 k) {
     return internal::KthRootImpl<0>::calc2(n, k);
 }
 
+// calc ∑ floor((a × i + b) / m) (0 <= i < n)
 constexpr itype::u64 LinearFloorSum(itype::u32 n, itype::u32 m, itype::u32 a, itype::u32 b) {
     itype::u64 res = 0;
     while (true) {
@@ -277,6 +296,7 @@ constexpr itype::u64 LinearFloorSum(itype::u32 n, itype::u32 m, itype::u32 a, it
     }
 }
 
+// calc min{ (a × i + b) mod m | 0 <= i < n }
 constexpr itype::u32 LinearModMin(itype::u32 n, itype::u32 m, itype::u32 a, itype::u32 b) {
     itype::u32 res = 0;
     bool z = true;

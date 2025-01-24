@@ -11,6 +11,7 @@
 namespace gsh {
 
 template<class T, class Alloc = Allocator<T>> class RangeSumQuery {
+protected:
     Arr<T, Alloc> bit;
 public:
     using reference = T&;

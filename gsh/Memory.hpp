@@ -248,6 +248,28 @@ public:
     template<class U> friend constexpr bool operator==(const Allocator&, const Allocator<U>&) noexcept { return true; }
 };
 
+template<class T, itype::u32 Align = 32> class AlignedAllocator {
+public:
+    using value_type = T;
+    using propagate_on_container_move_assignment = std::true_type;
+    using size_type = itype::u32;
+    using difference_type = itype::i32;
+    using is_always_equal = std::true_type;
+    constexpr AlignedAllocator() noexcept {}
+    constexpr AlignedAllocator(const AlignedAllocator&) noexcept {}
+    template<class U> constexpr AlignedAllocator(const AlignedAllocator<U>&) noexcept {}
+    [[nodiscard]] T* allocate(size_type n) { return static_cast<T*>(::operator new(sizeof(T) * n, std::align_val_t(Align))); }
+    void deallocate(T* p, [[maybe_unused]] size_type n) noexcept {
+#ifdef __cpp_sized_deallocation
+        ::operator delete(p, n, std::align_val_t(Align));
+#else
+        ::operator delete(p, std::align_val_t(Align));
+#endif
+    }
+    constexpr AlignedAllocator& operator=(const AlignedAllocator&) = default;
+    template<class U> friend constexpr bool operator==(const AlignedAllocator&, const AlignedAllocator<U>&) noexcept { return true; }
+};
+
 template<itype::u32 Size> class MemoryPool {
     template<class T> friend class PoolAllocator;
     itype::u32 cnt = 0;

@@ -413,6 +413,26 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
         return res;
     }
 
+    template<class R, class Comp, class Proj> constexpr auto IsSortedImpl(R&& r, Comp&& comp, Proj&& proj) {
+        return std::ranges::is_sorted(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class R, class Comp, class Proj> constexpr auto IsSortedUntilImpl(R&& r, Comp&& comp, Proj&& proj) {
+        return std::ranges::is_sorted_until(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+
+    template<class R, class Equal> constexpr auto IsPalindromeImpl(R&& r, Equal&& equal) {
+        itype::u32 n = std::ranges::size(r);
+        if (n == 0) return true;
+        auto first = std::ranges::begin(r);
+        auto last = std::ranges::next(first, n - 1);
+        for (itype::u32 i = 0; i != n / 2; ++i) {
+            if (!Invoke(equal, *first, *last)) return false;
+            ++first;
+            --last;
+        }
+        return true;
+    }
+
 }  // namespace internal
 
 template<std::ranges::forward_range R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {

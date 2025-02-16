@@ -324,7 +324,16 @@ namespace internal {
             }
         }
     };
-    template<itype::u64 mod_> using StaticModintImpl = std::conditional_t<(mod_ <= 0xffffffff), StaticModint32Impl<mod_>, StaticModint64Impl<mod_>>;
+    template<itype::u64 mod_> struct SwitchStaticModint {
+        using type = StaticModint64Impl<mod_>;
+    };
+    template<itype::u64 mod_>
+        requires(mod_ <= 0xffffffff)
+    struct SwitchStaticModint<mod_> {
+        using type = StaticModint32Impl<mod_>;
+    };
+    template<itype::u64 mod_> using StaticModintImpl = typename SwitchStaticModint<mod_>::type;
+
 
     class DynamicModint32Impl : public ModintImpl<DynamicModint32Impl, itype::u32> {
         itype::u32 mod_ = 0;

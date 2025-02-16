@@ -67,14 +67,14 @@ public:
         len = n;
         for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
     }
-    template<std::input_iterator InputIter> constexpr Arr(InputIter first, InputIter last, const allocator_type& a = Allocator()) : alloc(a) {
-        const size_type n = std::distance(first, last);
+    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Arr(Iter first, Sent last, const allocator_type& a = Allocator()) : alloc(a) {
+        const size_type n = std::ranges::distance(first, last);
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n;
         size_type i = 0;
-        for (InputIter itr = first; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+        for (; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
     }
     constexpr Arr(const Arr& x) : Arr(x, traits::select_on_container_copy_construction(x.alloc)) {}
     constexpr Arr(Arr&& x) noexcept : alloc(std::move(x.alloc)), ptr(x.ptr), len(x.len) { x.ptr = nullptr, x.len = 0; }
@@ -240,19 +240,19 @@ public:
     constexpr const_reference front() const noexcept { return *ptr; }
     constexpr reference back() noexcept { return *(ptr + len - 1); }
     constexpr const_reference back() const noexcept { return *(ptr + len - 1); }
-    template<std::input_iterator InputIter> constexpr void assign(const InputIter first, const InputIter last) {
-        const size_type n = std::distance(first, last);
+    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) {
+        const size_type n = std::ranges::distance(first, last);
         if (n == 0) {
             clear();
         } else if (len == n) {
-            InputIter itr = first;
+            Iter itr = first;
             for (size_type i = 0; i != len; ++itr, ++i) *(ptr + i) = *itr;
         } else {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, len);
             ptr = traits::allocate(alloc, n);
             len = n;
-            InputIter itr = first;
+            Iter itr = first;
             for (size_type i = 0; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
         }
     }

@@ -99,6 +99,14 @@ template<class T, class U> constexpr auto DivCeil(const T& a, const U& b) {
     return (a + b - 1) / b;
 }
 
+template<class T> constexpr T Factorial(const T& n) {
+    T res = n;
+    T cnt = {};
+    if (!(cnt != n)) return res;
+    for (++cnt; cnt != n; ++cnt) res *= cnt;
+    return res;
+}
+
 // @brief Find the greatest common divisor as in std::gcd. (https://lpha-z.hatenablog.com/entry/2020/05/24/231500)
 template<class T, class U> constexpr std::common_type_t<T, U> GCD(T x, U y) {
     static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool> && std::is_integral_v<T> && std::is_integral_v<U>, "gsh::GCD / The input must be an integral type.");

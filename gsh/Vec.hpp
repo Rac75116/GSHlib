@@ -52,14 +52,14 @@ public:
         len = n, cap = n;
         for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
     }
-    template<std::input_iterator InputIter> constexpr Vec(const InputIter first, const InputIter last, const allocator_type& a = Allocator()) : alloc(a) {
-        const size_type n = std::distance(first, last);
+    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Vec(Iter first, Sent last, const allocator_type& a = Allocator()) : alloc(a) {
+        const size_type n = std::ranges::distance(first, last);
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n, cap = n;
         size_type i = 0;
-        for (InputIter itr = first; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+        for (; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
     }
     constexpr Vec(const Vec& x) : Vec(x, traits::select_on_container_copy_construction(x.alloc)) {}
     constexpr Vec(Vec&& x) noexcept : alloc(std::move(x.alloc)), ptr(x.ptr), len(x.len), cap(x.cap) { x.ptr = nullptr, x.len = 0, x.cap = 0; }
@@ -240,24 +240,21 @@ public:
     constexpr const_reference front() const noexcept { return *ptr; }
     constexpr reference back() noexcept { return *(ptr + len - 1); }
     constexpr const_reference back() const noexcept { return *(ptr + len - 1); }
-    template<std::ranges::range R> constexpr void assign(R&& r) {
-        const size_type n = std::ranges::size(r);
+    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) {
+        const size_type n = std::ranges::distance(first, last);
         if (n > cap) {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
             traits::deallocate(alloc, ptr, cap);
             ptr = traits::allocate(alloc, n);
             cap = n;
-            auto itr = std::ranges::begin(r);
-            for (size_type i = 0; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+            for (size_type i = 0; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
         } else if (n > len) {
             size_type i = 0;
-            auto itr = std::ranges::begin(r);
-            for (; i != len; ++itr, ++i) *(ptr + i) = *itr;
-            for (; i != n; ++itr, ++i) traits::construct(alloc, ptr + i, *itr);
+            for (; i != len; ++first, ++i) *(ptr + i) = *first;
+            for (; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
         } else {
             for (size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
-            auto itr = std::ranges::begin(r);
-            for (size_type i = 0; i != n; ++itr, ++i) *(ptr + i) = *itr;
+            for (size_type i = 0; i != n; ++first, ++i) *(ptr + i) = *first;
         }
         len = n;
     }

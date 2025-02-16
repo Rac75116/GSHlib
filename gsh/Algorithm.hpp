@@ -55,7 +55,7 @@ namespace internal {
     template<class R, class Comp, class Proj> constexpr auto MinImpl(R&& r, Comp&& comp, Proj&& proj) {
         auto first = std::ranges::begin(r);
         auto last = std::ranges::end(r);
-        if (first == last) throw Exception("gsh::Min / The input is empty.");
+        if (first == last) throw Exception("gsh::internal::MinImpl / The input is empty.");
         auto res = *(first++);
         for (; first != last; ++first) {
             const bool f = Invoke(comp, Invoke(proj, static_cast<const decltype(res)&>(*first)), Invoke(proj, res));
@@ -74,20 +74,12 @@ namespace internal {
         for (auto&& x : std::forward<R>(r)) init = Invoke(f, std::move(init), std::forward<decltype(x)>(x));
         return init;
     }
-    template<class R, class F> constexpr auto SumImpl(const R& r, F&& f) {
+    template<class R, class F> constexpr auto SumImpl(R&& r, F&& f) {
         auto itr = std::ranges::begin(r);
         auto sent = std::ranges::end(r);
+        if (!(itr != sent)) throw Exception("gsh::internal::SumImpl / The input is empty.");
         auto res = *itr;
-        for (; itr != sent; ++itr) res = Invoke(f, std::move(res), *itr);
-        return res;
-    }
-    template<class R, class F>
-        requires(!std::ranges::borrowed_range<R>)
-    constexpr auto SumImpl(R&& r, F&& f) {
-        auto itr = std::ranges::begin(r);
-        auto sent = std::ranges::end(r);
-        auto res = std::move(*itr);
-        for (; itr != sent; ++itr) res = Invoke(f, std::move(res), std::move(*itr));
+        for (++itr; itr != sent; ++itr) res = Invoke(f, std::move(res), *itr);
         return res;
     }
 
@@ -96,8 +88,7 @@ namespace internal {
     }
 
     template<class T, class Proj = Identity> void SortUnsigned8(T* const p, const itype::u32 n, Proj&& proj = {}) {
-        static itype::u32 cnt[1 << 8];
-        std::memset(cnt, 0, sizeof(cnt));
+        std::unique_ptr<itype::u32[]> cnt(new itype::u32[1 << 8]{});
         for (itype::u32 i = 0; i != n; ++i) ++cnt[Invoke(proj, p[i]) & 0xff];
         for (itype::u32 i = 0; i != (1 << 8) - 1; ++i) cnt[i + 1] += cnt[i];
         Arr<T> tmp(ArrNoInit, n);
@@ -105,8 +96,7 @@ namespace internal {
         for (itype::u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
     }
     template<class T, class Proj = Identity> void SortUnsigned16(T* const p, const itype::u32 n, Proj&& proj = {}) {
-        static itype::u32 cnt[1 << 16];
-        std::memset(cnt, 0, sizeof(cnt));
+        std::unique_ptr<itype::u32[]> cnt(new itype::u32[1 << 16]{});
         for (itype::u32 i = 0; i != n; ++i) ++cnt[Invoke(proj, p[i]) & 0xffff];
         for (itype::u32 i = 0; i != (1 << 16) - 1; ++i) cnt[i + 1] += cnt[i];
         Arr<T> tmp(ArrNoInit, n);
@@ -114,9 +104,8 @@ namespace internal {
         for (itype::u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
     }
     template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const itype::u32 n, Proj&& proj = {}) {
-        static itype::u32 cnt1[1 << 16], cnt2[1 << 16];
-        std::memset(cnt1, 0, sizeof(cnt1));
-        std::memset(cnt2, 0, sizeof(cnt2));
+        std::unique_ptr<itype::u32[]> cnt(new itype::u32[2 * (1 << 16)]{});
+        itype::u32 *const cnt1 = cnt.get(), *const cnt2 = cnt.get() + (1 << 16);
         for (itype::u32 i = 0; i != n; ++i) {
             auto tmp = Invoke(proj, p[i]);
             const itype::u16 a = tmp & 0xffff;
@@ -133,11 +122,8 @@ namespace internal {
         for (itype::u32 i = n; i--;) p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
     }
     template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const itype::u32 n, Proj&& proj = {}) {
-        static itype::u32 cnt1[1 << 16], cnt2[1 << 16], cnt3[1 << 16], cnt4[1 << 16];
-        std::memset(cnt1, 0, sizeof(cnt1));
-        std::memset(cnt2, 0, sizeof(cnt2));
-        std::memset(cnt3, 0, sizeof(cnt3));
-        std::memset(cnt4, 0, sizeof(cnt4));
+        std::unique_ptr<itype::u32[]> cnt(new itype::u32[4 * (1 << 16)]{});
+        itype::u32 *const cnt1 = cnt.get(), *const cnt2 = cnt.get() + (1 << 16), *const cnt3 = cnt.get() + 2 * (1 << 16), *const cnt4 = cnt.get() + 3 * (1 << 16);
         for (itype::u32 i = 0; i != n; ++i) {
             auto tmp = Invoke(proj, p[i]);
             const itype::u16 a = tmp & 0xffff;
@@ -196,45 +182,26 @@ namespace internal {
         using std::swap;
         if (!Invoke(comp, Invoke(proj, p[a]), Invoke(proj, p[b]))) swap(p[a], p[b]);
     }
-    template<itype::u32 N, class T, class Comp = Less, class Proj = Identity> GSH_INTERNAL_NOINLINE constexpr void SortBlock(T* const p, itype::u32 len, Comp&& comp = {}, Proj&& proj = {}) {
-        if constexpr (N <= 8) Assume(len == 1);
-        for (itype::u32 i = 0; i != len; ++i) {
-            T* const q = p + i * N;
-            // clang-format off
+    template<class T, class Comp = Less, class Proj = Identity> constexpr void SortBlock(T* const p, Comp&& comp = {}, Proj&& proj = {}) {
+        // clang-format off
 #ifdef F
 #define GSH_INTERNAL_DEFINED_MACRO_F
 #pragma push_macro("F")
 #undef F
 #endif
-#define F(A,B) CompSwap(q,A,B,comp,proj);
-if constexpr(N==2){F(0,1)}
-if constexpr(N==3){F(0,2)F(0,1)F(1,2)}
-if constexpr(N==4){F(0,2)F(1,3)F(0,1)F(2,3)F(1,2)}
-if constexpr(N==5){F(0,3)F(1,4)F(0,2)F(1,3)F(0,1)F(2,4)F(1,2)F(3,4)F(2,3)}
-if constexpr(N==6){F(0,5)F(1,3)F(2,4)F(1,2)F(3,4)F(0,3)F(2,5)F(0,1)F(2,3)F(4,5)F(1,2)F(3,4)}
-if constexpr(N==7){F(0,6)F(2,3)F(4,5)F(0,2)F(1,4)F(3,6)F(0,1)F(2,5)F(3,4)F(1,2)F(4,6)F(2,3)F(4,5)F(1,2)F(3,4)F(5,6)}
-if constexpr(N==8){F(0,2)F(1,3)F(4,6)F(5,7)F(0,4)F(1,5)F(2,6)F(3,7)F(0,1)F(2,3)F(4,5)F(6,7)F(2,4)F(3,5)F(1,4)F(3,6)F(1,2)F(3,4)F(5,6)}
-if constexpr(N==9){F(0,3)F(1,7)F(2,5)F(4,8)F(0,7)F(2,4)F(3,8)F(5,6)F(0,2)F(1,3)F(4,5)F(7,8)F(1,4)F(3,6)F(5,7)F(0,1)F(2,4)F(3,5)F(6,8)F(2,3)F(4,5)F(6,7)F(1,2)F(3,4)F(5,6)}
-if constexpr(N==10){F(0,8)F(1,9)F(2,7)F(3,5)F(4,6)F(0,2)F(1,4)F(5,8)F(7,9)F(0,3)F(2,4)F(5,7)F(6,9)F(0,1)F(3,6)F(8,9)F(1,5)F(2,3)F(4,8)F(6,7)F(1,2)F(3,5)F(4,6)F(7,8)F(2,3)F(4,5)F(6,7)F(3,4)F(5,6)}
-if constexpr(N==11){F(0,9)F(1,6)F(2,4)F(3,7)F(5,8)F(0,1)F(3,5)F(4,10)F(6,9)F(7,8)F(1,3)F(2,5)F(4,7)F(8,10)F(0,4)F(1,2)F(3,7)F(5,9)F(6,8)F(0,1)F(2,6)F(4,5)F(7,8)F(9,10)F(2,4)F(3,6)F(5,7)F(8,9)F(1,2)F(3,4)F(5,6)F(7,8)F(2,3)F(4,5)F(6,7)}
-if constexpr(N==12){F(0,8)F(1,7)F(2,6)F(3,11)F(4,10)F(5,9)F(0,1)F(2,5)F(3,4)F(6,9)F(7,8)F(10,11)F(0,2)F(1,6)F(5,10)F(9,11)F(0,3)F(1,2)F(4,6)F(5,7)F(8,11)F(9,10)F(1,4)F(3,5)F(6,8)F(7,10)F(1,3)F(2,5)F(6,9)F(8,10)F(2,3)F(4,5)F(6,7)F(8,9)F(4,6)F(5,7)F(3,4)F(5,6)F(7,8)}
-if constexpr(N==13){F(0,12)F(1,10)F(2,9)F(3,7)F(5,11)F(6,8)F(1,6)F(2,3)F(4,11)F(7,9)F(8,10)F(0,4)F(1,2)F(3,6)F(7,8)F(9,10)F(11,12)F(4,6)F(5,9)F(8,11)F(10,12)F(0,5)F(3,8)F(4,7)F(6,11)F(9,10)F(0,1)F(2,5)F(6,9)F(7,8)F(10,11)F(1,3)F(2,4)F(5,6)F(9,10)F(1,2)F(3,4)F(5,7)F(6,8)F(2,3)F(4,5)F(6,7)F(8,9)F(3,4)F(5,6)}
-if constexpr(N==14){F(0,1)F(2,3)F(4,5)F(6,7)F(8,9)F(10,11)F(12,13)F(0,2)F(1,3)F(4,8)F(5,9)F(10,12)F(11,13)F(0,4)F(1,2)F(3,7)F(5,8)F(6,10)F(9,13)F(11,12)F(0,6)F(1,5)F(3,9)F(4,10)F(7,13)F(8,12)F(2,10)F(3,11)F(4,6)F(7,9)F(1,3)F(2,8)F(5,11)F(6,7)F(10,12)F(1,4)F(2,6)F(3,5)F(7,11)F(8,10)F(9,12)F(2,4)F(3,6)F(5,8)F(7,10)F(9,11)F(3,4)F(5,6)F(7,8)F(9,10)F(6,7)}
-if constexpr(N==15){F(1,2)F(3,10)F(4,14)F(5,8)F(6,13)F(7,12)F(9,11)F(0,14)F(1,5)F(2,8)F(3,7)F(6,9)F(10,12)F(11,13)F(0,7)F(1,6)F(2,9)F(4,10)F(5,11)F(8,13)F(12,14)F(0,6)F(2,4)F(3,5)F(7,11)F(8,10)F(9,12)F(13,14)F(0,3)F(1,2)F(4,7)F(5,9)F(6,8)F(10,11)F(12,13)F(0,1)F(2,3)F(4,6)F(7,9)F(10,12)F(11,13)F(1,2)F(3,5)F(8,10)F(11,12)F(3,4)F(5,6)F(7,8)F(9,10)F(2,3)F(4,5)F(6,7)F(8,9)F(10,11)F(5,6)F(7,8)}
-if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)F(1,7)F(2,9)F(3,4)F(6,13)F(8,14)F(10,15)F(11,12)F(0,1)F(2,3)F(4,5)F(6,8)F(7,9)F(10,11)F(12,13)F(14,15)F(0,2)F(1,3)F(4,10)F(5,11)F(6,7)F(8,9)F(12,14)F(13,15)F(1,2)F(3,12)F(4,6)F(5,7)F(8,10)F(9,11)F(13,14)F(1,4)F(2,6)F(5,8)F(7,10)F(9,13)F(11,14)F(2,4)F(3,6)F(9,12)F(11,13)F(3,5)F(6,8)F(7,9)F(10,12)F(3,4)F(5,6)F(7,8)F(9,10)F(11,12)F(6,7)F(8,9)}
-            // clang-format on
-            static_assert(N <= 16);
+#define F(A,B) CompSwap(p,A,B,comp,proj);
+F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)F(1,7)F(2,9)F(3,4)F(6,13)F(8,14)F(10,15)F(11,12)F(0,1)F(2,3)F(4,5)F(6,8)F(7,9)F(10,11)F(12,13)F(14,15)F(0,2)F(1,3)F(4,10)F(5,11)F(6,7)F(8,9)F(12,14)F(13,15)F(1,2)F(3,12)F(4,6)F(5,7)F(8,10)F(9,11)F(13,14)F(1,4)F(2,6)F(5,8)F(7,10)F(9,13)F(11,14)F(2,4)F(3,6)F(9,12)F(11,13)F(3,5)F(6,8)F(7,9)F(10,12)F(3,4)F(5,6)F(7,8)F(9,10)F(11,12)F(6,7)F(8,9)
+        // clang-format on
 #undef F
 #ifdef GSH_INTERNAL_DEFINED_MACRO_F
 #undef GSH_INTERNAL_DEFINED_MACRO_F
 #pragma pop_macro("F")
 #endif
-        }
     }
     template<class R, class Comp, class Proj> constexpr void SortImpl(R&& r, Comp&& comp, Proj&& proj) {
         if constexpr (!requires { std::ranges::data(r); }) {
             Arr tmp(std::move_iterator(std::ranges::begin(r)), std::move_sentinel(std::ranges::end(r)));
-            Sort(tmp, std::forward<Comp>(comp), std::forward<Proj>(proj));
+            SortImpl(tmp, std::forward<Comp>(comp), std::forward<Proj>(proj));
             for (itype::u32 i = 0; auto&& el : r) el = std::move(tmp[i++]);
             return;
         } else {
@@ -250,7 +217,7 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
                         if (n >= 33) {
                             if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned8(p, n, std::forward<Proj>(proj));
                             else internal::SortUnsigned8(p, n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
-                            if constexpr (is_greater) Reverse(std::forward<R>(r));
+                            if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;
                         }
                     }
@@ -258,7 +225,7 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
                         if (n >= 1200) {
                             if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned16(p, n, std::forward<Proj>(proj));
                             else internal::SortUnsigned16(p, n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
-                            if constexpr (is_greater) Reverse(std::forward<R>(r));
+                            if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;
                         }
                     }
@@ -266,7 +233,7 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
                         if (n >= 3000) {
                             if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned32(p, n, std::forward<Proj>(proj));
                             else internal::SortUnsigned32(p, n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
-                            if constexpr (is_greater) Reverse(std::forward<R>(r));
+                            if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;
                         }
                     }
@@ -274,67 +241,47 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
                         if (n >= 8000) {
                             if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned64(p, n, std::forward<Proj>(proj));
                             else internal::SortUnsigned64(p, n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
-                            if constexpr (is_greater) Reverse(std::forward<R>(r));
+                            if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;
                         }
                     }
                     if constexpr (std::same_as<inv_result, ftype::f16>) {
                         if (n >= 1500) {
                             internal::SortUnsigned16(p, n, BindFront<Proj, internal::ToUnsigned>(std::forward<Proj>(proj), internal::ToUnsigned()));
-                            if constexpr (is_greater) Reverse(std::forward<R>(r));
+                            if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;
                         }
                     }
                     if constexpr (std::same_as<inv_result, ftype::f32>) {
                         if (n >= 4000) {
                             internal::SortUnsigned32(p, n, BindFront<Proj, internal::ToUnsigned>(std::forward<Proj>(proj), internal::ToUnsigned()));
-                            if constexpr (is_greater) Reverse(std::forward<R>(r));
+                            if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;
                         }
                     }
                     if constexpr (std::same_as<inv_result, ftype::f64>) {
                         if (n >= 10000) {
                             internal::SortUnsigned64(p, n, BindFront<Proj, internal::ToUnsigned>(std::forward<Proj>(proj), internal::ToUnsigned()));
-                            if constexpr (is_greater) Reverse(std::forward<R>(r));
+                            if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;
                         }
                     }
                 }
             }
-            //std::ranges::sort(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj));
-            const itype::u32 minrun = n <= 16 ? 32 : ((n >> (std::bit_width(n) - 4)) + ((n & ((1ull << (std::bit_width(n) - 4)) - 1)) != 0)) << std::has_single_bit(n);
-            const itype::u32 rem = (n - 1) % minrun + 1, blocks = (n - 1) / minrun;
-            switch (rem) {
-            case 2 : internal::SortBlock<2>(p, 1, comp, proj); break;
-            case 3 : internal::SortBlock<3>(p, 1, comp, proj); break;
-            case 4 : internal::SortBlock<4>(p, 1, comp, proj); break;
-            case 5 : internal::SortBlock<5>(p, 1, comp, proj); break;
-            case 6 : internal::SortBlock<6>(p, 1, comp, proj); break;
-            case 7 : internal::SortBlock<7>(p, 1, comp, proj); break;
-            case 8 : internal::SortBlock<8>(p, 1, comp, proj); break;
-            case 9 : internal::SortBlock<9>(p, 1, comp, proj); break;
-            case 10 : internal::SortBlock<10>(p, 1, comp, proj); break;
-            case 11 : internal::SortBlock<11>(p, 1, comp, proj); break;
-            case 12 : internal::SortBlock<12>(p, 1, comp, proj); break;
-            case 13 : internal::SortBlock<13>(p, 1, comp, proj); break;
-            case 14 : internal::SortBlock<14>(p, 1, comp, proj); break;
-            case 15 : internal::SortBlock<15>(p, 1, comp, proj); break;
-            case 16 : internal::SortBlock<16>(p, 1, comp, proj); break;
-            default : break;
+            constexpr itype::u32 minrun = 16;
+            itype::u32 rem = n % minrun;
+            for (itype::u32 i = 1; i < rem; ++i) {
+                auto tmp = std::move(p[i]);
+                itype::u32 j = i;
+                for (; j != 0 && Invoke(comp, Invoke(proj, tmp), Invoke(proj, p[j - 1])); --j) p[j] = std::move(p[j - 1]);
+                p[j] = std::move(tmp);
             }
-            if (minrun == 32) return;
-            switch (minrun) {
-            case 9 : internal::SortBlock<9>(p + rem, blocks, comp, proj); break;
-            case 10 : internal::SortBlock<10>(p + rem, blocks, comp, proj); break;
-            case 11 : internal::SortBlock<11>(p + rem, blocks, comp, proj); break;
-            case 12 : internal::SortBlock<12>(p + rem, blocks, comp, proj); break;
-            case 13 : internal::SortBlock<13>(p + rem, blocks, comp, proj); break;
-            case 14 : internal::SortBlock<14>(p + rem, blocks, comp, proj); break;
-            case 15 : internal::SortBlock<15>(p + rem, blocks, comp, proj); break;
-            case 16 : internal::SortBlock<16>(p + rem, blocks, comp, proj); break;
-            default : Unreachable();
+            for (itype::u32 i = 0, blocks = n / minrun; i != blocks; ++i) {
+                SortBlock(p + rem + i * minrun, comp, proj);
             }
-            std::unique_ptr<value_type[]> tmp(new value_type[n]);
+            if (n <= 16) return;
+            rem = rem == 0 ? 16 : rem;
+            Arr<value_type> tmp(ArrNoInit, n);
             auto merge_seq = [&](value_type* a, itype::u32 a_size, value_type* b, itype::u32 b_size, value_type* dst, auto construct) {
                 constexpr bool construct_v = std::same_as<decltype(construct), std::true_type>;
                 itype::u32 i = 0, j = 0, k = 0;
@@ -355,15 +302,15 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
                     else dst[k] = std::move(b[j]);
                 }
             };
-            merge_seq(p, rem, p + rem, minrun, tmp.get(), std::true_type());
+            merge_seq(p, rem, p + rem, minrun, tmp.data(), std::true_type());
             itype::u32 i = rem + minrun;
             for (; i + 2 * minrun <= n; i += 2 * minrun) {
-                merge_seq(p + i, minrun, p + i + minrun, minrun, tmp.get() + i, std::true_type());
+                merge_seq(p + i, minrun, p + i + minrun, minrun, tmp.data() + i, std::true_type());
             }
             for (; i < n; ++i) {
-                std::construct_at(tmp.get() + i, std::move(p[i]));
+                std::construct_at(tmp.data() + i, std::move(p[i]));
             }
-            value_type *from = tmp.get(), *to = p;
+            value_type *from = tmp.data(), *to = p;
             itype::u32 run = 2 * minrun;
             while (true) {
                 itype::u32 nrem = run - minrun + rem;
@@ -398,14 +345,12 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
     template<class R, class Comp, class Proj> constexpr auto OrderImpl(R&& r, Comp&& comp, Proj&& proj) {
         itype::u32 n = std::ranges::size(r);
         if (n == 0) return Arr<itype::u32>();
-        Arr<itype::u32> idx(n);
-        for (itype::u32 i = 0; i != n; ++i) idx[i] = i;
+        auto idx = SortIndexImpl(r, comp, proj);
+        Arr<itype::u32> res(n);
+        itype::u32 cnt = 0;
         auto new_proj = [start = std::ranges::begin(r), pj = std::forward<Proj>(proj)](itype::u32 n) {
             return Invoke(pj, *std::ranges::next(start, n));
         };
-        SortImpl(idx, comp, new_proj);
-        Arr<itype::u32> res(n);
-        itype::u32 cnt = 0;
         for (itype::u32 i = 1; i != n; ++i) {
             cnt += Invoke(comp, new_proj(idx[i - 1]), new_proj(idx[i]));
             res[idx[i]] = cnt;
@@ -433,30 +378,36 @@ if constexpr(N==16){F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)
         return true;
     }
 
-}  // namespace internal
+    template<class Iter, class Sent, class T, class Proj, class Comp> constexpr auto LowerBoundImpl(Iter first, Sent last, const T& value, Comp&& comp, Proj&& proj) {
+        itype::u32 len = std::ranges::distance(first, last);
+        if (len == 0) [[unlikely]]
+            return first;
+        auto back = std::ranges::next(first, len - 1);
+        if (Invoke(comp, Invoke(proj, *back), value)) [[unlikely]]
+            return std::ranges::next(back);
+        while (len > 1) {
+            itype::u32 half = len / 2;
+            std::ranges::advance(first, static_cast<bool>(Invoke(comp, Invoke(proj, *std::ranges::next(first, half - 1)), value)) * half);
+            len -= half;
+        }
+        return first;
+    }
+    template<class Iter, class Sent, class T, class Proj, class Comp> constexpr auto UpperBoundImpl(Iter first, Sent last, const T& value, Comp&& comp, Proj&& proj) {
+        itype::u32 len = std::ranges::distance(first, last);
+        if (len == 0) [[unlikely]]
+            return first;
+        auto back = std::ranges::next(first, len - 1);
+        if (!Invoke(comp, value, Invoke(proj, *back))) [[unlikely]]
+            return std::ranges::next(back);
+        while (len > 1) {
+            itype::u32 half = len / 2;
+            std::ranges::advance(first, static_cast<bool>(!Invoke(comp, value, Invoke(proj, *std::ranges::next(first, half - 1)))) * half);
+            len -= half;
+        }
+        return first;
+    }
 
-template<std::ranges::forward_range R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto LowerBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
-    auto st = std::ranges::begin(r);
-    for (auto len = std::ranges::size(r) + 1; len > 1;) {
-        auto half = len / 2;
-        len -= half;
-        auto tmp = std::ranges::next(st, half);
-        auto md = std::ranges::next(tmp, -1);
-        st = Invoke(comp, Invoke(proj, *md), value) ? tmp : st;
-    }
-    return st;
-}
-template<std::ranges::forward_range R, class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<R>, Proj>> Comp = Less> constexpr auto UpperBound(R&& r, const T& value, Comp&& comp = {}, Proj&& proj = {}) {
-    auto st = std::ranges::begin(r);
-    for (auto len = std::ranges::size(r) + 1; len > 1;) {
-        auto half = len / 2;
-        len -= half;
-        auto tmp = std::ranges::next(st, half);
-        auto md = std::ranges::next(tmp, -1);
-        st = !static_cast<bool>(Invoke(comp, value, Invoke(proj, *md))) ? tmp : st;
-    }
-    return st;
-}
+}  // namespace internal
 
 template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     using T = std::ranges::range_value_t<R>;

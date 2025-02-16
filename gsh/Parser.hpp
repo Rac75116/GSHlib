@@ -19,7 +19,7 @@ namespace itype {
 template<class T> class Parser;
 
 namespace internal {
-    template<class Stream> constexpr itype::u8 Parseu8(Stream& stream) {
+    template<class Stream> constexpr itype::u8 Parseu8(Stream&& stream) {
         itype::u32 v;
         MemoryCopy(&v, stream.current(), 4);
         v ^= 0x30303030;
@@ -30,7 +30,7 @@ namespace internal {
         stream.skip(tmp + 1);
         return v;
     }
-    template<class Stream> constexpr itype::u16 Parseu16(Stream& stream) {
+    template<class Stream> constexpr itype::u16 Parseu16(Stream&& stream) {
         itype::u64 v;
         MemoryCopy(&v, stream.current(), 8);
         v ^= 0x3030303030303030;
@@ -42,7 +42,7 @@ namespace internal {
         stream.skip(tmp + 1);
         return v;
     }
-    template<class Stream> constexpr itype::u32 Parseu32(Stream& stream) {
+    template<class Stream> constexpr itype::u32 Parseu32(Stream&& stream) {
         itype::u32 res = 0;
         {
             itype::u64 v;
@@ -84,7 +84,7 @@ namespace internal {
         }
         return res;
     };
-    template<class Stream> constexpr itype::u64 Parseu64(Stream& stream) {
+    template<class Stream> constexpr itype::u64 Parseu64(Stream&& stream) {
         itype::u64 res = 0;
         {
             itype::u64 v;
@@ -139,7 +139,7 @@ namespace internal {
         }
         return res;
     }
-    template<class Stream> constexpr itype::u128 Parseu128(Stream& stream) {
+    template<class Stream> constexpr itype::u128 Parseu128(Stream&& stream) {
         itype::u128 res = 0;
         GSH_INTERNAL_UNROLL(4)
         for (itype::u32 i = 0; i != 4; ++i) {
@@ -188,7 +188,7 @@ namespace internal {
         }
         return res * pw + res2;
     }
-    template<class Stream> constexpr itype::u16 Parseu4dig(Stream& stream) {
+    template<class Stream> constexpr itype::u16 Parseu4dig(Stream&& stream) {
         itype::u32 v;
         MemoryCopy(&v, stream.current(), 4);
         v ^= 0x30303030;
@@ -199,7 +199,7 @@ namespace internal {
         stream.skip(tmp + 1);
         return v;
     }
-    template<class Stream> constexpr itype::u32 Parseu8dig(Stream& stream) {
+    template<class Stream> constexpr itype::u32 Parseu8dig(Stream&& stream) {
         itype::u64 v;
         MemoryCopy(&v, stream.current(), 8);
         v ^= 0x3030303030303030;
@@ -216,14 +216,14 @@ namespace internal {
 
 template<> class Parser<itype::u8> {
 public:
-    template<class Stream> constexpr itype::u8 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u8 operator()(Stream&& stream) const {
         stream.reload(8);
         return internal::Parseu8(stream);
     }
 };
 template<> class Parser<itype::i8> {
 public:
-    template<class Stream> constexpr itype::i8 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i8 operator()(Stream&& stream) const {
         stream.reload(8);
         bool neg = *stream.current() == '-';
         stream.skip(neg);
@@ -234,14 +234,14 @@ public:
 };
 template<> class Parser<itype::u16> {
 public:
-    template<class Stream> constexpr itype::u16 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u16 operator()(Stream&& stream) const {
         stream.reload(8);
         return internal::Parseu16(stream);
     }
 };
 template<> class Parser<itype::i16> {
 public:
-    template<class Stream> constexpr itype::i16 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i16 operator()(Stream&& stream) const {
         stream.reload(8);
         bool neg = *stream.current() == '-';
         stream.skip(neg);
@@ -252,14 +252,14 @@ public:
 };
 template<> class Parser<itype::u32> {
 public:
-    template<class Stream> constexpr itype::u32 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u32 operator()(Stream&& stream) const {
         stream.reload(16);
         return internal::Parseu32(stream);
     }
 };
 template<> class Parser<itype::i32> {
 public:
-    template<class Stream> constexpr itype::i32 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i32 operator()(Stream&& stream) const {
         stream.reload(16);
         bool neg = *stream.current() == '-';
         stream.skip(neg);
@@ -270,14 +270,14 @@ public:
 };
 template<> class Parser<itype::u64> {
 public:
-    template<class Stream> constexpr itype::u64 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u64 operator()(Stream&& stream) const {
         stream.reload(32);
         return internal::Parseu64(stream);
     }
 };
 template<> class Parser<itype::i64> {
 public:
-    template<class Stream> constexpr itype::i64 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i64 operator()(Stream&& stream) const {
         stream.reload(32);
         bool neg = *stream.current() == '-';
         stream.skip(neg);
@@ -288,14 +288,14 @@ public:
 };
 template<> class Parser<itype::u128> {
 public:
-    template<class Stream> constexpr itype::u128 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u128 operator()(Stream&& stream) const {
         stream.reload(64);
         return internal::Parseu128(stream);
     }
 };
 template<> class Parser<itype::i128> {
 public:
-    template<class Stream> constexpr itype::i128 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i128 operator()(Stream&& stream) const {
         stream.reload(64);
         bool neg = *stream.current() == '-';
         stream.skip(neg);
@@ -307,7 +307,7 @@ public:
 template<> class Parser<itype::u4dig> {
 public:
     using value_type = itype::u16;
-    template<class Stream> constexpr itype::u16 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u16 operator()(Stream&& stream) const {
         stream.reload(8);
         return internal::Parseu4dig(stream);
     }
@@ -315,7 +315,7 @@ public:
 template<> class Parser<itype::i4dig> {
 public:
     using value_type = itype::i16;
-    template<class Stream> constexpr itype::i16 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i16 operator()(Stream&& stream) const {
         stream.reload(8);
         bool neg = *stream.current() == '-';
         stream.skip(neg);
@@ -327,7 +327,7 @@ public:
 template<> class Parser<itype::u8dig> {
 public:
     using value_type = itype::u32;
-    template<class Stream> constexpr itype::u32 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::u32 operator()(Stream&& stream) const {
         stream.reload(16);
         return internal::Parseu8dig(stream);
     }
@@ -335,7 +335,7 @@ public:
 template<> class Parser<itype::i8dig> {
 public:
     using value_type = itype::i32;
-    template<class Stream> constexpr itype::i32 operator()(Stream& stream) const {
+    template<class Stream> constexpr itype::i32 operator()(Stream&& stream) const {
         stream.reload(16);
         bool neg = *stream.current() == '-';
         stream.skip(neg);
@@ -346,7 +346,7 @@ public:
 };
 template<> class Parser<ctype::c8> {
 public:
-    template<class Stream> constexpr ctype::c8 operator()(Stream& stream) const {
+    template<class Stream> constexpr ctype::c8 operator()(Stream&& stream) const {
         stream.reload(2);
         ctype::c8 tmp = *stream.current();
         stream.skip(2);
@@ -355,7 +355,7 @@ public:
 };
 template<> class Parser<ctype::c8*> {
 public:
-    template<class Stream> constexpr ctype::c8* operator()(Stream& stream, ctype::c8* s) const {
+    template<class Stream> constexpr ctype::c8* operator()(Stream&& stream, ctype::c8* s) const {
         stream.reload(16);
         ctype::c8* c = s;
         while (true) {
@@ -372,7 +372,7 @@ public:
         *c = '\0';
         return s;
     }
-    template<class Stream> constexpr ctype::c8* operator()(Stream& stream, ctype::c8* s, itype::u32 n) const {
+    template<class Stream> constexpr ctype::c8* operator()(Stream&& stream, ctype::c8* s, itype::u32 n) const {
         itype::u32 rem = n;
         ctype::c8* c = s;
         itype::u32 avail = stream.avail();
@@ -402,12 +402,13 @@ namespace internal {
         using difference_type = itype::i32;
         using pointer = T*;
         using reference = T&;
-        using iterator_category = std::input_iterator_tag;
         itype::u32 n;
         P* ref;
         Stream* stream;
         std::tuple<Args...>* args;
+        constexpr ParsingIterator() noexcept : ParsingIterator(0, nullptr, nullptr, nullptr) {}
         constexpr ParsingIterator(itype::u32 m, P* r, Stream* s, std::tuple<Args...>* a) noexcept : n(m), ref(r), stream(s), args(a) {}
+        GSH_INTERNAL_INLINE friend constexpr itype::u32 operator-(const ParsingIterator& a, const ParsingIterator& b) noexcept { return a.n - b.n; }
         GSH_INTERNAL_INLINE friend constexpr bool operator==(const ParsingIterator& a, const ParsingIterator& b) noexcept { return a.n == b.n; }
         GSH_INTERNAL_INLINE constexpr ParsingIterator& operator++() noexcept { return ++n, *this; }
         GSH_INTERNAL_INLINE constexpr ParsingIterator operator++(int) noexcept { return { n++, *ref, *stream, *args }; }
@@ -439,7 +440,7 @@ template<ParsableTuple T>
     requires(!ParsableRange<T>)
 class Parser<T> {
 public:
-    template<class Stream> constexpr T operator()(Stream&& stream) const {}
+    template<class Stream> constexpr T operator()(Stream&&& stream) const {}
 };
 */
 

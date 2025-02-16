@@ -316,12 +316,12 @@ public:
     constexpr void pop() noexcept(nothrow_op) { pop_min(); }
     constexpr void pop_min() noexcept(nothrow_op) {
         data[0] = std::move(data.back());
-        data.pop_max();
+        data.pop_back();
         pop_min_impl();
     }
     constexpr void pop_max() noexcept(nothrow_op) {
         data[mx] = std::move(data.back());
-        data.pop_max();
+        data.pop_back();
         pop_max_impl();
     }
     constexpr void replace(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) { replace_min(x); }

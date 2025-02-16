@@ -385,6 +385,7 @@ public:
     constexpr itype::u32 max_size() const noexcept { return (1 << 24) - 1; }
     constexpr SingleAllocator select_on_container_copy_construction() const noexcept { return {}; }
     template<class U> friend constexpr bool operator==(const SingleAllocator&, const SingleAllocator<U>&) noexcept { return false; }
+    template<class... Args> constexpr void construct(T* p, Args&&... args) { std::construct_at(p, std::forward<Args>(args)...); }
 };
 
 template<class Alloc> class SharedAllocator {

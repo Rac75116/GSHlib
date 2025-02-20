@@ -6,16 +6,14 @@
 #include "Parser.hpp"     // gsh::Parser
 #include "Formatter.hpp"  // gsh::NoOut
 
-#define RANGE(V)  gsh::Subrange(std::ranges::begin(V), std::ranges::end(V));
-#define RRANGE(V) gsh::Subrange(std::ranges::rbegin(V), std::ranges::rend(V));
-#define NMIN(T)   (std::numeric_limits<T>::lowest())
-#define NMAX(T)   (std::numeric_limits<T>::max())
+#define NMIN(T) (std::numeric_limits<T>::lowest())
+#define NMAX(T) (std::numeric_limits<T>::max())
 // clang-format off
 #define RET_WITH(...) { __VA_ARGS__; return; } []{}()
 #define RETV_WITH(val, ...) { __VA_ARGS__; return val; } []{}()
 #define BRK_WITH(...) { __VA_ARGS__; break; } []{}()
 #define CTN_WITH(...) { __VA_ARGS__; continue; } []{}()
-#define EXT_WITH(...) { __VA_ARGS__; std::exit(0); } []{}()
+#define EXT_WITH(...) [&](gsh::itype::i32 ret = 0){ __VA_ARGS__; std::exit(ret); }
 
 #define GSH_INTERNAL_ARGS0() ()
 #define GSH_INTERNAL_ARGS1(a) (auto&& a)

@@ -323,6 +323,8 @@ public:
     {
         return std::move(itr);
     }
+    constexpr decltype(auto) operator[](const std::iter_difference_t<I>& n) { return *std::ranges::next(begin(), n); }
+    constexpr decltype(auto) operator[](const std::iter_difference_t<I>& n) const { return *std::ranges::next(begin(), n); }
     [[nodiscard]] constexpr Subrange next(std::iter_difference_t<I> n = 1) const&
         requires std::forward_iterator<I>
     {

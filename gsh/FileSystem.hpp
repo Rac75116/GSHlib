@@ -1,8 +1,10 @@
-#include "TypeDef.hpp"  // gsh::itype
-#include <cstdio>       // FILE, fread, fwrite, fflush
+#include <cstdio>  // FILE, fread, fwrite, fflush
 #if __has_include(<unistd.h>) && __has_include(<fcntl.h>)
 #include <unistd.h>  // read, write
 #include <fcntl.h>
+
+#include "TypeDef.hpp"  // gsh::itype
+#include "Util.hpp"     // gsh::Unreachable
 
 namespace gsh {
 
@@ -27,6 +29,7 @@ public:
         case OpenMode::ReadWrite | OpenMode::Append : format = "a+"; break;
         case OpenMode::ReadOnly | OpenMode::Binary : format = "rb"; break;
         case OpenMode::WriteOnly | OpenMode::Binary : format = "wb"; break;
+        default : Unreachable();
         }
         return fdopen(copy, format);
     }

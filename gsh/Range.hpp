@@ -72,6 +72,8 @@ public:
     constexpr auto slice(itype::u32 start, itype::u32 end) { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
     constexpr auto slice(itype::u32 start) const { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
     constexpr auto slice(itype::u32 start, itype::u32 end) const { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
+    static constexpr derived_type iota(value_type&& end) { return from_range(std::views::iota(value_type(), end)); }
+    static constexpr derived_type iota(value_type&& start, value_type&& end) { return from_range(std::views::iota(start, end)); }
     template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred>
         requires std::ranges::input_range<derived_type>
     [[nodiscard]] constexpr auto filter(Pred&& pred = {}) const {

@@ -331,29 +331,6 @@ public:
     const ctype::c8* current() const { return cur; }
     void skip(itype::u32 n) { cur += n; }
 };
-class MmapReader : public internal::IstreamInterface<MmapReader> {
-    [[maybe_unused]] const itype::i32 fh;
-    ctype::c8 *buf, *cur, *eof;
-public:
-    MmapReader() : fh(0) {
-#if !defined(__linux__)
-        buf = nullptr;
-        write(1, "gsh::MmapReader / gsh::MmapReader is not available for Windows.\n", 64);
-        std::exit(1);
-#else
-        struct stat st;
-        fstat(0, &st);
-        buf = reinterpret_cast<ctype::c8*>(mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, 0, 0));
-        cur = buf;
-        eof = buf + st.st_size;
-#endif
-    }
-    void reload() const {}
-    void reload(itype::u32) const {}
-    itype::u32 avail() const { return eof - cur; }
-    const ctype::c8* current() const { return cur; }
-    void skip(itype::u32 n) { cur += n; }
-};
 class StaticStrReader : public internal::IstreamInterface<StaticStrReader> {
     const ctype::c8* cur;
 public:
@@ -406,6 +383,32 @@ public:
     constexpr itype::u32 avail() const { return static_cast<itype::u32>(-1); }
     constexpr ctype::c8* current() { return cur; }
     constexpr void skip(itype::u32 n) { cur += n; }
+};
+
+class MmapReader : public internal::IstreamInterface<MmapReader> {
+    [[maybe_unused]] const itype::i32 fh;
+    ctype::c8 *buf, *cur, *eof;
+public:
+    MmapReader() : fh(0) {
+#if !defined(__linux__)
+        buf = nullptr;
+        BasicWriter<128> wt(2);
+        wt.write("gsh::MmapReader / gsh::MmapReader is not available for Windows.\n");
+        wt.reload();
+        std::exit(1);
+#else
+        struct stat st;
+        fstat(0, &st);
+        buf = reinterpret_cast<ctype::c8*>(mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, 0, 0));
+        cur = buf;
+        eof = buf + st.st_size;
+#endif
+    }
+    void reload() const {}
+    void reload(itype::u32) const {}
+    itype::u32 avail() const { return eof - cur; }
+    const ctype::c8* current() const { return cur; }
+    void skip(itype::u32 n) { cur += n; }
 };
 
 }  // namespace gsh

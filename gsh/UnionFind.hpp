@@ -35,10 +35,12 @@ namespace internal {
     protected:
         GSH_INTERNAL_INLINE constexpr itype::u32 merge_impl(itype::u32 ar, itype::u32 br) noexcept {
             const itype::i32 sa = derived().parent[ar], sb = derived().parent[br];
-            const itype::i32 tmp1 = sa < sb ? ar : br, tmp2 = sa < sb ? br : ar;
-            derived().parent[tmp1] += derived().parent[tmp2];
-            derived().parent[tmp2] = tmp1;
+            const itype::i32 ss = sa + sb;
+            const itype::i32 tmp1 = sa < sb ? ar : br;
+            const itype::i32 tmp2 = sa < sb ? br : ar;
             --derived().cnt;
+            derived().parent[tmp1] = ss;
+            derived().parent[tmp2] = tmp1;
             return tmp1;
         }
     public:
@@ -94,9 +96,17 @@ class UnionFind : public internal::UnionFindImpl<UnionFind> {
     friend class internal::UnionFindImpl<UnionFind>;
     Arr<itype::i32> parent;
     itype::u32 cnt = 0;
-    constexpr itype::i32 root(itype::i32 n) noexcept {
+    constexpr itype::i32 rootimpl(itype::i32 n) noexcept {
         if (parent[n] < 0) return n;
-        return parent[n] = root(parent[n]);
+        itype::i32 r = rootimpl(parent[n]);
+        return parent[n] = r, r;
+    }
+    GSH_INTERNAL_INLINE constexpr itype::i32 root(itype::i32 n) noexcept {
+        if (parent[n] < 0) return n;
+        itype::i32 m = parent[n];
+        if (parent[m] < 0) return parent[n] = m, m;
+        itype::i32 r = rootimpl(parent[m]);
+        return parent[n] = r, parent[m] = r, r;
     }
 public:
     using size_type = itype::u32;

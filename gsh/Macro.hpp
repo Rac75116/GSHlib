@@ -26,6 +26,24 @@
 #define GSH_INTERNAL_ARGS(...) GSH_INTERNAL_SELECT8(__VA_ARGS__, GSH_INTERNAL_ARGS7, GSH_INTERNAL_ARGS6, GSH_INTERNAL_ARGS5, GSH_INTERNAL_ARGS4, GSH_INTERNAL_ARGS3, GSH_INTERNAL_ARGS2, GSH_INTERNAL_ARGS1, GSH_INTERNAL_ARGS0)(__VA_ARGS__)
 #define GSH_INTERNAL_LAMBDA_BODY(...) { return (__VA_ARGS__); }
 #define LAMBDA(...) [&] GSH_INTERNAL_ARGS(__VA_ARGS__) GSH_INTERNAL_LAMBDA_BODY
+#define GSH_INTERNAL_ITER_CALLBACK(...) __VA_ARGS__)
+#define ITERATE(...) iterate([&] GSH_INTERNAL_ARGS(__VA_ARGS__) GSH_INTERNAL_ITER_CALLBACK
+// clang-format on
+
+namespace gsh {
+namespace internal {
+    template<class T, class... Args> constexpr bool MatchAny(T&& value, Args&&... args) {
+        return (!!(value == args) || ...);
+    }
+    template<class T, class Left, class Right> constexpr bool InRange(T&& value, Left&& left, Right&& right) {
+        return !(left > value) && !!(value < right);
+    }
+}  // namespace internal
+}  // namespace gsh
+// clang-format off
+#define MATCH(...) if (auto&& gsh_internal_match = (__VA_ARGS__); false)
+#define THEN(...) else if (gsh::internal::MatchAny(gsh_internal_match, __VA_ARGS__))
+#define INRANGE(...) else if (gsh::internal::InRange(gsh_internal_match, __VA_ARGS__))
 // clang-format on
 
 

@@ -270,21 +270,9 @@ public:
     template<class U> friend constexpr bool operator==(const AlignedAllocator&, const AlignedAllocator<U>&) noexcept { return true; }
 };
 
-template<itype::u32 Size> class MemoryPool {
-    template<class T> friend class PoolAllocator;
-    itype::u32 cnt = 0;
-    itype::u32 ref = 0;
-    ctype::c8 buf[Size];
-public:
-    constexpr ~MemoryPool() noexcept(false) {
-        if (ref != 0) throw Exception("gsh::MemoryPool::~MemoryPool / There are some gsh::PoolAllocator tied to this object have not yet been destroyed.");
-    }
-};
-template<class T> class PoolAllocator {
-    template<class U> friend class PoolAllocator;
-    itype::u32* cnt;
-    itype::u32* ref;
-    ctype::c8 *buf, *end;
+template<class T, itype::u32 N> class PoolAllocator {
+    ctype::c8* cur = buf;
+    alignas(T) ctype::c8 buf[sizeof(T) * N];
 public:
     using value_type = T;
     using propagate_on_container_copy_assignmant = std::true_type;
@@ -293,50 +281,22 @@ public:
     using size_type = itype::u32;
     using difference_type = itype::i32;
     using is_always_equal = std::false_type;
-    constexpr PoolAllocator() noexcept : cnt(nullptr), ref(nullptr), buf(nullptr), end(nullptr) {}
-    constexpr PoolAllocator(const PoolAllocator& a) noexcept : cnt(a.cnt), ref(a.ref), buf(a.buf), end(a.end) { ++*ref; }
-    template<class U> constexpr PoolAllocator(const PoolAllocator<U>& a) noexcept : cnt(a.cnt), ref(a.ref), buf(a.buf), end(a.end) { ++*ref; }
-    template<itype::u32 Size> constexpr PoolAllocator(MemoryPool<Size>& p) noexcept : cnt(&p.cnt), ref(&p.ref), buf(p.buf), end(p.buf + Size) { ++*ref; }
-    constexpr ~PoolAllocator() noexcept {
-        if (ref != nullptr) --*ref;
+    template<class U> class rebind {
+    public:
+        ~rebind() = delete;
+        using other = PoolAllocator<U, N>;
+    };
+    constexpr PoolAllocator() noexcept {}
+    constexpr PoolAllocator(const PoolAllocator&) noexcept {}
+    template<class U, itype::u32 M> constexpr PoolAllocator(const PoolAllocator<U, M>&) noexcept {}
+    [[nodiscard]] T* allocate(size_type n) noexcept {
+        T* result = reinterpret_cast<T*>(cur);
+        cur += sizeof(T) * n;
+        return result;
     }
-    [[nodiscard]] constexpr T* allocate(size_type n) {
-        if (std::is_constant_evaluated()) return Allocator<T>().allocate(n);
-        constexpr itype::u32 align = __STDCPP_DEFAULT_NEW_ALIGNMENT__ < alignof(T) ? alignof(T) : __STDCPP_DEFAULT_NEW_ALIGNMENT__;
-        void* ptr = static_cast<void*>(buf + *cnt);
-        std::size_t space = end - static_cast<ctype::c8*>(ptr);
-        std::align(align, sizeof(T) * n, ptr, space);
-        if (ptr == nullptr) throw Exception("gsh::PoolAllocator::allocate / Failed to allocate memory.");
-        T* res = static_cast<T*>(ptr);
-        *cnt = static_cast<ctype::c8*>(ptr) - buf;
-        return res;
-    }
-    [[nodiscard]] T* allocate(size_type n, std::align_val_t align) {
-        void* ptr = static_cast<void*>(buf + *cnt);
-        std::size_t space = end - static_cast<ctype::c8*>(ptr);
-        std::align(static_cast<std::size_t>(align), sizeof(T) * n, ptr, space);
-        if (ptr == nullptr) throw Exception("gsh::PoolAllocator::allocate / Failed to allocate memory.");
-        T* res = static_cast<T*>(ptr);
-        *cnt = static_cast<ctype::c8*>(ptr) - buf;
-        return res;
-    }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) noexcept {
-        if (std::is_constant_evaluated()) return Allocator<T>().deallocate(p, n);
-    }
-    void deallocate(T*, size_type, std::align_val_t) noexcept {}
-    constexpr PoolAllocator& operator=(const PoolAllocator& a) noexcept {
-        if (ref != nullptr) --*ref;
-        cnt = a.cnt, ref = a.ref, buf = a.buf, end = a.end;
-        ++*ref;
-        return *this;
-    }
-    template<itype::u32 Size> constexpr PoolAllocator& operator=(MemoryPool<Size>& p) noexcept {
-        if (ref != nullptr) --*ref;
-        cnt = &p.cnt, ref = &p.ref, buf = p.buf, end = p.buf + Size;
-        ++*ref;
-        return *this;
-    }
-    template<class U> friend constexpr bool operator==(const PoolAllocator& a, const PoolAllocator<U>& b) noexcept { return a.cnt == b.cnt && a.ref == b.ref && a.buf == b.buf && a.end == b.end; }
+    constexpr void deallocate(T*, size_type) noexcept {}
+    constexpr PoolAllocator& operator=(const PoolAllocator&) noexcept {}
+    template<class U, itype::u32 M> friend constexpr bool operator==(const PoolAllocator&, const PoolAllocator<U, M>&) noexcept { return false; }
 };
 
 template<class T> class SingleAllocator {
@@ -388,8 +348,19 @@ public:
     template<class... Args> constexpr void construct(T* p, Args&&... args) { std::construct_at(p, std::forward<Args>(args)...); }
 };
 
-template<class Alloc> class SharedAllocator {
-    static inline Alloc alloc;
+
+namespace internal {
+    template<class Alloc, bool OmitDestruction> struct SharedAllocatorImpl {
+        static inline Alloc alloc{};
+        static constexpr Alloc& get() noexcept { return alloc; }
+    };
+    template<class Alloc> struct SharedAllocatorImpl<Alloc, true> {
+        static inline Alloc* alloc = new Alloc();
+        static constexpr Alloc& get() noexcept { return *alloc; }
+    };
+}  // namespace internal
+template<class Alloc, bool OmitDestruction = false> class SharedAllocator {
+    using alloc = internal::SharedAllocatorImpl<Alloc, OmitDestruction>;
     using traits = AllocatorTraits<Alloc>;
 public:
     using value_type = typename traits::value_type;
@@ -403,16 +374,16 @@ public:
     template<class U> class rebind {
     public:
         ~rebind() = delete;
-        using other = SharedAllocator<typename traits::template rebind_alloc<U>>;
+        using other = SharedAllocator<typename traits::template rebind_alloc<U>, OmitDestruction>;
     };
     constexpr SharedAllocator() noexcept {}
     constexpr SharedAllocator(const SharedAllocator&) noexcept = default;
     template<class T> constexpr SharedAllocator(const SharedAllocator<T>&) noexcept {}
     constexpr SharedAllocator& operator=(const SharedAllocator&) noexcept = default;
-    template<class... Args> auto allocate(Args&&... args) noexcept(noexcept(alloc.allocate(std::forward<Args>(args)...))) { return alloc.allocate(std::forward<Args>(args)...); }
-    template<class... Args> void deallocate(Args&&... args) noexcept(noexcept(alloc.deallocate(std::forward<Args>(args)...))) { return alloc.deallocate(std::forward<Args>(args)...); }
-    size_type max_size() const noexcept { return alloc.max_size(); }
-    static Alloc& get_allocator() noexcept { return alloc; }
+    template<class... Args> auto allocate(Args&&... args) noexcept(noexcept(alloc::get().allocate(std::forward<Args>(args)...))) { return alloc::get().allocate(std::forward<Args>(args)...); }
+    template<class... Args> void deallocate(Args&&... args) noexcept(noexcept(alloc::get().deallocate(std::forward<Args>(args)...))) { return alloc::get().deallocate(std::forward<Args>(args)...); }
+    size_type max_size() const noexcept { return alloc::get().max_size(); }
+    static Alloc& get_allocator() noexcept { return alloc::get(); }
     template<class T> friend constexpr bool operator==(const SharedAllocator&, const SharedAllocator<T>&) noexcept { return true; }
 };
 

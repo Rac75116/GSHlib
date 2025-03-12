@@ -72,8 +72,35 @@ public:
     constexpr auto slice(itype::u32 start, itype::u32 end) { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
     constexpr auto slice(itype::u32 start) const { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
     constexpr auto slice(itype::u32 start, itype::u32 end) const { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
-    static constexpr derived_type iota(value_type&& end) { return from_range(std::views::iota(value_type(), end)); }
-    static constexpr derived_type iota(value_type&& start, value_type&& end) { return from_range(std::views::iota(start, end)); }
+    template<class T> static constexpr derived_type iota(T&& end) { return from_range(std::views::iota(std::decay_t<T>(), end)); }
+    template<class T, class U> static constexpr derived_type iota(T&& start, U&& end) {
+        using ct = std::common_type_t<T, U>;
+        return from_range(std::views::iota(static_cast<ct>(start), static_cast<ct>(end)));
+    }
+    template<class Proj>
+        requires std::ranges::input_range<derived_type>
+    constexpr void iterate(Proj&& proj = {}) {
+        auto start = get_begin();
+        auto end = get_end();
+        for (itype::u32 idx = 0; start != end; ++start, ++idx) {
+            if constexpr (requires { Invoke(proj, *start, idx, *this); }) Invoke(proj, *start, idx, *this);
+            else if constexpr (requires { Invoke(proj, *start, idx); }) Invoke(proj, *start, idx);
+            else if constexpr (requires { Invoke(proj, *start); }) Invoke(proj, *start);
+            else proj();
+        }
+    }
+    template<class Proj>
+        requires std::ranges::input_range<derived_type>
+    constexpr void iterate(Proj&& proj = {}) const {
+        auto start = get_begin();
+        auto end = get_end();
+        for (itype::u32 idx = 0; start != end; ++start, ++idx) {
+            if constexpr (requires { pred(*start, idx, *this); }) proj(*start, idx, *this);
+            else if constexpr (requires { pred(*start, idx); }) proj(*start, idx);
+            else if constexpr (requires { pred(*start); }) proj(*start);
+            else proj();
+        }
+    }
     template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred>
         requires std::ranges::input_range<derived_type>
     [[nodiscard]] constexpr auto filter(Pred&& pred = {}) const {

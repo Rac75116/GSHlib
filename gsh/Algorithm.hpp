@@ -533,7 +533,7 @@ public:
     constexpr Mo() {}
     constexpr void reserve(itype::u32 q) { qu.reserve(q); }
     constexpr void query(itype::u32 l, itype::u32 r) { qu.emplace_back(l, r); }
-    template<class F1, class F2, class F3> void run(F1&& add, F2&& del, F3&& slv) const { solve(add, add, del, del, slv); }
+    template<class F1, class F2, class F3> void run(F1&& add, F2&& del, F3&& slv) const { run(add, add, del, del, slv); }
     template<class F1, class F2, class F3, class F4, class F5> void run(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
         const itype::u32 Q = qu.size();
         itype::u32 N = 0;

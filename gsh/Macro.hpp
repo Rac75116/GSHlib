@@ -102,16 +102,7 @@ namespace internal {
         T& ref;
     public:
         constexpr OutputAdapter(T& r) : ref(r) {}
-        template<class... Args> constexpr auto operator()(Args&&... args) const
-            requires(decltype(ref.writeln(NoOut, std::forward<Args>(args)...).option())::printable)
-        {
-            return ref.writeln(NoOut, std::forward<Args>(args)...).option();
-        }
-        template<class... Args> [[nodiscard]] constexpr auto operator()(Args&&... args) const
-            requires(!decltype(ref.writeln(NoOut, std::forward<Args>(args)...).option())::printable)
-        {
-            return ref.writeln(NoOut, std::forward<Args>(args)...).option();
-        }
+        template<class... Args> constexpr void operator()(Args&&... args) const { ref.writeln(std::forward<Args>(args)...); }
     };
 
 }  // namespace internal

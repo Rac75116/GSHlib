@@ -10,12 +10,13 @@ namespace internal {
     BasicWriter<2048> DebugPrinter(2);
     template<class... Args> void DebugPrintImpl(std::source_location loc, Args&&... args) {
 #if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
-        DebugPrinter.write("\e[2m[Debug] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\n\e[0m\e[1m\e[3m").sep(NoOut);
-        DebugPrinter.write(std::forward<Args>(args)...).sep("\e[0m\e[2m / \e[0m\e[1m\e[3m").end("\e[0m\n");
+        DebugPrinter.write_sep(NoOut, "\e[2m[Debug] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\n\e[0m\e[1m\e[3m");
+        DebugPrinter.write_sep("\e[0m\e[2m / \e[0m\e[1m\e[3m", std::forward<Args>(args)...);
+        DebugPrinter.write("\e[0m\n");
         DebugPrinter.reload();
 #else
-        DebugPrinter.writeln("[Debug] ", loc.file_name(), ':', loc.line(), ':', loc.column()).sep(NoOut);
-        DebugPrinter.writeln(std::forward<Args>(args)...).sep(" / ");
+        DebugPrinter.writeln_sep(NoOut, "[Debug] ", loc.file_name(), ':', loc.line(), ':', loc.column());
+        DebugPrinter.writeln_sep(" / ", std::forward<Args>(args)...);
         DebugPrinter.reload();
 #endif
     }

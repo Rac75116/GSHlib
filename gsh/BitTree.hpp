@@ -28,7 +28,7 @@ protected:
             return;
         }
         for (itype::u32 x = 0; x < s3; x += 64) {
-            auto get = [&](itype::u32 n) -> itype::u32 {
+            auto get = [&](itype::u32 n) GSH_INTERNAL_INLINE_LAMBDA -> itype::u32 {
                 return _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v3[x + n])), _mm256_setzero_si256())));
             };
             const itype::u64 a = get(0), b = get(4), c = get(8), d = get(12), e = get(16), f = get(20), g = get(24), h = get(28);
@@ -38,7 +38,7 @@ protected:
         for (itype::u32 i = s3 / 64; i != s2; ++i) v2[i] = 0;
         for (itype::u32 i = s3 / 64 * 64; i != s3; ++i) v2[i / 64] |= (static_cast<itype::u64>(v3[i] != 0) << (i % 64));
         for (itype::u32 x = 0; x < s2; x += 64) {
-            auto get = [&](itype::u32 n) -> itype::u32 {
+            auto get = [&](itype::u32 n) GSH_INTERNAL_INLINE_LAMBDA -> itype::u32 {
                 return _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpeq_epi64(_mm256_load_si256(reinterpret_cast<const __m256i*>(&v2[x + n])), _mm256_setzero_si256())));
             };
             const itype::u64 a = get(0), b = get(4), c = get(8), d = get(12), e = get(16), f = get(20), g = get(24), h = get(28);
@@ -72,7 +72,7 @@ public:
             return;
         }
         const __m256i ones = _mm256_set1_epi8(one);
-        for (itype::u32 i = 0; i < sz; i += 64) {
+        for (itype::u32 i = 0; i + 64 <= sz; i += 64) {
             auto get = [&](itype::u32 n) -> itype::u32 {
                 return _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i + n)), ones));
             };
@@ -80,7 +80,7 @@ public:
             v3[i / 64] = a | b << 8 | c << 16 | d << 24 | e << 32 | f << 40 | g << 48 | h << 56;
         }
         for (itype::u32 i = sz / 64; i != s3; ++i) v3[i] = 0;
-        for (itype::u32 i = sz / 64 * 64; i < sz; i += 4) {
+        for (itype::u32 i = sz / 64 * 64; i + 4 <= sz; i += 4) {
             const itype::u32 n = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(p + i)), ones));
             v3[i / 64] |= static_cast<itype::u64>(n) << (i % 64);
         }
@@ -252,20 +252,21 @@ public:
     friend constexpr BitTree operator^(const BitTree& lhs, const BitTree& rhs) noexcept { return BitTree(lhs) ^= rhs; }
     constexpr static itype::u32 npos = -1;
     constexpr itype::u32 find_next(itype::u32 pos) const {
-        if (const itype::u64 tmp = v3[pos / 64] & -(1ull << (pos % 64)); tmp != 0) return pos / 64 * 64 + std::countr_zero(tmp);
-        if (const itype::u64 tmp = v2[pos / 4096] & -(2ull << (pos / 64 % 64)); tmp != 0) {
+        if (const itype::u64 tmp = v3[pos / 64] & -(1ull << (pos % 64)); tmp != 0) [[unlikely]]
+            return pos / 64 * 64 + std::countr_zero(tmp);
+        if (const itype::u64 tmp = v2[pos / 4096] & -(2ull << (pos / 64 % 64)); tmp != 0) [[unlikely]] {
             const itype::u64 a = pos / 4096 * 64 + std::countr_zero(tmp), b = v3[a];
             Assume(b != 0);
             return a * 64 + std::countr_zero(b);
         }
-        if (const itype::u64 tmp = v1[pos / 262144] & -(2ull << (pos / 4096 % 64)); tmp != 0) {
+        if (const itype::u64 tmp = v1[pos / 262144] & -(2ull << (pos / 4096 % 64)); tmp != 0) [[unlikely]] {
             const itype::u64 a = pos / 262144 * 64 + std::countr_zero(tmp), b = v2[a];
             Assume(b != 0);
             const itype::u64 c = a * 64 + std::countr_zero(b), d = v3[c];
             Assume(d != 0);
             return c * 64 + std::countr_zero(d);
         }
-        if (const itype::u64 tmp = v0 & -(2ull << (pos / 262144 % 64)); tmp != 0) {
+        if (const itype::u64 tmp = v0 & -(2ull << (pos / 262144 % 64)); tmp != 0) [[likely]] {
             const itype::u64 a = std::countr_zero(tmp), b = v1[a];
             Assume(b != 0);
             const itype::u64 c = a * 64 + std::countr_zero(b), d = v2[c];
@@ -278,20 +279,21 @@ public:
     }
     constexpr itype::u32 find_first() const noexcept { return find_next(0); }
     constexpr itype::u32 find_prev(itype::u32 pos) const {
-        if (const itype::u64 tmp = v3[pos / 64] & ((2ull << (pos % 64)) - 1); tmp != 0) return pos / 64 * 64 + std::bit_width(tmp) - 1;
-        if (const itype::u64 tmp = v2[pos / 4096] & ((1ull << (pos / 64 % 64)) - 1); tmp != 0) {
+        if (const itype::u64 tmp = v3[pos / 64] & ((2ull << (pos % 64)) - 1); tmp != 0) [[unlikely]]
+            return pos / 64 * 64 + std::bit_width(tmp) - 1;
+        if (const itype::u64 tmp = v2[pos / 4096] & ((1ull << (pos / 64 % 64)) - 1); tmp != 0) [[unlikely]] {
             const itype::u64 a = pos / 4096 * 64 + std::bit_width(tmp) - 1, b = v3[a];
             Assume(b != 0);
             return a * 64 + std::bit_width(b) - 1;
         }
-        if (const itype::u64 tmp = v1[pos / 262144] & ((1ull << (pos / 4096 % 64)) - 1); tmp != 0) {
+        if (const itype::u64 tmp = v1[pos / 262144] & ((1ull << (pos / 4096 % 64)) - 1); tmp != 0) [[unlikely]] {
             const itype::u64 a = pos / 262144 * 64 + std::bit_width(tmp) - 1, b = v2[a];
             Assume(b != 0);
             const itype::u64 c = a * 64 + std::bit_width(b) - 1, d = v3[c];
             Assume(d != 0);
             return c * 64 + std::bit_width(d) - 1;
         }
-        if (const itype::u64 tmp = v0 & ((1ull << (pos / 262144 % 64)) - 1); tmp != 0) {
+        if (const itype::u64 tmp = v0 & ((1ull << (pos / 262144 % 64)) - 1); tmp != 0) [[likely]] {
             const itype::u64 a = std::bit_width(tmp) - 1, b = v1[a];
             Assume(b != 0);
             const itype::u64 c = a * 64 + std::bit_width(b) - 1, d = v2[c];

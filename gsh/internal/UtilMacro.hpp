@@ -21,14 +21,20 @@
 #define GSH_INTERNAL_UNROLL(n)
 #endif
 #ifdef __GNUC__
-#define GSH_INTERNAL_INLINE   __attribute__((always_inline))
-#define GSH_INTERNAL_NOINLINE __attribute__((noinline))
+#define GSH_INTERNAL_INLINE          __attribute__((always_inline))
+#define GSH_INTERNAL_NOINLINE        __attribute__((noinline))
+#define GSH_INTERNAL_INLINE_LAMBDA   __attribute__((always_inline))
+#define GSH_INTERNAL_NOINLINE_LAMBDA __attribute__((noinline))
 #elif defined _MSC_VER
 #define GSH_INTERNAL_INLINE   [[msvc::forceinline]]
 #define GSH_INTERNAL_NOINLINE [[msvc::noinline]]
+#define GSH_INTERNAL_INLINE_LAMBDA
+#define GSH_INTERNAL_NOINLINE_LAMBDA
 #else
 #define GSH_INTERNAL_INLINE
 #define GSH_INTERNAL_NOINLINE
+#define GSH_INTERNAL_INLINE_LAMBDA
+#define GSH_INTERNAL_NOINLINE_LAMBDA
 #endif
 #if defined(__GNUC__) || defined(__ICC)
 #define GSH_INTERNAL_RESTRICT __restrict__

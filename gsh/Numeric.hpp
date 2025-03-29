@@ -9,7 +9,7 @@
 namespace gsh {
 
 //@brief Find the largest x for which x * x <= n (https://rsk0315.hatenablog.com/entry/2023/11/07/221428)
-constexpr itype::u32 IntSqrt32(const itype::u32 x) {
+GSH_INTERNAL_INLINE constexpr itype::u32 IntSqrt32(const itype::u32 x) {
     if (x == 0) return 0;
     if (std::is_constant_evaluated()) {
         itype::u32 low = 0, high = 0xffff;
@@ -24,7 +24,7 @@ constexpr itype::u32 IntSqrt32(const itype::u32 x) {
         return tmp + (tmp * (tmp + 2) < x);
     }
 }
-constexpr itype::u64 IntSqrt64(const itype::u64 x) {
+GSH_INTERNAL_INLINE constexpr itype::u64 IntSqrt64(const itype::u64 x) {
     if (x == 0) return 0;
     if (std::is_constant_evaluated()) {
         itype::u64 low = 0, high = 0xffffffff;
@@ -263,7 +263,7 @@ constexpr static ftype::f64 rt3[] = {
         }
         constexpr static itype::u64 calc2(itype::u64 n, itype::u64 k) {
             if (n == 0) return 0;
-                // clang-format off
+            // clang-format off
 #ifdef F
 #define GSH_INTERNAL_DEFINED_F
 #pragma push_macro("F")

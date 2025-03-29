@@ -149,7 +149,7 @@ namespace internal {
             return x - y + (x < y) * derived().mod();
         }
         constexpr value_type fma(value_type x, value_type y, value_type z) const noexcept { return derived().add(derived().mul(x, y), z); }
-        constexpr value_type div(value_type x, value_type y) const noexcept {
+        constexpr value_type div(value_type x, value_type y) const {
             const value_type iv = derived().inv(y);
             if (derived().same(iv, derived().zero())) [[unlikely]]
                 throw gsh::Exception("gsh::internal::ModintImpl::div / Cannot calculate inverse.");

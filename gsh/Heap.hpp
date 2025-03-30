@@ -291,6 +291,10 @@ private:
         }
     }
 public:
+    constexpr void clear() noexcept {
+        data.clear();
+        mx = 0;
+    }
     template<std::ranges::range R> constexpr void assign(R&& r) {
         data.assign(std::forward<R>(r));
         make_heap();

@@ -295,8 +295,16 @@ public:
         data.clear();
         mx = 0;
     }
-    template<std::ranges::range R> constexpr void assign(R&& r) {
-        data.assign(std::forward<R>(r));
+    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) {
+        data.assign(std::forward<Iter>(first), std::forward<Sent>(last));
+        make_heap();
+    }
+    template<class F> constexpr void assign(F&& f) {
+        data.clear();
+        auto push = [&](auto&& x) {
+            data.push_back(std::forward<decltype(x)>(x));
+        };
+        Invoke(f, push);
         make_heap();
     }
     constexpr const_reference top() const noexcept { return data[0]; }

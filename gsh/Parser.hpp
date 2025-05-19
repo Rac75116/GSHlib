@@ -140,10 +140,11 @@ namespace internal {
         }
         itype::u64 buf;
         MemoryCopy(&buf, stream.current(), 8);
+        buf ^= 0x3030303030303030;
         itype::u64 res2 = 0, pw = 1;
         {
             itype::u32 v = buf;
-            if (!((v ^= 0x30303030) & 0xf0f0f0f0)) {
+            if (!(v & 0xf0f0f0f0)) {
                 buf >>= 32;
                 v = (v * 10 + (v >> 8)) & 0x00ff00ff;
                 v = (v * 100 + (v >> 16)) & 0x0000ffff;
@@ -154,7 +155,7 @@ namespace internal {
         }
         {
             itype::u32 v = buf & 0xffff;
-            if (!((v ^= 0x3030) & 0xf0f0)) {
+            if (!(v & 0xf0f0)) {
                 buf >>= 16;
                 v = (v * 10 + (v >> 8)) & 0x00ff;
                 res2 = res2 * 100 + v;
@@ -163,7 +164,7 @@ namespace internal {
             }
         }
         {
-            const ctype::c8 v = ctype::c8(buf) ^ 0x30;
+            const ctype::c8 v = buf;
             const bool f = (v & 0xf0) == 0;
             const volatile auto tmp1 = pw * 10, tmp2 = res2 * 10 + v;
             const auto tmp3 = tmp1, tmp4 = tmp2;

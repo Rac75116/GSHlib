@@ -62,7 +62,7 @@ constexpr bool isSquare64(const itype::u64 x) {
     return tmp * tmp == x;
 }
 
-template<class T, class U> constexpr auto Umod(const T& x, const U& m) {
+template<class T, class U> constexpr auto Umod(T x, U m) {
     if ((m >= 0) ^ (x >= 0)) {
         m = m >= 0 ? m : -m;
         auto res = x % m + m;

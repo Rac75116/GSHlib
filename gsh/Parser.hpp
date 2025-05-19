@@ -93,64 +93,6 @@ namespace internal {
         return res;
     };
     template<class Stream> constexpr itype::u64 Parseu64(Stream&& stream) {
-        /*
-        itype::u64 res = 0;
-        itype::u64 buf[3];
-        MemoryCopy(buf, stream.current(), 24);
-        itype::u64 rem;
-        {
-            buf[0] ^= 0x3030303030303030, buf[1] ^= 0x3030303030303030;
-            itype::u64 v = buf[0], u = buf[1];
-            rem = v;
-            bool vf = (v & 0xf0f0f0f0f0f0f0f0);
-            bool uf = (u & 0xf0f0f0f0f0f0f0f0);
-            if (!vf) [[likely]] {
-                if (uf) [[unlikely]] {
-                    stream.skip(8);
-                    rem = u;
-                    v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
-                    v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
-                    v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
-                    res = v;
-                } else {
-                    stream.skip(16);
-                    rem = buf[2] ^ 0x3030303030303030;
-                    v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
-                    u = (u * 10 + (u >> 8)) & 0x00ff00ff00ff00ff;
-                    v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
-                    u = (u * 100 + (u >> 16)) & 0x0000ffff0000ffff;
-                    v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
-                    u = (u * 10000 + (u >> 32)) & 0x00000000ffffffff;
-                    res = v * 100000000 + u;
-                }
-            }
-        }
-        {
-            itype::u32 v = rem;
-            if (!(v & 0xf0f0f0f0)) {
-                rem >>= 32;
-                v = (v * 10 + (v >> 8)) & 0x00ff00ff;
-                v = (v * 100 + (v >> 16)) & 0x0000ffff;
-                res = 10000 * res + v;
-                stream.skip(4);
-            }
-        }
-        {
-            itype::u32 v = rem & 0xffff;
-            if (!(v & 0xf0f0)) {
-                rem >>= 16;
-                v = (v * 10 + (v >> 8)) & 0x00ff;
-                res = 100 * res + v;
-                stream.skip(2);
-            }
-        }
-        {
-            const bool f = !(rem & 0xf0);
-            res = f ? 10 * res + (rem & 0xff) : res;
-            stream.skip(f + 1);
-        }
-        return res;
-        */
         itype::u64 res = 0;
         {
             itype::u64 v;
@@ -176,33 +118,11 @@ namespace internal {
                 }
             }
         }
-        itype::u64 buf;
-        MemoryCopy(&buf, stream.current(), 8);
-        {
-            itype::u32 v = buf;
-            if (!((v ^= 0x30303030) & 0xf0f0f0f0)) {
-                buf >>= 32;
-                v = (v * 10 + (v >> 8)) & 0x00ff00ff;
-                v = (v * 100 + (v >> 16)) & 0x0000ffff;
-                res = 10000 * res + v;
-                stream.skip(4);
-            }
+        ctype::c8 const *p = stream.current(), *q = p;
+        for (; *p >= 48; ++p) {
+            res = res * 10 + (*p - '0');
         }
-        {
-            itype::u16 v = buf;
-            if (!((v ^= 0x3030) & 0xf0f0)) {
-                buf >>= 16;
-                v = (v * 10 + (v >> 8)) & 0x00ff;
-                res = 100 * res + v;
-                stream.skip(2);
-            }
-        }
-        {
-            const ctype::c8 v = ctype::c8(buf) ^ 0x30;
-            const bool f = !(v & 0xf0);
-            res = f ? 10 * res + v : res;
-            stream.skip(f + 1);
-        }
+        stream.skip(p - q + 1);
         return res;
     }
     template<class Stream> constexpr itype::u128 Parseu128(Stream&& stream) {

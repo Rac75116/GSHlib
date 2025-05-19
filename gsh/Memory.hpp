@@ -248,6 +248,29 @@ public:
     template<class U> friend constexpr bool operator==(const Allocator&, const Allocator<U>&) noexcept { return true; }
 };
 
+template<class T> class NoFreeAllocator {
+public:
+    using value_type = T;
+    using propagate_on_container_move_assignment = std::true_type;
+    using size_type = itype::u32;
+    using difference_type = itype::i32;
+    using is_always_equal = std::true_type;
+    constexpr NoFreeAllocator() noexcept {}
+    constexpr NoFreeAllocator(const NoFreeAllocator&) noexcept {}
+    template<class U> constexpr NoFreeAllocator(const NoFreeAllocator<U>&) noexcept {}
+    [[nodiscard]] constexpr T* allocate(size_type n) {
+        if (std::is_constant_evaluated()) return std::allocator<T>().allocate(n);
+        if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
+        else return static_cast<T*>(::operator new(sizeof(T) * n));
+    }
+    [[nodiscard]] T* allocate(size_type n, std::align_val_t align) { return static_cast<T*>(::operator new(sizeof(T) * n, align)); }
+    constexpr void deallocate(T*, size_type) noexcept {}
+    void deallocate(T*, size_type, std::align_val_t) noexcept {}
+    constexpr NoFreeAllocator& operator=(const NoFreeAllocator&) = default;
+    template<class U> friend constexpr bool operator==(const NoFreeAllocator&, const NoFreeAllocator<U>&) noexcept { return true; }
+};
+
+
 template<class T, itype::u32 Align = 32> class AlignedAllocator {
 public:
     using value_type = T;

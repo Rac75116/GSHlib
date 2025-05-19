@@ -529,16 +529,18 @@ class Mo {
         constexpr rg(itype::u32 a, itype::u32 b) : l(a), r(b) {}
     };
     Vec<rg> qu;
+    double coef = 1.05;
 public:
     constexpr Mo() {}
     constexpr void reserve(itype::u32 q) { qu.reserve(q); }
     constexpr void query(itype::u32 l, itype::u32 r) { qu.emplace_back(l, r); }
+    constexpr void set_coef(double c) { coef = c; }
     template<class F1, class F2, class F3> void run(F1&& add, F2&& del, F3&& slv) const { run(add, add, del, del, slv); }
     template<class F1, class F2, class F3, class F4, class F5> void run(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
         const itype::u32 Q = qu.size();
         itype::u32 N = 0;
         for (itype::u32 i = 0; i != Q; ++i) N = N < qu[i].r ? qu[i].r : N;
-        itype::u32 width = 1.15 * std::sqrt(static_cast<ftype::f64>(3ull * N * N) / (2 * Q));
+        itype::u32 width = coef * std::sqrt(static_cast<ftype::f64>(3ull * N * N) / (2 * Q));
         width += width == 0;
         Arr<itype::u32> cnt(N + 1), buf(Q), block(Q), idx(Q);
         for (itype::u32 i = 0; i != Q; ++i) ++cnt[qu[i].r];

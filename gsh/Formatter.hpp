@@ -23,12 +23,20 @@ template<class T> class Formatter;
 
 namespace internal {
 #ifndef GSH_USE_COMPILE_TIME_CALCULATION
-    struct InttoStrT {
-#define GSH_INTERNAL_INCLUDE_INTTOSTR "internal/InttoStr.txt"
-        const ctype::c8* table =
-#include GSH_INTERNAL_INCLUDE_INTTOSTR
-    };
-    template<itype::u32> constexpr InttoStrT InttoStr;
+    template<itype::u32> auto InttoStr = [] {
+        struct {
+            ctype::c8* table;
+        } res;
+        static ctype::c8 table[40004] = {};
+        res.table = table;
+        for (itype::u32 i = 0; i != 10000; ++i) {
+            table[4 * i + 0] = (i / 1000 + '0');
+            table[4 * i + 1] = (i / 100 % 10 + '0');
+            table[4 * i + 2] = (i / 10 % 10 + '0');
+            table[4 * i + 3] = (i % 10 + '0');
+        }
+        return res;
+    }();
 #else
     template<itype::u32> constexpr auto InttoStr = [] {
         struct {

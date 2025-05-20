@@ -1,7 +1,6 @@
 #pragma once
-#include <cstdlib>  // std::exit
-#include <cstring>  // std::memcpy, std::memmove
-#include <source_location>
+#include <cstdlib>         // std::exit
+#include <cstring>         // std::memcpy, std::memmove
 #include <utility>         // std::forward
 #include <tuple>           // std::tuple, std::make_tuple
 #include "TypeDef.hpp"     // gsh::itype, gsh::ctype

@@ -92,21 +92,55 @@ namespace internal {
     };
 }  // namespace internal
 
-class UnionFind : public internal::UnionFindImpl<UnionFind> {
-    friend class internal::UnionFindImpl<UnionFind>;
+enum class UnionFindAlgorithms {
+    Naive,
+    PathCompression,
+    PathHalving,
+    PathSplitting,
+};  // namespace UnionFindAlgorithms
+
+template<UnionFindAlgorithms Algo = UnionFindAlgorithms::PathCompression> class UnionFind : public internal::UnionFindImpl<UnionFind<Algo>> {
+    friend class internal::UnionFindImpl<UnionFind<Algo>>;
     Arr<itype::i32> parent;
     itype::u32 cnt = 0;
     constexpr itype::i32 rootimpl(itype::i32 n) noexcept {
         if (parent[n] < 0) return n;
         itype::i32 r = rootimpl(parent[n]);
-        return parent[n] = r, r;
+        parent[n] = r;
+        return r;
     }
     GSH_INTERNAL_INLINE constexpr itype::i32 root(itype::i32 n) noexcept {
-        if (parent[n] < 0) return n;
-        itype::i32 m = parent[n];
-        if (parent[m] < 0) return parent[n] = m, m;
-        itype::i32 r = rootimpl(parent[m]);
-        return parent[n] = r, parent[m] = r, r;
+        if constexpr (Algo == UnionFindAlgorithms::Naive) {
+            while (true) {
+                itype::i32 p = parent[n];
+                if (p < 0) return n;
+                n = p;
+            }
+        } else if constexpr (Algo == UnionFindAlgorithms::PathHalving) {
+            while (true) {
+                itype::i32 p = parent[n];
+                if (p < 0) return n;
+                itype::i32 pp = parent[p];
+                if (pp < 0) return p;
+                parent[n] = pp;
+                n = pp;
+            }
+        } else if constexpr (Algo == UnionFindAlgorithms::PathSplitting) {
+            while (true) {
+                itype::i32 p = parent[n];
+                if (p < 0) return n;
+                itype::i32 pp = parent[p];
+                if (pp < 0) return p;
+                parent[n] = pp;
+                n = p;
+            }
+        } else {
+            if (parent[n] < 0) return n;
+            itype::i32 m = parent[n];
+            if (parent[m] < 0) return parent[n] = m, m;
+            itype::i32 r = rootimpl(parent[m]);
+            return parent[n] = r, parent[m] = r, r;
+        }
     }
 public:
     using size_type = itype::u32;
@@ -117,8 +151,8 @@ public:
         for (itype::u32 i = 0; i != cnt; ++i) parent[i] = -1;
     }
     constexpr void resize(itype::u32 n) {
-        if (n < size()) throw gsh::Exception("gsh::UnionFind::resize / It cannot be smaller than it is now.");
-        cnt += n - size();
+        if (n < parent.size()) throw gsh::Exception("gsh::UnionFind::resize / It cannot be smaller than it is now.");
+        cnt += n - parent.size();
         parent.resize(n, -1);
     }
     constexpr itype::u32 merge(const itype::u32 a, const itype::u32 b) {
@@ -127,15 +161,15 @@ public:
 #endif
         const itype::i32 ar = root(a), br = root(b);
         if (ar == br) return ar;
-        return merge_impl(ar, br);
+        return this->merge_impl(ar, br);
     }
     constexpr bool merge_same(const itype::u32 a, const itype::u32 b) {
 #ifndef NDEBUG
-        if (a >= size() || b >= size()) throw gsh::Exception("gsh::UnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", size(), " )");
+        if (a >= parent.size() || b >= parent.size()) throw gsh::Exception("gsh::UnionFind::merge_same / The index is out of range. ( a=", a, ", b=", b, ", size=", parent.size(), " )");
 #endif
         const itype::i32 ar = root(a), br = root(b);
         if (ar == br) return true;
-        merge_impl(ar, br);
+        this->merge_impl(ar, br);
         return false;
     }
 };

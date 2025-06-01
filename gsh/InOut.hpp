@@ -153,7 +153,7 @@ namespace internal {
     };
 }  // namespace internal
 
-template<itype::u32 Bufsize = (1 << 17)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
+template<itype::u32 Bufsize = (1 << 18)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
     itype::i32 fd = 0;
     ctype::c8 buf[Bufsize + 1] = {};
     ctype::c8 *cur = buf, *eof = buf;
@@ -205,7 +205,7 @@ public:
     constexpr void skip(itype::u32 n) { cur += n; }
 };
 
-template<itype::u32 Bufsize = (1 << 17)> class BasicWriter : public internal::OstreamInterface<BasicWriter<Bufsize>> {
+template<itype::u32 Bufsize = (1 << 18)> class BasicWriter : public internal::OstreamInterface<BasicWriter<Bufsize>> {
     itype::i32 fd = 1;
     ctype::c8 buf[Bufsize + 1] = {};
     ctype::c8 *cur = buf, *eof = buf + Bufsize;

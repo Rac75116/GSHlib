@@ -1,9 +1,11 @@
 #pragma once
-#include <bit>          // std::countr_zero
-#include <ranges>       // std::ranges::forward_range
-#include "TypeDef.hpp"  // gsh::itype, gsh::ctype
-#include "Util.hpp"     // gsh::MemoryCopy
-#include "Int128.hpp"   // gsh::itype::u128, gsh::itype::i128
+#include <bit>            // std::countr_zero
+#include <ranges>         // std::ranges::forward_range
+#include <cstdlib>        // std::strtod, std::strtof, std::strtold
+#include "TypeDef.hpp"    // gsh::itype, gsh::ctype
+#include "Util.hpp"       // gsh::MemoryCopy
+#include "Int128.hpp"     // gsh::itype::u128, gsh::itype::i128
+#include "Exception.hpp"  // gsh::Exception
 
 namespace gsh {
 
@@ -357,6 +359,50 @@ public:
         return s;
     }
 };
+
+template<> class Parser<float> {
+public:
+    template<class Stream> constexpr float operator()(Stream&& stream) const {
+        stream.reload(128);
+        const ctype::c8* cur = stream.current();
+        ctype::c8* end = nullptr;
+        float res = std::strtof(cur, &end);
+        if (errno) {
+            throw Exception("gsh::Parser<float>::operator() / Failed to parse.");
+        }
+        stream.skip(end - cur + 1);
+        return res;
+    }
+};
+template<> class Parser<double> {
+public:
+    template<class Stream> constexpr double operator()(Stream&& stream) const {
+        stream.reload(128);
+        const ctype::c8* cur = stream.current();
+        ctype::c8* end = nullptr;
+        double res = std::strtod(cur, &end);
+        if (errno) {
+            throw Exception("gsh::Parser<double>::operator() / Failed to parse.");
+        }
+        stream.skip(end - cur + 1);
+        return res;
+    }
+};
+template<> class Parser<long double> {
+public:
+    template<class Stream> constexpr long double operator()(Stream&& stream) const {
+        stream.reload(128);
+        const ctype::c8* cur = stream.current();
+        ctype::c8* end = nullptr;
+        long double res = std::strtold(cur, &end);
+        if (errno) {
+            throw Exception("gsh::Parser<long double>::operator() / Failed to parse.");
+        }
+        stream.skip(end - cur + 1);
+        return res;
+    }
+};
+
 
 namespace internal {
     template<class T, class P, class Stream, class... Args> struct ParsingIterator {

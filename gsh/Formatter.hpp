@@ -81,9 +81,14 @@ namespace internal {
     template<bool Flag = false, class Stream> constexpr void Formatu16(Stream&& stream, itype::u16 n) {
         auto *cur = stream.current(), *p = cur;
         auto copy1 = [&](itype::u16 x) {
-            itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
-            MemoryCopy(p, InttoStr<Flag>.table + (4 * x + off), 4);
-            p += 4 - off;
+            if constexpr (Flag) {
+                MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
+                p += 4;
+            } else {
+                itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+                MemoryCopy(p, InttoStr<false>.table + (4 * x + off), 4);
+                p += 4 - off;
+            }
         };
         auto copy2 = [&](itype::u16 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
@@ -127,7 +132,7 @@ namespace internal {
     }
     template<bool Flag = false, class Stream> constexpr void Formatu64(Stream&& stream, itype::u64 n) {
         auto *cur = stream.current(), *p = cur;
-        auto copy1 = [&](itype::u32 x) {
+        auto copy1 = [&](itype::u64 x) {
             if constexpr (Flag) {
                 MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
                 p += 4;
@@ -137,35 +142,28 @@ namespace internal {
                 p += 4 - off;
             }
         };
-        auto copy2 = [&](itype::u32 x) {
+        auto copy2 = [&](itype::u64 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
             p += 4;
         };
-        if (n < 10000000000000000) {
-            if (n < 1000000000000) {
-                if (n < 100000000) {
-                    if (n < 10000) copy1(n);
-                    else {
-                        copy1(n / 10000);
-                        copy2(n % 10000);
-                    }
-                } else {
-                    copy1(n / 100000000);
-                    copy2(n / 10000 % 10000);
-                    copy2(n % 10000);
-                }
-            } else {
-                copy1(n / 1000000000000);
-                copy2(n / 100000000 % 10000);
-                copy2(n / 10000 % 10000);
-                copy2(n % 10000);
-            }
+        if (n >= 10000000000000000) {
+            itype::u64 a = n / 100000000, b = n % 100000000;
+            itype::u64 c = a / 10000, d = a % 10000, e = b / 10000, f = b % 10000;
+            itype::u64 g = c / 10000, h = c % 10000;
+            copy1(g), copy2(h), copy2(d), copy2(e), copy2(f);
+        } else if (n >= 1000000000000) {
+            itype::u64 a = n / 100000000, b = n % 100000000;
+            itype::u64 c = a / 10000, d = a % 10000, e = b / 10000, f = b % 10000;
+            copy1(c), copy2(d), copy2(e), copy2(f);
+        } else if (n >= 100000000) {
+            itype::u64 a = n / 100000000, b = n % 100000000;
+            itype::u64 c = b / 10000, d = b % 10000;
+            copy1(a), copy2(c), copy2(d);
+        } else if (n >= 10000) {
+            itype::u64 a = n / 10000, b = n % 10000;
+            copy1(a), copy2(b);
         } else {
-            copy1(n / 10000000000000000);
-            copy2(n / 1000000000000 % 10000);
-            copy2(n / 100000000 % 10000);
-            copy2(n / 10000 % 10000);
-            copy2(n % 10000);
+            copy1(n);
         }
         stream.skip(p - cur);
     }

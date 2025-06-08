@@ -95,14 +95,13 @@ namespace internal {
         return res;
     };
     template<class Stream> constexpr itype::u64 Parseu64(Stream&& stream) {
-        itype::u64 res = 0;
         {
+            ctype::c8 const* cur = stream.current();
             itype::u64 v;
-            MemoryCopy(&v, stream.current(), 8);
+            MemoryCopy(&v, cur, 8);
             if (!((v ^= 0x3030303030303030) & 0xf0f0f0f0f0f0f0f0)) {
-                stream.skip(8);
                 itype::u64 u;
-                MemoryCopy(&u, stream.current(), 8);
+                MemoryCopy(&u, cur + 8, 8);
                 if (!((u ^= 0x3030303030303030) & 0xf0f0f0f0f0f0f0f0)) {
                     v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
                     u = (u * 10 + (u >> 8)) & 0x00ff00ff00ff00ff;
@@ -110,22 +109,41 @@ namespace internal {
                     u = (u * 100 + (u >> 16)) & 0x0000ffff0000ffff;
                     v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
                     u = (u * 10000 + (u >> 32)) & 0x00000000ffffffff;
-                    res = v * 100000000 + u;
-                    stream.skip(8);
+                    v = v * 100000000 + u;
+                    itype::u32 rem;
+                    MemoryCopy(&rem, cur + 16, 4);
+                    itype::u64 reml = rem;
+                    reml ^= 0x30303030;
+                    itype::u32 len = 17;
+                    for (itype::u32 i = 0; i != 4; ++i) {
+                        if (reml & 0xf0) break;
+                        v = v * 10 + (reml & 0x0f);
+                        reml >>= 8;
+                        len += 1;
+                    }
+                    stream.skip(len);
+                    return v;
                 } else {
                     v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
                     v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
                     v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
-                    res = v;
+                    ctype::c8 const *p = cur + 8, *q = p;
+                    for (; *p >= 48; ++p) {
+                        v = v * 10 + (*p - '0');
+                    }
+                    stream.skip(p - q + 9);
+                    return v;
                 }
+            } else {
+                itype::i32 tmp = std::countr_zero(v & 0xf0f0f0f0f0f0f0f0) >> 3;
+                v <<= (64 - (tmp << 3));
+                v = (v * 10 + (v >> 8)) & 0x00ff00ff00ff00ff;
+                v = (v * 100 + (v >> 16)) & 0x0000ffff0000ffff;
+                v = (v * 10000 + (v >> 32)) & 0x00000000ffffffff;
+                stream.skip(tmp + 1);
+                return v;
             }
         }
-        ctype::c8 const *p = stream.current(), *q = p;
-        for (; *p >= 48; ++p) {
-            res = res * 10 + (*p - '0');
-        }
-        stream.skip(p - q + 1);
-        return res;
     }
     template<class Stream> constexpr itype::u128 Parseu128(Stream&& stream) {
         itype::u128 res = 0;

@@ -343,6 +343,14 @@ public:
     constexpr itype::u32 div_limit() const noexcept { return m; }
     constexpr itype::u64 val() const noexcept { return x; }
     constexpr itype::u64 operator[](itype::u32 n) { return n < m ? n + 1 : x / (sq - (n - m)); }
+    // n <= 1e18
+    constexpr itype::u64 sum() const noexcept {
+        itype::u64 res = 0;
+        for (itype::u32 i = 1; i <= sq; ++i) res += x / i;
+        res <<= 1;
+        res -= itype::u64(sq) * sq;
+        return res;
+    }
 };
 
 namespace internal {

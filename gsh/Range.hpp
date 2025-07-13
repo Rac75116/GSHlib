@@ -6,8 +6,9 @@
 #include <ranges>                  // std::ranges::iterator_t, std::sentinel_for, std::ranges::reverse, std::ranges::range, std::ranges::range_value_t, std::ranges::subrange_kind, std::sized_sentinel_for
 #include <tuple>                   // std::tuple_element
 #include "TypeDef.hpp"             // gsh::itype
-#include "internal/Operation.hpp"  //gsh::internal::IteratorInterface
+#include "internal/Operation.hpp"  // gsh::internal::IteratorInterface
 #include "Functional.hpp"          // gsh::Less, gsh::Identity
+#include "Memory.hpp"              // gsh::AllocatorTraits
 
 namespace gsh {
 
@@ -22,6 +23,7 @@ namespace internal {
     template<class R, class Comp, class Proj> constexpr auto MaxImpl(R&& r, Comp&& comp, Proj&& proj);
     template<class R, class T, class F> constexpr auto FoldImpl(R&& r, T init, F&& f);
     template<class R, class F> constexpr auto SumImpl(R&& r, F&& f);
+    template<class R, class F> constexpr void AdjacentDifferenceImpl(R&& r, F&& f);
     template<class R> constexpr void ReverseImpl(R&& r);
     template<class R, class Comp, class Proj> constexpr void SortImpl(R&& r, Comp&& comp, Proj&& proj);
     template<class R, class Comp, class Proj> constexpr auto SortIndexImpl(R&& r, Comp&& comp, Proj&& proj);
@@ -36,13 +38,17 @@ namespace internal {
     template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj);
 }  // namespace internal
 
-template<class D, class V>
-    requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
-class ViewInterface;
-
 template<std::input_or_output_iterator I, std::sentinel_for<I> S, RangeKind K>
     requires(K == RangeKind::Sized || !std::sized_sentinel_for<S, I>)
 class Subrange;
+
+template<class T, class Allocator>
+    requires std::same_as<T, typename AllocatorTraits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
+class Arr;
+
+template<class T, class Allocator>
+    requires std::is_same_v<T, typename AllocatorTraits<Allocator>::value_type> && (!std::is_const_v<T>)
+class Vec;
 
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
@@ -58,6 +64,8 @@ class ViewInterface {
     constexpr auto get_rend() { return std::ranges::rend(derived()); }
     constexpr auto get_rend() const { return std::ranges::rend(derived()); }
     using derived_type = D;
+    using arr_type = Arr<V, Allocator<V>>;
+    using vec_type = Vec<V, Allocator<V>>;
 public:
     using value_type = V;
     template<class Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) { derived() = derived_type(std::move(first), std::move(last)); }
@@ -68,10 +76,20 @@ public:
     constexpr derived_type copy() const& { return derived(); }
     constexpr derived_type copy() & { return derived(); }
     constexpr derived_type copy() && { return std::move(derived()); }
+    constexpr arr_type as_arr() const { return arr_type::from_range(derived()); };
+    constexpr arr_type as_arr() { return arr_type::from_range(derived()); };
+    constexpr vec_type as_vec() const { return vec_type::from_range(derived()); };
+    constexpr vec_type as_vec() { return vec_type::from_range(derived()); };
+    constexpr auto slice() { return Subrange(get_begin(), get_end()); }
     constexpr auto slice(itype::u32 start) { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
     constexpr auto slice(itype::u32 start, itype::u32 end) { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
+    constexpr auto slice() const { return Subrange(get_begin(), get_end()); }
     constexpr auto slice(itype::u32 start) const { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
     constexpr auto slice(itype::u32 start, itype::u32 end) const { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
+    constexpr auto drop(itype::u32 n) { return slice(n); }
+    constexpr auto drop(itype::u32 n) const { return slice(n); }
+    constexpr auto take(itype::u32 n) { return Subrange(get_begin(), std::ranges::next(get_begin(), n)); }
+    constexpr auto take(itype::u32 n) const { return Subrange(get_begin(), std::ranges::next(get_begin(), n)); }
     template<class T> static constexpr derived_type iota(T&& end) { return from_range(std::views::iota(std::decay_t<T>(), end)); }
     template<class T, class U> static constexpr derived_type iota(T&& start, U&& end) {
         using ct = std::common_type_t<T, U>;
@@ -95,20 +113,20 @@ public:
         auto start = get_begin();
         auto end = get_end();
         for (itype::u32 idx = 0; start != end; ++start, ++idx) {
-            if constexpr (requires { pred(*start, idx, *this); }) proj(*start, idx, *this);
-            else if constexpr (requires { pred(*start, idx); }) proj(*start, idx);
-            else if constexpr (requires { pred(*start); }) proj(*start);
-            else proj();
+            if constexpr (requires { Invoke(proj, *start, idx, *this); }) Invoke(proj, *start, idx, *this);
+            else if constexpr (requires { Invoke(proj, *start, idx); }) Invoke(proj, *start, idx);
+            else if constexpr (requires { Invoke(proj, *start); }) Invoke(proj, *start);
+            else Invoke(proj);
         }
     }
     template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred>
         requires std::ranges::input_range<derived_type>
-    [[nodiscard]] constexpr auto filter(Pred&& pred = {}) const {
+    [[nodiscard]] constexpr auto filter_view(Pred&& pred = {}) const {
         return derived() | std::views::filter(std::forward<Pred>(pred));
     }
     template<std::invocable<value_type> Proj>
         requires std::ranges::input_range<derived_type>
-    [[nodiscard]] constexpr auto transform(Proj&& proj = {}) const {
+    [[nodiscard]] constexpr auto transform_view(Proj&& proj = {}) const {
         return derived() | std::views::transform(std::forward<Proj>(proj));
     }
     template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred>
@@ -211,34 +229,47 @@ public:
     constexpr auto sum(F&& f = {}) const {
         return internal::SumImpl(derived(), std::forward<F>(f));
     }
+    template<class F = Minus>
+        requires std::ranges::forward_range<derived_type> && std::indirectly_writable<std::ranges::iterator_t<derived_type>, std::invoke_result_t<F, value_type, value_type>>
+    constexpr void adjacent_difference(F&& f = {}) {
+        internal::AdjacentDifferenceImpl(derived(), std::forward<F>(f));
+    }
+    template<class F = Minus>
+        requires std::indirectly_writable<std::ranges::iterator_t<arr_type>, std::invoke_result_t<F, value_type, value_type>>
+    constexpr auto adjacent_differenced(F&& f = {}) {
+        auto res = derived();
+        internal::AdjacentDifferenceImpl(res, std::forward<F>(f));
+        return res;
+    }
     void reverse()
         requires std::ranges::bidirectional_range<derived_type> && std::permutable<std::ranges::iterator_t<derived_type>>
     {
         internal::ReverseImpl(derived());
     }
-    /*
     [[nodiscard]] auto reversed() const
-        requires std::ranges::bidirectional_range<derived_type> && std::permutable<std::ranges::iterator_t<derived_type>>
+        requires std::permutable<std::ranges::iterator_t<arr_type>>
     {
-        auto res = copy();
+        auto res = as_arr();
         internal::ReverseImpl(res);
         return res;
     }
-    */
+    [[nodiscard]] auto reversed_view() const
+        requires std::ranges::view<derived_type> && std::ranges::bidirectional_range<derived_type>
+    {
+        return derived() | std::views::reverse;
+    }
     template<class Proj = Identity, class Comp = Less>
         requires std::ranges::forward_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
     constexpr void sort(Comp&& comp = {}, Proj&& proj = {}) {
         internal::SortImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
     }
-    /*
     template<class Proj = Identity, class Comp = Less>
-        requires std::ranges::forward_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
+        requires std::sortable<std::ranges::iterator_t<arr_type>, Comp, Proj>
     [[nodiscard]] constexpr auto sorted(Comp&& comp = {}, Proj&& proj = {}) const {
-        auto res = copy();
+        auto res = as_arr();
         internal::SortImpl(res, std::forward<Comp>(comp), std::forward<Proj>(proj));
         return res;
     }
-    */
     template<class Proj = Identity, class Comp = Less>
         requires std::ranges::random_access_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj>
     constexpr auto sort_index(Comp&& comp = {}, Proj&& proj = {}) const {

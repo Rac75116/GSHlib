@@ -15,7 +15,7 @@ namespace internal {
     template<class T> constexpr bool IsReferenceWrapper = false;
     template<class U> constexpr bool IsReferenceWrapper<std::reference_wrapper<U>> = true;
     // https://en.cppreference.com/w/cpp/utility/functional/invoke
-    template<class C, class Pointed, class Object, class... Args> GSH_INTERNAL_INLINE constexpr decltype(auto) InvokeMemPtr(Pointed C::*member, Object&& object, Args&&... args) {
+    template<class C, class Pointed, class Object, class... Args> GSH_INTERNAL_INLINE constexpr decltype(auto) InvokeMemPtr(Pointed C::* member, Object&& object, Args&&... args) {
         using object_t = std::remove_cvref_t<Object>;
         constexpr bool is_member_function = std::is_function_v<Pointed>;
         constexpr bool is_wrapped = IsReferenceWrapper<object_t>;
@@ -255,6 +255,21 @@ public:
 class Plus {
 public:
     template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) + std::forward<U>(u))) { return std::forward<T>(t) + std::forward<U>(u); }
+    using is_transparent = void;
+};
+class Minus {
+public:
+    template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) - std::forward<U>(u))) { return std::forward<T>(t) - std::forward<U>(u); }
+    using is_transparent = void;
+};
+class Multiplies {
+public:
+    template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) * std::forward<U>(u))) { return std::forward<T>(t) * std::forward<U>(u); }
+    using is_transparent = void;
+};
+class Divides {
+public:
+    template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) / std::forward<U>(u))) { return std::forward<T>(t) / std::forward<U>(u); }
     using is_transparent = void;
 };
 class Negate {

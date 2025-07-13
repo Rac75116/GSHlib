@@ -55,7 +55,17 @@ namespace internal {
     template<class R, class Comp, class Proj> constexpr auto MinImpl(R&& r, Comp&& comp, Proj&& proj) {
         auto first = std::ranges::begin(r);
         auto last = std::ranges::end(r);
-        if (first == last) throw Exception("gsh::internal::MinImpl / The input is empty.");
+        if (first == last) {
+            if constexpr (std::same_as<Proj, Identity>) {
+                if constexpr (std::same_as<Comp, Less> && requires { std::numeric_limits<std::ranges::range_value_t<R>>::max()->std::ranges::template range_value_t<R>; }) {
+                    return std::numeric_limits<std::ranges::range_value_t<R>>::max();
+                }
+                if constexpr (std::same_as<Comp, Greater> && requires { std::numeric_limits<std::ranges::range_value_t<R>>::lowest()->std::ranges::template range_value_t<R>; }) {
+                    return std::numeric_limits<std::ranges::range_value_t<R>>::lowest();
+                }
+            }
+            throw Exception("gsh::internal::MinImpl / The input is empty.");
+        }
         auto res = *(first++);
         for (; first != last; ++first) {
             const bool f = Invoke(comp, Invoke(proj, static_cast<const decltype(res)&>(*first)), Invoke(proj, res));
@@ -77,10 +87,32 @@ namespace internal {
     template<class R, class F> constexpr auto SumImpl(R&& r, F&& f) {
         auto itr = std::ranges::begin(r);
         auto sent = std::ranges::end(r);
-        if (!(itr != sent)) throw Exception("gsh::internal::SumImpl / The input is empty.");
+        if (!(itr != sent)) {
+            if constexpr (std::is_arithmetic_v<std::ranges::range_value_t<R>> && std::is_constructible_v<std::ranges::range_value_t<R>, itype::u32>) {
+                return std::ranges::range_value_t<R>(static_cast<itype::u32>(0));
+            } else {
+                throw Exception("gsh::internal::SumImpl / The input is empty.");
+            }
+        }
         auto res = *itr;
         for (++itr; itr != sent; ++itr) res = Invoke(f, std::move(res), *itr);
         return res;
+    }
+    template<class R, class F> constexpr void AdjacentDifferenceImpl(R&& r, F&& f) {
+        auto itr = std::ranges::begin(r);
+        auto sent = std::ranges::end(r);
+        if (!(itr != sent)) return;
+        using value_type = std::ranges::range_value_t<R>;
+        auto prev = std::move(*itr);
+        while (true) {
+            auto nx = std::ranges::next(itr);
+            if (!(nx != sent)) break;
+            value_type tmp = Invoke(f, *nx, std::move(*itr));
+            *itr = std::move(prev);
+            prev = std::move(tmp);
+            itr = nx;
+        }
+        *itr = prev;
     }
 
     template<class R> constexpr void ReverseImpl(R&& r) {
@@ -119,6 +151,10 @@ namespace internal {
         }
         Arr<T> tmp(ArrNoInit, n);
         for (itype::u32 i = n; i--;) std::construct_at(&tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
+        if (cnt2[0] == n) {
+            for (itype::u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
+            return;
+        }
         for (itype::u32 i = n; i--;) p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
     }
     template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const itype::u32 n, Proj&& proj = {}) {
@@ -143,8 +179,17 @@ namespace internal {
         }
         Arr<T> tmp(ArrNoInit, n);
         for (itype::u32 i = n; i--;) std::construct_at(&tmp[--cnt1[Invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
+        if (cnt2[0] == n) {
+            for (itype::u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
+            return;
+        }
         for (itype::u32 i = n; i--;) p[--cnt2[Invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
+        if (cnt3[0] == n) return;
         for (itype::u32 i = n; i--;) tmp[--cnt3[Invoke(proj, p[i]) >> 32 & 0xffff]] = std::move(p[i]);
+        if (cnt4[0] == n) {
+            for (itype::u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
+            return;
+        }
         for (itype::u32 i = n; i--;) p[--cnt4[Invoke(proj, tmp[i]) >> 48 & 0xffff]] = std::move(tmp[i]);
     }
     struct Revmsb {

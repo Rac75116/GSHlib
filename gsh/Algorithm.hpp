@@ -57,10 +57,14 @@ namespace internal {
         auto last = std::ranges::end(r);
         if (first == last) {
             if constexpr (std::same_as<Proj, Identity>) {
-                if constexpr (std::same_as<Comp, Less> && requires { std::numeric_limits<std::ranges::range_value_t<R>>::max()->std::ranges::template range_value_t<R>; }) {
+                if constexpr (std::same_as<Comp, Less> && requires {
+                                  { std::numeric_limits<std::ranges::range_value_t<R>>::max() } -> std::same_as<std::ranges::template range_value_t<R>>;
+                              }) {
                     return std::numeric_limits<std::ranges::range_value_t<R>>::max();
                 }
-                if constexpr (std::same_as<Comp, Greater> && requires { std::numeric_limits<std::ranges::range_value_t<R>>::lowest()->std::ranges::template range_value_t<R>; }) {
+                if constexpr (std::same_as<Comp, Greater> && requires {
+                                  { std::numeric_limits<std::ranges::range_value_t<R>>::lowest() } -> std::same_as<std::ranges::template range_value_t<R>>;
+                              }) {
                     return std::numeric_limits<std::ranges::range_value_t<R>>::lowest();
                 }
             }

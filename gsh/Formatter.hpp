@@ -168,6 +168,10 @@ namespace internal {
         stream.skip(p - cur);
     }
     template<bool Flag = false, class Stream> constexpr void Formatu128(Stream&& stream, itype::u128 n) {
+        if (itype::u64(n >> 64) == 0) {
+            Formatu64<Flag>(std::forward<Stream>(stream), n);
+            return;
+        }
         auto *cur = stream.current(), *p = cur;
         auto copy1 = [&](itype::u32 x) {
             if constexpr (Flag) {
@@ -201,23 +205,14 @@ namespace internal {
             auto [a, b] = Divu128(n >> 64, n, 10000000000000000);
             const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
             const itype::u32 g = c / 10000, h = c % 10000, i = d / 10000, j = d % 10000, k = e / 10000, l = e % 10000, m = f / 10000, n = f % 10000;
-            if (a == 0) {
-                if (e == 0) {
-                    if (m == 0) copy1(n);
-                    else copy1(m), copy2(n);
-                } else {
-                    if (k == 0) copy1(l), copy2(m), copy2(n);
-                    else copy1(k), copy2(l), copy2(m), copy2(n);
-                }
+            if (c == 0) {
+                if (i == 0) copy1(j);
+                else copy1(i), copy2(j);
             } else {
-                if (c == 0) {
-                    if (i == 0) copy1(j), copy2(k), copy2(l), copy2(m), copy2(n);
-                    else copy1(i), copy2(j), copy2(k), copy2(l), copy2(m), copy2(n);
-                } else {
-                    if (g == 0) copy1(h), copy2(i), copy2(j), copy2(k), copy2(l), copy2(m), copy2(n);
-                    else copy1(g), copy2(h), copy2(i), copy2(j), copy2(k), copy2(l), copy2(m), copy2(n);
-                }
+                if (g == 0) copy1(h), copy2(i), copy2(j);
+                else copy1(g), copy2(h), copy2(i), copy2(j);
             }
+            copy2(k), copy2(l), copy2(m), copy2(n);
         }
         stream.skip(p - cur);
     }

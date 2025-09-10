@@ -21,16 +21,25 @@ public:
         itype::i32 copy = fd;
         fd = 0;
         const ctype::c8* format;
-        switch (mode) {
-        case OpenMode::ReadOnly : format = "r"; break;
-        case OpenMode::WriteOnly : format = "w"; break;
-        case OpenMode::WriteOnly | OpenMode::Append : format = "a"; break;
-        case OpenMode::ReadWrite : format = "r+"; break;
-        case OpenMode::ReadWrite | OpenMode::Append : format = "a+"; break;
-        case OpenMode::ReadOnly | OpenMode::Binary : format = "rb"; break;
-        case OpenMode::WriteOnly | OpenMode::Binary : format = "wb"; break;
-        default : Unreachable();
+
+        if (mode == OpenMode::ReadOnly) {
+            format = "r";
+        } else if (mode == OpenMode::WriteOnly) {
+            format = "w";
+        } else if (mode == (OpenMode::WriteOnly | OpenMode::Append)) {
+            format = "a";
+        } else if (mode == OpenMode::ReadWrite) {
+            format = "r+";
+        } else if (mode == (OpenMode::ReadWrite | OpenMode::Append)) {
+            format = "a+";
+        } else if (mode == (OpenMode::ReadOnly | OpenMode::Binary)) {
+            format = "rb";
+        } else if (mode == (OpenMode::WriteOnly | OpenMode::Binary)) {
+            format = "wb";
+        } else {
+            Unreachable();
         }
+
         return fdopen(copy, format);
     }
 };

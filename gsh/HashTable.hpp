@@ -151,7 +151,7 @@ namespace internal {
         constexpr void initialize_buckets(size_type n) {
             if (n == 0) return;
             size_type elem_cap = std::bit_ceil(n);
-            size_type bucket_cap = std::bit_ceil(n * 5 / 4);
+            size_type bucket_cap = elem_cap * 4;
             elem_size = 0;
             elem_capacity = elem_cap;
             bucket_capacity = bucket_cap;
@@ -182,21 +182,19 @@ namespace internal {
             while (true) {
                 const size_type b = (h >> 7) & (bucket_size - 1);
                 const auto sigs = _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(sig + b));
-                auto mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(s), sigs));
-                while (mask != 0) {
-                    const auto bit = std::countr_zero(static_cast<itype::u32>(mask));
+                itype::u32 mask1 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(s), sigs));
+                while (mask1 != 0) {
+                    const auto bit = std::countr_zero(mask1);
                     const size_type i = index[b + bit];
                     if (key_eq_f(v, get_key(elem[i]))) return { i, false };
-                    mask &= mask - 1;
+                    mask1 &= mask1 - 1;
                 }
-                mask = _mm256_movemask_epi8(sigs);
-                if (mask == 0xffff) {
+                itype::u32 mask2 = _mm256_movemask_epi8(sigs);
+                if (mask2 == 0xffffffff) {
                     while (!rehash_impl());
                     continue;
                 }
-                const itype::u32 inv = ~mask;
-                Assume(inv != 0);
-                const auto bit = std::countr_zero(inv);
+                const auto bit = std::countr_zero(~mask2);
                 return { b + bit, true };
             }
         }
@@ -271,10 +269,8 @@ namespace internal {
             const auto [pos, f] = insert_impl(k, h);
             if (f) {
                 hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
-                if (pos < bucket_size) {
-                    sig[pos] = static_cast<itype::u8>(h & 0x7f) | 0x80;
-                    index[pos] = elem_size;
-                }
+                sig[pos] = static_cast<itype::u8>(h & 0x7f) | 0x80;
+                index[pos] = elem_size;
                 elem_size++;
                 return { elem + (elem_size - 1), true };
             } else {
@@ -285,8 +281,42 @@ namespace internal {
             }
         }
         template<class... Args> constexpr iterator emplace_hint([[maybe_unused]] const_iterator position, Args&&... args) { return emplace(std::forward<Args>(args)...).first; }
-        constexpr std::pair<iterator, bool> insert(const value_type& v) { return emplace(v); }
-        constexpr std::pair<iterator, bool> insert(value_type&& v) { return emplace(std::move(v)); }
+        constexpr std::pair<iterator, bool> insert(const value_type& v) {
+            const auto& k = get_key(v);
+            const hashed_type h = calc_hash(k);
+            const auto [pos, f] = insert_impl(k, h);
+            if (f) {
+                if (elem_size == elem_capacity) {
+                    construct_elem_hash(elem_capacity * 2);
+                }
+                value_allocator_traits::construct(value_alloc, elem + elem_size, v);
+                hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
+                sig[pos] = static_cast<itype::u8>(h & 0x7f) | 0x80;
+                index[pos] = elem_size;
+                elem_size++;
+                return { elem + (elem_size - 1), true };
+            } else {
+                return { elem + pos, false };
+            }
+        }
+        constexpr std::pair<iterator, bool> insert(value_type&& v) {
+            const auto& k = get_key(v);
+            const hashed_type h = calc_hash(k);
+            const auto [pos, f] = insert_impl(k, h);
+            if (f) {
+                if (elem_size == elem_capacity) {
+                    construct_elem_hash(elem_capacity * 2);
+                }
+                value_allocator_traits::construct(value_alloc, elem + elem_size, std::move(v));
+                hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
+                sig[pos] = static_cast<itype::u8>(h & 0x7f) | 0x80;
+                index[pos] = elem_size;
+                elem_size++;
+                return { elem + (elem_size - 1), true };
+            } else {
+                return { elem + pos, false };
+            }
+        }
         constexpr iterator insert([[maybe_unused]] const_iterator position, const value_type& v) { return insert(v).first; }
         constexpr iterator insert([[maybe_unused]] const_iterator position, value_type&& v) { return insert(std::move(v)).first; }
         template<class InputIterator> constexpr void insert(InputIterator first, InputIterator last);
@@ -366,7 +396,7 @@ namespace internal {
             if (n > elem_capacity) {
                 construct_elem_hash(std::bit_ceil(n));
             }
-            const size_type required_bucket_size = (n * 5 / 4) + 1;
+            const size_type required_bucket_size = n * 4;
             if (!rehash_impl(required_bucket_size)) {
                 while (!rehash_impl());
             }

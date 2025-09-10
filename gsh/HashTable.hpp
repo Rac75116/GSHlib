@@ -64,9 +64,9 @@ namespace internal {
         size_type bucket_size;
         size_type bucket_capacity;
 
-        GSH_INTERNAL_INLINE constexpr bool compare_values(const value_type& a, const value_type& b) const {
-            if constexpr (is_set) return key_eq_f(a, b);
-            else return key_eq_f(a.first, b.first);
+        GSH_INTERNAL_INLINE constexpr auto get_key(const value_type& v) const {
+            if constexpr (is_set) return v;
+            else return v.first;
         }
         GSH_INTERNAL_INLINE constexpr hashed_type calc_hash(const value_type& k) const {
             if constexpr (is_set) return hash_f(k);
@@ -172,11 +172,7 @@ namespace internal {
             while (mask != 0) {
                 const auto bit = std::countr_zero(static_cast<itype::u32>(mask));
                 const size_type i = index[b + bit];
-                if constexpr (is_set) {
-                    if (key_eq_f(k, elem[i])) return i;
-                } else {
-                    if (key_eq_f(k, elem[i].first)) return i;
-                }
+                if (key_eq_f(k, get_key(elem[i]))) return i;
                 mask &= mask - 1;
             }
             return 0xffffffff;
@@ -190,9 +186,7 @@ namespace internal {
                 while (mask != 0) {
                     const auto bit = std::countr_zero(static_cast<itype::u32>(mask));
                     const size_type i = index[b + bit];
-                    if (compare_values(v, elem[i])) {
-                        return { i, false };
-                    }
+                    if (key_eq_f(v, get_key(elem[i]))) return { i, false };
                     mask &= mask - 1;
                 }
                 mask = _mm256_movemask_epi8(sigs);
@@ -272,8 +266,9 @@ namespace internal {
                 construct_elem_hash(elem_capacity * 2);
             }
             value_allocator_traits::construct(value_alloc, elem + elem_size, std::forward<Args>(args)...);
-            const hashed_type h = calc_hash(elem[elem_size]);
-            const auto [pos, f] = insert_impl(elem[elem_size], h);
+            const auto& k = get_key(elem[elem_size]);
+            const hashed_type h = calc_hash(k);
+            const auto [pos, f] = insert_impl(k, h);
             if (f) {
                 hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
                 if (pos < bucket_size) {
@@ -290,8 +285,8 @@ namespace internal {
             }
         }
         template<class... Args> constexpr iterator emplace_hint([[maybe_unused]] const_iterator position, Args&&... args) { return emplace(std::forward<Args>(args)...).first; }
-        constexpr auto insert(const value_type& v) { return emplace(v); }
-        constexpr auto insert(value_type&& v) { return emplace(std::move(v)); }
+        constexpr std::pair<iterator, bool> insert(const value_type& v) { return emplace(v); }
+        constexpr std::pair<iterator, bool> insert(value_type&& v) { return emplace(std::move(v)); }
         constexpr iterator insert([[maybe_unused]] const_iterator position, const value_type& v) { return insert(v).first; }
         constexpr iterator insert([[maybe_unused]] const_iterator position, value_type&& v) { return insert(std::move(v)).first; }
         template<class InputIterator> constexpr void insert(InputIterator first, InputIterator last);

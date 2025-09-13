@@ -107,17 +107,17 @@ template<class OptType, class TempFunction, class ProgressFunction> class Anneal
     itype::u32 ugap;
     itype::u32 current_iter = 0;
     bool is_best_updated = false;
-    [[no_unique_address]] Allocator<ftype::f64> alloc;
-    ftype::f64* rnd_buf = nullptr;
+    [[no_unique_address]] Allocator<ftype::f32> alloc;
+    ftype::f32* rnd_buf = nullptr;
     itype::u32 rnd_buf_size;
 public:
     Annealing() = delete;
-    Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, ftype::f64 init_score, itype::u32 update_gap = 8, itype::u64 seed = Rand64::default_seed, itype::u32 buf_size = 12) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(1u << update_gap), alloc(), rnd_buf_size(1u << buf_size) {
+    Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, ftype::f64 init_score, itype::u32 update_gap = 8, itype::u32 seed = Rand32::default_seed, itype::u32 buf_size = 12) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(1u << update_gap), alloc(), rnd_buf_size(1u << buf_size) {
         if constexpr (!std::is_same<TempFunction, ZeroTemp>::value) {
             rnd_buf = alloc.allocate(rnd_buf_size);
-            Rand64 rand_function(seed);
+            Rand32 rand_function(seed);
             for (itype::u32 i = 0; i < rnd_buf_size; ++i) {
-                rnd_buf[i] = std::log(1.0 - Canocicaled64(rand_function));
+                rnd_buf[i] = std::log(1.0f - Canocicaled32(rand_function));
             }
         }
     }
@@ -140,10 +140,11 @@ public:
         if constexpr (std::is_same<TempFunction, ZeroTemp>::value) {
             threshold_score = current_score;
         } else {
+            ftype::f64 rnd_val = static_cast<ftype::f64>(rnd_buf[current_iter & (rnd_buf_size - 1)]);
             if constexpr (is_minimize) {
-                threshold_score = current_score - current_temp * rnd_buf[current_iter & (rnd_buf_size - 1)];
+                threshold_score = current_score - current_temp * rnd_val;
             } else {
-                threshold_score = current_score + current_temp * rnd_buf[current_iter & (rnd_buf_size - 1)];
+                threshold_score = current_score + current_temp * rnd_val;
             }
         }
         ++current_iter;

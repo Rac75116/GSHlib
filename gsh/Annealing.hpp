@@ -38,14 +38,6 @@ public:
     ftype::f64 operator()(ftype::f64 progress) const { return init_temp * std::pow(ratio, std::pow(progress, shape)); }
 };
 
-class SigmoidTemp {
-    ftype::f64 init_temp, final_temp;
-    ftype::f64 steepness;
-public:
-    SigmoidTemp(ftype::f64 init_temp, ftype::f64 final_temp = 0.0, ftype::f64 steepness = 10.0) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
-    ftype::f64 operator()(ftype::f64 progress) const { return final_temp + (init_temp - final_temp) / (1.0 + std::exp(steepness * (progress - 0.5))); }
-};
-
 class IterationProgress {
     itype::u32 max_iter;
     ftype::f64 current_progress = 0.0;

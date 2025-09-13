@@ -117,7 +117,7 @@ public:
             rnd_buf = alloc.allocate(rnd_buf_size);
             Rand64 rand_function(seed);
             for (itype::u32 i = 0; i < rnd_buf_size; ++i) {
-                rnd_buf[i] = std::log(1.0 - Canocicaled32(rand_function));
+                rnd_buf[i] = std::log(1.0 - Canocicaled64(rand_function));
             }
         }
     }

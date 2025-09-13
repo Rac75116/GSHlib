@@ -6,6 +6,12 @@
 
 namespace gsh {
 
+class ZeroTemp {
+public:
+    ZeroTemp() {}
+    ftype::f32 operator()([[maybe_unused]] ftype::f32 progress) const { return 0.0f; }
+};
+
 class LinearTemp {
     ftype::f32 init_temp, final_temp;
 public:
@@ -87,14 +93,18 @@ template<OptimizeType Type, class TempFunction, class ProgressFunction> class An
     Rand32 rand_function;
     ftype::f32 current_score;
     ftype::f32 threshold_score;
+    ftype::f32 best_score;
     ftype::f32 current_temp = 0.0f;
     itype::u32 ugap, current_iter = 0;
+    bool is_best_updated = false;
 public:
-    Annealing(const TempFunction& tempf, const ProgressFunction& progressf, ftype::f32 init_score, itype::u32 update_gap = 16, itype::u32 seed = Rand32::default_seed) : temp_function(tempf), progress_function(progressf), rand_function(seed), current_score(init_score), ugap(update_gap) {}
+    Annealing() = delete;
+    Annealing(const TempFunction& tempf, const ProgressFunction& progressf, ftype::f32 init_score, itype::u32 update_gap = 16, itype::u32 seed = Rand32::default_seed) : temp_function(tempf), progress_function(progressf), rand_function(seed), current_score(init_score), best_score(init_score), ugap(update_gap) {}
     itype::u32 iter() const { return current_iter; }
     ftype::f32 temp() const { return current_temp; }
     ftype::f32 score() const { return current_score; }
     ftype::f32 threshold() const { return threshold_score; }
+    ftype::f32 best() const { return best_score; }
     itype::u32 gap() const { return ugap; }
     bool update() {
         if (current_iter % ugap == 0) {
@@ -117,19 +127,29 @@ public:
         }
     }
     bool accept(ftype::f32 new_score) {
+        is_best_updated = false;
         if constexpr (Type == OptimizeType::Minimize) {
             if (new_score < threshold_score) {
                 current_score = new_score;
+                if (new_score < best_score) {
+                    best_score = new_score;
+                    is_best_updated = true;
+                }
                 return true;
             }
         } else {
             if (new_score > threshold_score) {
                 current_score = new_score;
+                if (new_score > best_score) {
+                    best_score = new_score;
+                    is_best_updated = true;
+                }
                 return true;
             }
         }
         return false;
     }
+    bool is_best() { return is_best_updated; }
 };
 
 }  // namespace gsh

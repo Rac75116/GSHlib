@@ -9,16 +9,16 @@ namespace gsh {
 class LinearTemp {
     ftype::f32 init_temp, final_temp;
 public:
-    constexpr LinearTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f) : init_temp(init_temp), final_temp(final_temp) {}
-    constexpr ftype::f32 operator()(ftype::f32 progress) const { return init_temp + (final_temp - init_temp) * progress; }
+    LinearTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f) : init_temp(init_temp), final_temp(final_temp) {}
+    ftype::f32 operator()(ftype::f32 progress) const { return init_temp + (final_temp - init_temp) * progress; }
 };
 
 class ExponentialTemp {
     ftype::f32 init_temp;
     ftype::f32 ratio;
 public:
-    constexpr ExponentialTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.001f) : init_temp(init_temp), ratio(final_temp / init_temp) {}
-    constexpr ftype::f32 operator()(ftype::f32 progress) const { return init_temp * std::pow(ratio, progress); }
+    ExponentialTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.001f) : init_temp(init_temp), ratio(final_temp / init_temp) {}
+    ftype::f32 operator()(ftype::f32 progress) const { return init_temp * std::pow(ratio, progress); }
 };
 
 class VariableExponentialTemp {
@@ -26,41 +26,41 @@ class VariableExponentialTemp {
     ftype::f32 shape;
     ftype::f32 ratio;
 public:
-    constexpr VariableExponentialTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.001f, ftype::f32 shape = 2.0f) : init_temp(init_temp), shape(shape), ratio(final_temp / init_temp) {}
-    constexpr ftype::f32 operator()(ftype::f32 progress) const { return init_temp * std::pow(ratio, std::pow(progress, shape)); }
+    VariableExponentialTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.001f, ftype::f32 shape = 2.0f) : init_temp(init_temp), shape(shape), ratio(final_temp / init_temp) {}
+    ftype::f32 operator()(ftype::f32 progress) const { return init_temp * std::pow(ratio, std::pow(progress, shape)); }
 };
 
 class SigmoidTemp {
     ftype::f32 init_temp, final_temp;
     ftype::f32 steepness;
 public:
-    constexpr SigmoidTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f, ftype::f32 steepness = 10.0f) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
-    constexpr ftype::f32 operator()(ftype::f32 progress) const { return final_temp + (init_temp - final_temp) / (1.0f + std::exp(steepness * (progress - 0.5f))); }
+    SigmoidTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f, ftype::f32 steepness = 10.0f) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
+    ftype::f32 operator()(ftype::f32 progress) const { return final_temp + (init_temp - final_temp) / (1.0f + std::exp(steepness * (progress - 0.5f))); }
 };
 
 class LogarithmicTemp {
     ftype::f32 init_temp, final_temp;
     ftype::f32 steepness;
 public:
-    constexpr LogarithmicTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f, ftype::f32 steepness = 10.0f) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
-    constexpr ftype::f32 operator()(ftype::f32 progress) const { return final_temp + (init_temp - final_temp) / (1.0f + std::log(steepness * (progress + 1e-6f))); }
+    LogarithmicTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f, ftype::f32 steepness = 10.0f) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
+    ftype::f32 operator()(ftype::f32 progress) const { return final_temp + (init_temp - final_temp) / (1.0f + std::log(steepness * (progress + 1e-6f))); }
 };
 
 class QuadraticTemp {
     ftype::f32 init_temp, final_temp;
     ftype::f32 steepness;
 public:
-    constexpr QuadraticTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f, ftype::f32 steepness = 10.0f) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
-    constexpr ftype::f32 operator()(ftype::f32 progress) const { return final_temp + (init_temp - final_temp) / (1.0f + steepness * (progress - 0.5f) * (progress - 0.5f)); }
+    QuadraticTemp(ftype::f32 init_temp, ftype::f32 final_temp = 0.0f, ftype::f32 steepness = 10.0f) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
+    ftype::f32 operator()(ftype::f32 progress) const { return final_temp + (init_temp - final_temp) / (1.0f + steepness * (progress - 0.5f) * (progress - 0.5f)); }
 };
 
 class IterationProgress {
     itype::u32 max_iter;
     ftype::f32 current_progress = 0.0f;
 public:
-    constexpr IterationProgress(itype::u32 max_iter) : max_iter(max_iter) {}
-    constexpr ftype::f32 progress() const { return current_progress; }
-    constexpr bool update(itype::u32 current_iter) {
+    IterationProgress(itype::u32 max_iter) : max_iter(max_iter) {}
+    ftype::f32 progress() const { return current_progress; }
+    bool update(itype::u32 current_iter) {
         current_progress = static_cast<ftype::f32>(current_iter) / static_cast<ftype::f32>(max_iter);
         return current_iter < max_iter;
     }

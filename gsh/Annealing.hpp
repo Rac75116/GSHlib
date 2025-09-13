@@ -46,22 +46,6 @@ public:
     ftype::f64 operator()(ftype::f64 progress) const { return final_temp + (init_temp - final_temp) / (1.0 + std::exp(steepness * (progress - 0.5))); }
 };
 
-class LogarithmicTemp {
-    ftype::f64 init_temp, final_temp;
-    ftype::f64 steepness;
-public:
-    LogarithmicTemp(ftype::f64 init_temp, ftype::f64 final_temp = 0.0, ftype::f64 steepness = 10.0) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
-    ftype::f64 operator()(ftype::f64 progress) const { return final_temp + (init_temp - final_temp) / (1.0 + std::log(steepness * (progress + 1e-6))); }
-};
-
-class QuadraticTemp {
-    ftype::f64 init_temp, final_temp;
-    ftype::f64 steepness;
-public:
-    QuadraticTemp(ftype::f64 init_temp, ftype::f64 final_temp = 0.0, ftype::f64 steepness = 10.0) : init_temp(init_temp), final_temp(final_temp), steepness(steepness) {}
-    ftype::f64 operator()(ftype::f64 progress) const { return final_temp + (init_temp - final_temp) / (1.0 + steepness * (progress - 0.5) * (progress - 0.5)); }
-};
-
 class IterationProgress {
     itype::u32 max_iter;
     ftype::f64 current_progress = 0.0;

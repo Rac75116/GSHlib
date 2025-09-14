@@ -38,6 +38,22 @@ public:
     ftype::f64 operator()(ftype::f64 progress) const { return init_temp * std::pow(ratio, std::pow(progress, shape)); }
 };
 
+class LogarithmicTemp {
+    ftype::f64 init_temp;
+    ftype::f64 shape;
+public:
+    LogarithmicTemp(ftype::f64 init_temp, ftype::f64 shape = 10000.0) : init_temp(init_temp), shape(shape) {}
+    ftype::f64 operator()(ftype::f64 progress) { return init_temp / std::log(progress * shape + 2.71828182845904523536); }
+};
+
+class ReciprocalTemp {
+    ftype::f64 init_temp;
+    ftype::f64 shape;
+public:
+    ReciprocalTemp(ftype::f64 init_temp, ftype::f64 shape = 5.0) : init_temp(init_temp), shape(shape) {}
+    ftype::f64 operator()(ftype::f64 progress) const { return init_temp / (progress * shape + 1.0); }
+};
+
 class IterationProgress {
     itype::u32 max_iter;
     ftype::f64 current_progress = 0.0;

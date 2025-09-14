@@ -2,9 +2,7 @@
 #include <bit>    // std::rotr, std::bit_cast
 #include <ctime>  // std::time, std::clock
 #include <ranges>
-#if __has_include(<source_location>)
-#include <source_location>  // std::source_location
-#endif
+#include <immintrin.h>
 #include "TypeDef.hpp"     // gsh::itype, gsh::ftype
 #include "Functional.hpp"  // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers, gsh::Invoke
 
@@ -27,7 +25,7 @@ public:
     static constexpr itype::u32 word_size = sizeof(result_type) * 8;
     static constexpr result_type default_seed = 0xcafef00dd15ea5e5;
     constexpr Rand64() : Rand64(default_seed) {}
-    constexpr explicit Rand64(result_type value) : s0(value), s1(internal::Splitmix(value)) {}
+    constexpr explicit Rand64(result_type value) : s0(internal::Splitmix(value)), s1(internal::Splitmix(value << 32 | (value & 0xffffffffu))) {}
     constexpr result_type operator()() {
         itype::u64 t0 = s0, t1 = s1;
         const itype::u64 res = t0 + t1;
@@ -41,7 +39,10 @@ public:
     }
     static constexpr result_type max() { return 18446744073709551615u; }
     static constexpr result_type min() { return 0; }
-    constexpr void seed(result_type value = default_seed) { s0 = value, s1 = internal::Splitmix(value); }
+    constexpr void seed(result_type value = default_seed) {
+        s0 = internal::Splitmix(value);
+        s1 = internal::Splitmix(value << 32 | (value & 0xffffffffu));
+    }
     friend constexpr bool operator==(Rand64 x, Rand64 y) { return x.s0 == y.s0 && x.s1 == y.s1; }
 };
 
@@ -53,7 +54,7 @@ public:
     static constexpr itype::u32 word_size = sizeof(result_type) * 8;
     static constexpr result_type default_seed = 0xcafef00d;
     constexpr Rand32() : Rand32(default_seed) {}
-    constexpr explicit Rand32(result_type value) : val(internal::Splitmix((itype::u64) value << 32 | value)) {}
+    constexpr explicit Rand32(result_type value) : val(internal::Splitmix(value)) {}
     constexpr result_type operator()() {
         itype::u64 x = val;
         const itype::i32 count = x >> 61;
@@ -71,25 +72,35 @@ public:
     }
     static constexpr result_type max() { return 4294967295u; }
     static constexpr result_type min() { return 0; }
-    constexpr void seed(result_type value = default_seed) { val = internal::Splitmix((itype::u64) value << 32 | value); }
+    constexpr void seed(result_type value = default_seed) { val = internal::Splitmix(value); }
     friend constexpr bool operator==(Rand32 x, Rand32 y) { return x.val == y.val; }
 };
 
-template<itype::u32 Size, class URBG> class RandBuffer : public URBG {
-    typename URBG::result_type buf[Size];
-    itype::u32 x, cnt;
+class FastRand32 {
+    itype::u64 val;
 public:
-    constexpr RandBuffer() { init(); }
-    constexpr explicit RandBuffer(URBG::result_type value) : URBG(value) { init(); }
-    constexpr void reload() { x = Invoke(static_cast<URBG&>(*this)), cnt = 0; }
-    constexpr void init() {
-        for (itype::u32 i = 0; i != Size; ++i) buf[i] = Invoke(static_cast<URBG&>(*this));
-        x = Invoke(static_cast<URBG&>(*this)), cnt = 0;
+    using result_type = itype::u32;
+    static constexpr itype::u32 word_size = sizeof(result_type) * 8;
+    static constexpr result_type default_seed = 0xcafef00d;
+    constexpr FastRand32() : FastRand32(default_seed) {}
+    constexpr explicit FastRand32(result_type value) : val(internal::Splitmix(value)) {}
+    constexpr result_type operator()() {
+        val = val * 0xcafef00dd15ea5e5;
+        return (itype::u32) (val >> 32);
     }
-    constexpr URBG::result_type operator()() { return x ^ buf[cnt++]; }
+    constexpr void discard(itype::u64 z) {
+        itype::u64 pow = 0xcafef00dd15ea5e5;
+        while (z != 0) {
+            if (z & 1) val *= pow;
+            z >>= 1;
+            pow *= pow;
+        }
+    }
+    static constexpr result_type max() { return 4294967295u; }
+    static constexpr result_type min() { return 0; }
+    constexpr void seed(result_type value = default_seed) { val = internal::Splitmix(value); }
+    friend constexpr bool operator==(FastRand32 x, FastRand32 y) { return x.val == y.val; }
 };
-template<itype::u32 Size> using RandBuffer32 = RandBuffer<Size, Rand32>;
-template<itype::u32 Size> using RandBuffer64 = RandBuffer<Size, Rand64>;
 
 // @brief Generate 32bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr itype::u32 Uniform32(URBG&& g, itype::u32 max) {
@@ -162,16 +173,6 @@ template<class URBG> constexpr ftype::f64 Uniformf64(URBG&& g, ftype::f64 max) {
 }
 template<class URBG> constexpr ftype::f64 Uniformf64(URBG&& g, ftype::f64 min, ftype::f64 max) {
     return Canocicaled64(g) * (max - min) + min;
-}
-
-template<class URBG> constexpr bool Bernoulli(URBG&& g) {
-    return Invoke(g) & 1;
-}
-template<class URBG> constexpr bool Bernoulli32(URBG&& g, ftype::f32 p) {
-    return Canocicaled32(g) < p;
-}
-template<class URBG> constexpr bool Bernoulli64(URBG&& g, ftype::f64 p) {
-    return Canocicaled64(g) < p;
 }
 
 }  // namespace gsh

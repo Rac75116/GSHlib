@@ -67,14 +67,14 @@ public:
 };
 
 class TimeProgress {
-    std::chrono::system_clock::time_point start_time;
-    std::chrono::system_clock::duration max_duration;
+    std::chrono::steady_clock::time_point start_time;
+    std::chrono::steady_clock::duration max_duration;
     ftype::f64 current_progress = 0.0;
 public:
-    TimeProgress(std::chrono::milliseconds max_duration) : start_time(std::chrono::system_clock::now()), max_duration(std::chrono::duration_cast<std::chrono::system_clock::duration>(max_duration)) {}
+    TimeProgress(std::chrono::milliseconds max_duration) : start_time(std::chrono::steady_clock::now()), max_duration(std::chrono::duration_cast<std::chrono::steady_clock::duration>(max_duration)) {}
     ftype::f64 progress() { return current_progress; }
     bool update([[maybe_unused]] itype::u32 current_iter) {
-        auto now = std::chrono::system_clock::now();
+        auto now = std::chrono::steady_clock::now();
         current_progress = static_cast<ftype::f64>((now - start_time).count()) / static_cast<ftype::f64>(max_duration.count());
         return now - start_time < max_duration;
     }

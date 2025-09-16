@@ -72,7 +72,7 @@ class TimeProgress {
     ftype::f64 current_progress = 0.0;
 public:
     TimeProgress(std::chrono::milliseconds max_duration) : start_time(std::chrono::steady_clock::now()), max_duration(std::chrono::duration_cast<std::chrono::steady_clock::duration>(max_duration)) {}
-    ftype::f64 progress() { return current_progress; }
+    ftype::f64 progress() const { return current_progress; }
     bool update([[maybe_unused]] itype::u32 current_iter) {
         auto now = std::chrono::steady_clock::now();
         current_progress = static_cast<ftype::f64>((now - start_time).count()) / static_cast<ftype::f64>(max_duration.count());
@@ -122,6 +122,9 @@ public:
     ftype::f64 threshold() const { return threshold_score; }
     ftype::f64 best() const { return best_score; }
     itype::u32 gap() const { return ugap; }
+    ftype::f64 progress() const { return progress_function.progress(); }
+    TempFunction& tempf() { return temp_function; }
+    ProgressFunction& progressf() { return progress_function; }
     bool update() {
         if (current_iter % ugap == 0) {
             if (!progress_function.update(current_iter)) return false;

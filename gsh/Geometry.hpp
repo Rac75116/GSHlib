@@ -52,6 +52,17 @@ template<class T, class U> constexpr T Dot(const Point2<U>& a, const Point2<U>& 
 template<class T, class U> constexpr T Cross(const Point2<U>& a, const Point2<U>& b) {
     return static_cast<T>(a.x) * static_cast<T>(b.y) - static_cast<T>(a.y) * static_cast<T>(b.x);
 }
+template<class T = ftype::f64, class U> constexpr T Angle(const Point2<U>& a) {
+    return std::atan2(static_cast<T>(a.y), static_cast<T>(a.x));
+}
+template<class T = ftype::f64, class U, class V> constexpr T Angle(const Point2<U>& a, const Point2<V>& b) {
+    return std::atan2(static_cast<T>(Cross(a, b)), static_cast<T>(Dot(a, b)));
+}
+template<class T = ftype::f64, class U> constexpr Point2<T> Rotate(const Point2<U>& a, const T& theta) {
+    const T cos_theta = std::cos(theta);
+    const T sin_theta = std::sin(theta);
+    return { static_cast<T>(a.x) * cos_theta - static_cast<T>(a.y) * sin_theta, static_cast<T>(a.x) * sin_theta + static_cast<T>(a.y) * cos_theta };
+}
 
 template<class T>
     requires std::is_arithmetic_v<T>

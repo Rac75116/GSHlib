@@ -418,4 +418,11 @@ using BinCoeffTable32 = internal::BinCoeffTable<internal::DynamicModint32Impl>;
 using BinCoeffTable64 = internal::BinCoeffTable<internal::DynamicModint64Impl>;
 template<itype::u64 mod = 998244353> using BinCoeffTableStaticMod = internal::BinCoeffTable<internal::StaticModintImpl<mod>>;
 
+template<class T> constexpr T ToRad(const T& deg) {
+    return deg * static_cast<T>(3.14159265358979323846) / static_cast<T>(180);
+}
+template<class T> constexpr T ToDeg(const T& rad) {
+    return rad * static_cast<T>(180) / static_cast<T>(3.14159265358979323846);
+}
+
 }  // namespace gsh

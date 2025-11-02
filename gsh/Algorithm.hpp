@@ -464,6 +464,23 @@ namespace internal {
 
 }  // namespace internal
 
+template<std::ranges::input_range R1, std::ranges::input_range R2, class Proj = Identity, class Comp = EqualTo> constexpr itype::u32 HammingDistance(R1&& r1, R2&& r2, Comp&& comp = {}, Proj&& proj = {}) {
+    auto itr1 = std::ranges::begin(r1);
+    auto itr2 = std::ranges::begin(r2);
+    auto sent1 = std::ranges::end(r1);
+    auto sent2 = std::ranges::end(r2);
+    itype::u32 result = 0;
+    while (itr1 != sent1 && itr2 != sent2) {
+        result += !static_cast<bool>(Invoke(comp, Invoke(proj, *itr1), Invoke(proj, *itr2)));
+        ++itr1;
+        ++itr2;
+    }
+    if (itr1 != sent1 || itr2 != sent2) {
+        throw Exception("gsh::HammingDistance / The sizes of the two ranges are different.");
+    }
+    return result;
+}
+
 template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less> constexpr Arr<itype::u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
     using T = std::ranges::range_value_t<R>;
     Arr<itype::u32> idx(std::ranges::size(r));

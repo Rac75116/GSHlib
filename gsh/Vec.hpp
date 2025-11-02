@@ -336,6 +336,7 @@ public:
             ptr = nullptr, len = 0, cap = 0;
         }
     }
+    constexpr void abandon() noexcept { ptr = nullptr, len = 0, cap = 0; }
     constexpr allocator_type get_allocator() const noexcept { return alloc; }
     friend constexpr bool operator==(const Vec& x, const Vec& y) {
         if (x.len != y.len) return false;

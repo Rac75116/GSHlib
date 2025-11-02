@@ -60,6 +60,12 @@ public:
         ptr = traits::allocate(alloc, n);
         len = n;
     }
+    constexpr explicit Arr(ArrNoInitTag, pointer p, size_type n, const allocator_type& a = Allocator()) : alloc(a) {
+        if (n == 0) [[unlikely]]
+            return;
+        ptr = p;
+        len = n;
+    }
     constexpr explicit Arr(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
@@ -290,6 +296,7 @@ public:
             ptr = nullptr, len = 0;
         }
     }
+    constexpr void abandon() noexcept { ptr = nullptr, len = 0; }
     constexpr void reset() {
         if (len != 0) {
             traits::deallocate(alloc, ptr, len);

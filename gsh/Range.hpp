@@ -1,14 +1,16 @@
 #pragma once
-#include <type_traits>             // std::is_class_v, std::remove_cv_t, std::common_reference_t, std::is_lvalue_reference
-#include <concepts>                // std::same_as, std::predicate, std::convertible_to
-#include <utility>                 // std::move, std::declval
-#include <iterator>                // std::next, std::iter_value_t, std::iter_reference_t, std::input_iterator
-#include <ranges>                  // std::ranges::iterator_t, std::sentinel_for, std::ranges::reverse, std::ranges::range, std::ranges::range_value_t, std::ranges::subrange_kind, std::sized_sentinel_for
-#include <tuple>                   // std::tuple_element
-#include "TypeDef.hpp"             // gsh::itype
-#include "internal/Operation.hpp"  // gsh::internal::IteratorInterface
-#include "Functional.hpp"          // gsh::Less, gsh::Identity
-#include "Memory.hpp"              // gsh::AllocatorTraits
+#include <type_traits>
+#include <concepts>
+#include <utility>
+#include <iterator>
+#include <ranges>
+#include <tuple>
+#include <set>
+#include <cctype>
+#include "TypeDef.hpp"
+#include "internal/Operation.hpp"
+#include "Functional.hpp"
+#include "Memory.hpp"
 
 namespace gsh {
 
@@ -80,6 +82,10 @@ public:
     constexpr arr_type as_arr() { return arr_type::from_range(derived()); };
     constexpr vec_type as_vec() const { return vec_type::from_range(derived()); };
     constexpr vec_type as_vec() { return vec_type::from_range(derived()); };
+    constexpr auto as_set() const { return std::set(get_begin(), get_end()); }
+    constexpr auto as_set() { return std::set(get_begin(), get_end()); }
+    constexpr auto as_multiset() const { return std::multiset(get_begin(), get_end()); }
+    constexpr auto as_multiset() { return std::multiset(get_begin(), get_end()); }
     constexpr auto slice() { return Subrange(get_begin(), get_end()); }
     constexpr auto slice(itype::u32 start) { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
     constexpr auto slice(itype::u32 start, itype::u32 end) { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
@@ -190,6 +196,30 @@ public:
         for (; itr != end; ++itr)
             if (Invoke(comp, x, Invoke(proj, *itr))) return itr;
         return itr;
+    }
+    template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo>
+        requires std::ranges::input_range<derived_type>
+    constexpr auto rfind(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
+        if constexpr (std::ranges::bidirectional_range<derived_type>) {
+            const auto end = get_rend();
+            auto itr = get_rbegin();
+            for (; itr != end; ++itr)
+                if (Invoke(comp, x, Invoke(proj, *itr))) return --itr.base();
+            return get_end();
+        } else {
+            const auto end = get_end();
+            auto itr = get_begin();
+            decltype(itr) result = itr;
+            bool found = false;
+            for (; itr != end; ++itr) {
+                if (Invoke(comp, x, Invoke(proj, *itr))) {
+                    result = itr;
+                    found = true;
+                }
+            }
+            if (!found) result = itr;
+            return result;
+        }
     }
     template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo>
         requires std::ranges::input_range<derived_type>
@@ -314,6 +344,39 @@ public:
         requires std::ranges::input_range<derived_type> && std::invocable<Proj, value_type>
     constexpr auto lcm(Proj&& proj = {}) const {
         return internal::LCMImpl(derived(), std::forward<Proj>(proj));
+    }
+    constexpr bool is_capitalized() const
+        requires std::ranges::input_range<derived_type> && std::same_as<value_type, ctype::c8>
+    {
+        auto itr = get_begin();
+        auto sent = get_end();
+        if (!(itr != sent) || !std::isupper(*itr)) return false;
+        ++itr;
+        while (itr != sent) {
+            if (!std::islower(*itr)) return false;
+            ++itr;
+        }
+        return true;
+    }
+    constexpr void lower()
+        requires std::ranges::input_range<derived_type> && std::same_as<value_type, ctype::c8>
+    {
+        auto itr = get_begin();
+        auto sent = get_end();
+        while (itr != sent) {
+            *itr = std::tolower(*itr);
+            ++itr;
+        }
+    }
+    constexpr void upper()
+        requires std::ranges::input_range<derived_type> && std::same_as<value_type, ctype::c8>
+    {
+        auto itr = get_begin();
+        auto sent = get_end();
+        while (itr != sent) {
+            *itr = std::toupper(*itr);
+            ++itr;
+        }
     }
 };
 

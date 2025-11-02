@@ -6,6 +6,7 @@
 #include "Vec.hpp"
 #include "Numeric.hpp"
 #include "Int128.hpp"
+#include "Algorithm.hpp"
 
 namespace gsh {
 
@@ -220,19 +221,66 @@ constexpr itype::u32 CountPrimes(itype::u64 N) {
     return ret;
 }
 
-//constexpr auto EnumeratePrimes(itype::u32 N, itype::u32 gap, itype::u32 start) {}
+constexpr Arr<itype::u32> EnumeratePrimes(itype::u32 size) {
+    if (size <= 1000) {
+        // clang-format off
+constexpr itype::u32 primes[]={2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997};
+        // clang-format on
+        return Arr(primes, Subrange(primes, primes + 168).upper_bound(size));
+    }
+    const itype::u32 flag_size = size / 30 + (size % 30 != 0);
+    // clang-format off
+constexpr itype::u32 table1[]={0,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,23,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,29,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,23,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1};
+constexpr itype::u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64,0,0,0,0,0,128};
+    // clang-format on
+    Vec<itype::u8> flag(flag_size, 0xffu);
+    flag[0] = 0b11111110u;
+    Vec<itype::u32> primes{ 2, 3, 5 };
+    ftype::f64 primes_size = std::is_constant_evaluated() ? size / 8 : size / std::log(size);
+    primes.reserve(static_cast<itype::u32>(1.1 * primes_size));
+    Vec<itype::u32> sieved(static_cast<itype::u32>(primes_size));
+    itype::u32 *first = sieved.data(), *last;
+    itype::u32 k, l, x, y;
+    itype::u8 temp;
+    for (k = 0; k * k < flag_size; ++k) {
+        while (flag[k] != 0) {
+            x = 30ull * k + table1[flag[k]];
+            itype::u32 limit = size / x;
+            primes.push_back(x);
+            last = first;
+            bool smaller = true;
+            for (l = k; smaller; ++l) {
+                for (temp = flag[l]; temp != 0; temp &= (temp - 1)) {
+                    y = 30u * l + table1[temp];
+                    if (y > limit) {
+                        smaller = false;
+                        break;
+                    }
+                    *(last++) = x * y;
+                }
+            }
+            flag[k] &= (flag[k] - 1);
+            for (itype::u32* i = first; i < last; ++i) flag[*i / 30] ^= table2[*i % 30];
+        }
+    }
+    for (; k < flag_size; k++) {
+        while (flag[k] != 0) {
+            x = 30 * k + table1[flag[k]];
+            if (x > size) {
+                Arr<itype::u32> res(ArrNoInit, primes.data(), primes.size(), primes.get_allocator());
+                primes.abandon();
+                return res;
+            }
+            primes.push_back(x);
+            flag[k] &= (flag[k] - 1);
+        }
+    }
+    Arr<itype::u32> res(ArrNoInit, primes.data(), primes.size(), primes.get_allocator());
+    primes.abandon();
+    return res;
+}
 
 namespace internal {
-#ifndef GSH_USE_COMPILE_TIME_CALCULATION
-    struct TinyPrimesT {
-        itype::u16 table[6548] = {
-#define GSH_INTERNAL_INCLUDE_TINYPRIMES "internal/TinyPrimes.txt"
-#include GSH_INTERNAL_INCLUDE_TINYPRIMES
-            , 0, 0, 0, 0, 0, 0
-        };
-    };
-    template<itype::u32> constexpr TinyPrimesT TinyPrimes;
-#else
     template<itype::u32 id> constexpr auto TinyPrimes = []() {
         struct {
             itype::u16 table[6548] = {};
@@ -243,7 +291,6 @@ namespace internal {
         }
         return res;
     }();
-#endif
     template<itype::u32 id> constexpr auto InvPrime = []() {
         struct {
             itype::u64 table[6548] = {};

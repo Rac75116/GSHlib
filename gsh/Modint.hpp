@@ -305,6 +305,41 @@ namespace internal {
             return static_cast<itype::u64>(x) * y % mod_;
         }
     };
+    template<itype::u32 mod_>
+        requires(std::has_single_bit(mod_))
+    class StaticModint32Impl<mod_> : public ModintImpl<StaticModint32Impl<mod_>, itype::u32> {
+    public:
+        constexpr StaticModint32Impl() noexcept {}
+        constexpr itype::u32 mod() const noexcept { return mod_; }
+        constexpr itype::u32 build(itype::u32 x) const noexcept { return x & (mod_ - 1); }
+        constexpr itype::u32 build(itype::u64 x) const noexcept { return x & (mod_ - 1); }
+        template<class U> constexpr itype::u32 build(U x) const noexcept { return ModintImpl<StaticModint32Impl<mod_>, itype::u32>::build(x); }
+        constexpr itype::u32 mul(itype::u32 x, itype::u32 y) const noexcept {
+            Assume(x < mod_ && y < mod_);
+            return (x * y) & (mod_ - 1);
+        }
+    };
+    template<itype::u32 mod_>
+        requires(std::has_single_bit(mod_ + 1))
+    class StaticModint32Impl<mod_> : public ModintImpl<StaticModint32Impl<mod_>, itype::u32> {
+        constexpr static itype::i32 p = std::countr_zero(mod_ + 1);
+    public:
+        constexpr StaticModint32Impl() noexcept {}
+        constexpr itype::u32 mod() const noexcept { return mod_; }
+        constexpr itype::u32 build(itype::u32 x) const noexcept {
+            itype::u32 t = (x >> p) + (x & mod_);
+            return t < mod_ ? t : t - mod_;
+        }
+        constexpr itype::u64 build(itype::u64 x) const noexcept {
+            itype::u64 t = (x >> p) + (x & mod_);
+            return t < mod_ ? t : t - mod_;
+        }
+        template<class U> constexpr itype::u32 build(U x) const noexcept { return ModintImpl<StaticModint32Impl<mod_>, itype::u32>::build(x); }
+        constexpr itype::u32 mul(itype::u32 x, itype::u32 y) const noexcept {
+            Assume(x < mod_ && y < mod_);
+            return build(static_cast<itype::u64>(x) * y);
+        }
+    };
     template<itype::u64 mod_> class StaticModint64Impl : public ModintImpl<StaticModint64Impl<mod_>, itype::u64> {
     public:
         constexpr StaticModint64Impl() noexcept {}
@@ -322,21 +357,42 @@ namespace internal {
             return e ? d : f;
         }
     };
-    template<> class StaticModint64Impl<2305843009213693951u> : public ModintImpl<StaticModint64Impl<2305843009213693951u>, itype::u64> {
-        constexpr static itype::u64 mod_ = 2305843009213693951u;
+    template<itype::u64 mod_>
+        requires(std::has_single_bit(mod_))
+    class StaticModint64Impl<mod_> : public ModintImpl<StaticModint64Impl<mod_>, itype::u64> {
     public:
         constexpr StaticModint64Impl() noexcept {}
         constexpr itype::u64 mod() const noexcept { return mod_; }
-        constexpr itype::u64 build(itype::u32 x) const noexcept { return x; }
+        constexpr itype::u64 build(itype::u32 x) const noexcept { return x & (mod_ - 1); }
+        constexpr itype::u64 build(itype::u64 x) const noexcept { return x & (mod_ - 1); }
+        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintImpl<StaticModint64Impl<mod_>, itype::u64>::build(x); }
+        constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
+            Assume(x < mod_ && y < mod_);
+            return (x * y) & (mod_ - 1);
+        }
+    };
+    template<itype::u64 mod_>
+        requires(std::has_single_bit(mod_ + 1))
+    class StaticModint64Impl<mod_> : public ModintImpl<StaticModint64Impl<mod_>, itype::u64> {
+        constexpr static itype::i32 p = std::countr_zero(mod_ + 1);
+    public:
+        constexpr StaticModint64Impl() noexcept {}
+        constexpr itype::u64 mod() const noexcept { return mod_; }
+        constexpr itype::u64 build(itype::u32 x) const noexcept {
+            if constexpr (mod_ < (1ull << 32)) {
+                itype::u64 t = (x >> p) + (x & mod_);
+                return t < mod_ ? t : t - mod_;
+            } else return x;
+        }
         constexpr itype::u64 build(itype::u64 x) const noexcept {
-            itype::u64 t = (x >> 61) + (x & mod_);
+            itype::u64 t = (x >> p) + (x & mod_);
             return t < mod_ ? t : t - mod_;
         }
-        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintImpl::build(x); }
+        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintImpl<StaticModint64Impl<mod_>, itype::u64>::build(x); }
         constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
             Assume(x < mod_ && y < mod_);
             auto [hi, lo] = Mulu128(x, y);
-            itype::u64 t = (hi << 3 | lo >> 61) + (lo & mod_);
+            itype::u64 t = (hi << (64 - p) | lo >> p) + (lo & mod_);
             return t < mod_ ? t : t - mod_;
         }
     };

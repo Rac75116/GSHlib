@@ -463,10 +463,10 @@ namespace io {
     constexpr FormatterOption operator|(FormatterOption a, FormatterOption b) noexcept {
         return static_cast<FormatterOption>(static_cast<std::underlying_type_t<FormatterOption>>(a) | static_cast<std::underlying_type_t<FormatterOption>>(b));
     }
-    constexpr auto Fixed = static_cast<FormatterOption>(std::chars_format::fixed);
-    constexpr auto General = static_cast<FormatterOption>(std::chars_format::general);
-    constexpr auto Hex = static_cast<FormatterOption>(std::chars_format::hex);
-    constexpr auto Scientific = static_cast<FormatterOption>(std::chars_format::scientific);
+    [[maybe_unused]] constexpr auto Fixed = static_cast<FormatterOption>(std::chars_format::fixed);
+    [[maybe_unused]] constexpr auto General = static_cast<FormatterOption>(std::chars_format::general);
+    [[maybe_unused]] constexpr auto Hex = static_cast<FormatterOption>(std::chars_format::hex);
+    [[maybe_unused]] constexpr auto Scientific = static_cast<FormatterOption>(std::chars_format::scientific);
 
 }  // namespace io
 

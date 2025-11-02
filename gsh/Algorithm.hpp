@@ -219,33 +219,39 @@ namespace internal {
             }
         }
     };
-    template<class T, class Comp, class Proj>
-        requires std::is_scalar_v<T>
-    GSH_INTERNAL_INLINE constexpr void CompSwap(T* const p, itype::u32 a, itype::u32 b, Comp&& comp = {}, Proj&& proj = {}) {
-        bool f = Invoke(comp, Invoke(proj, p[a]), Invoke(proj, p[b]));
-        const auto tmp_a = p[a], tmp_b = p[b];
-        p[a] = f ? tmp_a : tmp_b;
-        p[b] = f ? tmp_b : tmp_a;
-    }
-    template<class T, class Comp, class Proj> GSH_INTERNAL_NOINLINE constexpr void CompSwap(T* const p, itype::u32 a, itype::u32 b, Comp&& comp = {}, Proj&& proj = {}) {
-        using std::swap;
-        if (!Invoke(comp, Invoke(proj, p[a]), Invoke(proj, p[b]))) swap(p[a], p[b]);
-    }
-    template<class T, class Comp = Less, class Proj = Identity> constexpr void SortBlock(T* const p, Comp&& comp = {}, Proj&& proj = {}) {
+    constexpr itype::u32 SortBlockIndex[60][2] = {
         // clang-format off
-#ifdef F
-#define GSH_INTERNAL_DEFINED_MACRO_F
-#pragma push_macro("F")
-#undef F
-#endif
-#define F(A,B) CompSwap(p,A,B,comp,proj);
-F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)F(1,7)F(2,9)F(3,4)F(6,13)F(8,14)F(10,15)F(11,12)F(0,1)F(2,3)F(4,5)F(6,8)F(7,9)F(10,11)F(12,13)F(14,15)F(0,2)F(1,3)F(4,10)F(5,11)F(6,7)F(8,9)F(12,14)F(13,15)F(1,2)F(3,12)F(4,6)F(5,7)F(8,10)F(9,11)F(13,14)F(1,4)F(2,6)F(5,8)F(7,10)F(9,13)F(11,14)F(2,4)F(3,6)F(9,12)F(11,13)F(3,5)F(6,8)F(7,9)F(10,12)F(3,4)F(5,6)F(7,8)F(9,10)F(11,12)F(6,7)F(8,9)
+    {0,13},{1,12},{2,15},{3,14},{4,8},{5,6},{7,11},{9,10},
+    {0,5},{1,7},{2,9},{3,4},{6,13},{8,14},{10,15},{11,12},
+    {0,1},{2,3},{4,5},{6,8},{7,9},{10,11},{12,13},{14,15},
+    {0,2},{1,3},{4,10},{5,11},{6,7},{8,9},{12,14},{13,15},
+    {1,2},{3,12},{4,6},{5,7},{8,10},{9,11},{13,14},
+    {1,4},{2,6},{5,8},{7,10},{9,13},{11,14},
+    {2,4},{3,6},{9,12},{11,13},
+    {3,5},{6,8},{7,9},{10,12},
+    {3,4},{5,6},{7,8},{9,10},{11,12},
+    {6,7},{8,9}
         // clang-format on
-#undef F
-#ifdef GSH_INTERNAL_DEFINED_MACRO_F
-#undef GSH_INTERNAL_DEFINED_MACRO_F
-#pragma pop_macro("F")
-#endif
+    };
+    template<class T, class Comp = Less, class Proj = Identity> constexpr void SortBlock(T* const p, Comp&& comp = {}, Proj&& proj = {}) {
+        if constexpr (std::is_scalar_v<T>) {
+            GSH_INTERNAL_UNROLL(60)
+            for (itype::u32 i = 0; i != 60; ++i) {
+                itype::u32 a = SortBlockIndex[i][0], b = SortBlockIndex[i][1];
+                bool f = Invoke(comp, Invoke(proj, p[a]), Invoke(proj, p[b]));
+                const auto tmp_a = p[a], tmp_b = p[b];
+                p[a] = f ? tmp_a : tmp_b;
+                p[b] = f ? tmp_b : tmp_a;
+            }
+        } else {
+            for (itype::u32 i = 0; i != 60; ++i) {
+                itype::u32 a = SortBlockIndex[i][0], b = SortBlockIndex[i][1];
+                bool f = Invoke(comp, Invoke(proj, p[a]), Invoke(proj, p[b]));
+                const auto tmp_a = std::move(p[a]), tmp_b = std::move(p[b]);
+                p[a] = f ? tmp_a : tmp_b;
+                p[b] = f ? tmp_b : tmp_a;
+            }
+        }
     }
     template<class R, class Comp, class Proj> constexpr void SortImpl(R&& r, Comp&& comp, Proj&& proj) {
         if constexpr (!requires { std::ranges::data(r); }) {
@@ -279,7 +285,7 @@ F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)F(1,7)F(2,9)F(3,4)F(
                         }
                     }
                     if constexpr (std::same_as<inv_result, itype::u32> || std::same_as<inv_result, itype::i32>) {
-                        if (n >= 3000) {
+                        if (n >= 3200) {
                             if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned32(p, n, std::forward<Proj>(proj));
                             else internal::SortUnsigned32(p, n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
                             if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
@@ -287,7 +293,7 @@ F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)F(1,7)F(2,9)F(3,4)F(
                         }
                     }
                     if constexpr (std::same_as<inv_result, itype::u64> || std::same_as<inv_result, itype::i64>) {
-                        if (n >= 8000) {
+                        if (n >= 25000) {
                             if constexpr (std::is_unsigned_v<inv_result>) internal::SortUnsigned64(p, n, std::forward<Proj>(proj));
                             else internal::SortUnsigned64(p, n, BindFront<Proj, internal::Revmsb>(std::forward<Proj>(proj), internal::Revmsb()));
                             if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
@@ -309,7 +315,7 @@ F(0,13)F(1,12)F(2,15)F(3,14)F(4,8)F(5,6)F(7,11)F(9,10)F(0,5)F(1,7)F(2,9)F(3,4)F(
                         }
                     }
                     if constexpr (std::same_as<inv_result, ftype::f64>) {
-                        if (n >= 10000) {
+                        if (n >= 30000) {
                             internal::SortUnsigned64(p, n, BindFront<Proj, internal::ToUnsigned>(std::forward<Proj>(proj), internal::ToUnsigned()));
                             if constexpr (is_greater) ReverseImpl(std::forward<R>(r));
                             return;

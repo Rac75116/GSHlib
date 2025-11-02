@@ -50,6 +50,9 @@ namespace internal {
         constexpr static bool isnan(value_type x) noexcept { return mint.isnan(x); }
         constexpr ModintInterface inv() const noexcept { return construct(mint().inv(val_)); }
         constexpr ModintInterface pow(itype::u64 e) const noexcept { return construct(mint().pow(val_, e)); }
+        constexpr itype::i32 legendre() const noexcept { return mint().legendre(val_); }
+        constexpr itype::i32 jacobi() const noexcept { return mint().jacobi(val_); }
+        constexpr ModintInterface sqrt() const noexcept { return construct(mint().sqrt(val_)); }
         constexpr ModintInterface operator+() const noexcept { return *this; }
         constexpr ModintInterface operator-() const noexcept { return construct(mint().neg(val_)); }
         constexpr ModintInterface& operator++() noexcept {
@@ -303,25 +306,16 @@ namespace internal {
         constexpr StaticModint64Impl() noexcept {}
         constexpr itype::u64 mod() const noexcept { return mod_; }
         constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
+            static_assert(mod_ < (1ull << 63));
             Assume(x < mod_ && y < mod_);
             constexpr itype::u128 M_ = std::numeric_limits<itype::u128>::max() / mod_ + std::has_single_bit(mod_);
-            if constexpr (mod_ < (1ull << 63)) {
-                const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
-                const itype::u64 b = x * y;
-                const itype::u64 c = a * mod_;
-                const itype::u64 d = b - c;
-                const bool e = d < mod_;
-                const itype::u64 f = d - mod_;
-                return e ? d : f;
-            } else {
-                const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
-                const itype::u128 b = static_cast<itype::u128>(x) * y;
-                const itype::u128 c = static_cast<itype::u128>(a) * mod_;
-                const itype::u128 d = b - c;
-                const bool e = d < mod_;
-                const itype::u128 f = d - mod_;
-                return e ? d : f;
-            }
+            const itype::u64 a = (((M_ * x) >> 64) * y) >> 64;
+            const itype::u64 b = x * y;
+            const itype::u64 c = a * mod_;
+            const itype::u64 d = b - c;
+            const bool e = d < mod_;
+            const itype::u64 f = d - mod_;
+            return e ? d : f;
         }
     };
     template<itype::u64 mod_> struct SwitchStaticModint {
@@ -460,7 +454,48 @@ namespace internal {
         constexpr itype::u64 norm(itype::u64 x) const noexcept { return x >= mod_ ? x - mod_ : x; }
     };
 
+    class Modint18446744069414584321Impl : public ModintImpl<Modint18446744069414584321Impl, itype::u64> {
+        constexpr static itype::u64 mod_ = 18446744069414584321ull;
+    public:
+        constexpr Modint18446744069414584321Impl() noexcept {}
+        constexpr itype::u64 mod() const noexcept { return mod_; }
+        constexpr itype::u64 build(itype::u32 x) const noexcept { return x; }
+        constexpr itype::u64 build(itype::u64 x) const noexcept { return x - mod_ * (x >= mod_); }
+        template<class U> constexpr itype::u64 build(U x) const noexcept { return ModintImpl::build(x); }
+        constexpr itype::u64 mul(itype::u64 x, itype::u64 y) const noexcept {
+            Assume(x < mod_ && y < mod_);
+            auto [a, b] = Mulu128(x, y);
+            if (b >= mod_) [[unlikely]] {
+                b -= mod_;
+            }
+            itype::u64 c = a & 0xffffffffull, d = a >> 32;
+            itype::u64 f = (c << 32) - c;
+            itype::u64 g = b + f;
+            if (mod_ - b <= f) {
+                g -= mod_;
+            }
+            if (g < d) [[unlikely]] {
+                g += mod_;
+            }
+            return g - d;
+        }
+    };
+
 }  // namespace internal
+
+template<class T> class Parser;
+template<class T> class Formatter;
+template<class T> class Parser<internal::ModintInterface<T>> {
+public:
+    template<class Stream> constexpr auto operator()(Stream&& stream) const {
+        auto v = Parser<typename T::value_type>{}(stream);
+        return internal::ModintInterface<T>(v);
+    }
+};
+template<class T> class Formatter<internal::ModintInterface<T>> {
+public:
+    template<class Stream> constexpr void operator()(Stream&& stream, internal::ModintInterface<T> n) const { Formatter<typename T::value_type>{}(stream, n.val()); }
+};
 
 template<itype::u32 mod_ = 998244353> using StaticModint32 = internal::ModintInterface<internal::StaticModint32Impl<mod_>>;
 template<itype::u64 mod_ = 998244353> using StaticModint64 = internal::ModintInterface<internal::StaticModint64Impl<mod_>>;
@@ -471,5 +506,6 @@ template<itype::u32 id = 0> using MontgomeryModint64 = internal::ModintInterface
 template<itype::u32 id = 0> using ThreadLocalDynamicModint32 = internal::ModintInterface<internal::DynamicModint32Impl, id, true>;
 template<itype::u32 id = 0> using ThreadLocalDynamicModint64 = internal::ModintInterface<internal::DynamicModint64Impl, id, true>;
 template<itype::u32 id = 0> using ThreadLocalMontgomeryModint64 = internal::ModintInterface<internal::MontgomeryModint64Impl, id, true>;
+using Modint18446744069414584321 = internal::ModintInterface<internal::Modint18446744069414584321Impl>;
 
 }  // namespace gsh

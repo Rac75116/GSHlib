@@ -2,6 +2,7 @@
 #include <bit>            // std::countr_zero
 #include <ranges>         // std::ranges::forward_range
 #include <cstdlib>        // std::strtod, std::strtof, std::strtold
+#include <cerrno>         // errno
 #include "TypeDef.hpp"    // gsh::itype, gsh::ctype
 #include "Util.hpp"       // gsh::MemoryCopy
 #include "Int128.hpp"     // gsh::itype::u128, gsh::itype::i128

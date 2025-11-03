@@ -253,6 +253,7 @@ public:
         }
     }
     using is_transparent = void;
+    using is_avalanching = void;
 };
 
 class Plus {

@@ -1,12 +1,12 @@
 #pragma once
-#include <tuple>          // std::tuple_size, std::tuple_element
-#include <utility>        // std::integer_sequence, std::make_index_sequence
-#include <ranges>         // std::ranges::forward_range
-#include <charconv>       // std::to_chars, std::chars_format, std::errc
-#include "TypeDef.hpp"    // gsh::itype, gsh::ctype
-#include "Util.hpp"       // gsh::MemoryCopy, gsh::StrLen
-#include "Exception.hpp"  // gsh::Exception
-#include "Int128.hpp"     // gsh::itype::u128, gsh::itype::i128
+#include <tuple>
+#include <utility>
+#include <ranges>
+#include <charconv>
+#include "TypeDef.hpp"
+#include "Util.hpp"
+#include "Exception.hpp"
+#include "Int128.hpp"
 
 namespace gsh {
 

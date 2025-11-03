@@ -1,29 +1,32 @@
 #pragma once
 #include <algorithm>
 #include <bit>
+#include <iostream>
 #include "TypeDef.hpp"
 #include "Modint.hpp"
 #include "Vec.hpp"
 #include "Numeric.hpp"
 #include "Int128.hpp"
 #include "Algorithm.hpp"
+#include "Random.hpp"
+#include "Util.hpp"
 
 namespace gsh {
 
 namespace internal {
 
-    template<itype::u32> struct IsPrime8 {
+    struct IsPrime8 {
         constexpr static itype::u64 flag_table[4] = { 2891462833508853932u, 9223979663092122248u, 9234666804958202376u, 577166812715155618u };
         GSH_INTERNAL_INLINE constexpr static bool calc(const itype::u8 n) noexcept { return (flag_table[n / 64] >> (n % 64)) & 1; }
     };
-    template<itype::u32> struct IsPrime16 {
+    struct IsPrime16 {
         constexpr static itype::u64 flag_table[512] = {
 #include "internal/PrimeFlag.txt"
         };
         GSH_INTERNAL_INLINE constexpr static bool calc(const itype::u16 x) noexcept { return x == 2 || (x % 2 == 1 && (flag_table[x / 128] & (1ull << (x % 128 / 2)))); }
     };
 
-    template<itype::u32> struct IsPrime32 {
+    struct IsPrime32 {
         // clang-format off
         constexpr static itype::u16 bases[] = {
 1216,1836,8885,4564,10978,5228,15613,13941,1553,173,3615,3144,10065,9259,233,2362,6244,6431,10863,5920,6408,6841,22124,2290,45597,6935,4835,7652,1051,445,5807,842,1534,22140,1282,1733,347,6311,14081,11157,186,703,9862,15490,1720,17816,10433,49185,2535,9158,2143,2840,664,29074,24924,1035,41482,1065,10189,8417,130,4551,5159,48886,
@@ -53,7 +56,7 @@ namespace internal {
         }
     };
 
-    template<itype::u32> struct IsPrime64 {
+    struct IsPrime64 {
         GSH_INTERNAL_INLINE constexpr static bool calc(const itype::u64 x) noexcept {
             internal::MontgomeryModint64Impl mint;
             mint.set(x);
@@ -141,11 +144,11 @@ namespace internal {
 // @brief Prime number determination
 constexpr bool IsPrime(const itype::u64 x) noexcept {
     if (x < 65536u) {
-        return internal::IsPrime16<0>::calc(x);
+        return internal::IsPrime16::calc(x);
     } else {
         if (x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
-        if (x <= 0xffffffff) return internal::IsPrime32<0>::calc(x);
-        else return internal::IsPrime64<0>::calc(x);
+        if (x <= 0xffffffff) return internal::IsPrime32::calc(x);
+        else return internal::IsPrime64::calc(x);
     }
 }
 
@@ -281,73 +284,111 @@ constexpr itype::u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64
 }
 
 namespace internal {
-    template<itype::u32 id> constexpr auto TinyPrimes = []() {
+    auto TinyPrimes = []() {
+        static itype::u16 table[6542] = {};
         struct {
-            itype::u16 table[6548] = {};
+            itype::u16* table;
         } res;
+        res.table = table;
         itype::u32 cnt = 0;
         for (itype::u32 i = 0; i != (1 << 16); ++i) {
-            if (IsPrime16<id>::calc(i)) res.table[cnt++] = i;
+            if (IsPrime16::calc(i)) res.table[cnt++] = i;
         }
         return res;
     }();
-    template<itype::u32 id> constexpr auto InvPrime = []() {
+    auto InvPrime = []() {
+        static itype::u64 table[6542] = {};
         struct {
-            itype::u64 table[6548] = {};
+            itype::u64* table;
         } res;
+        res.table = table;
         for (itype::u32 i = 0; i != 6542; ++i) {
-            res.table[i] = 0xffffffffffffffff / TinyPrimes<id>.table[i] + 1;
+            res.table[i] = 0xffffffffffffffff / TinyPrimes.table[i] + 1;
         }
         return res;
     }();
-    constexpr itype::u64* FactorizeSub64(itype::u64 n, itype::u64* res) noexcept {
-        Assume(n % 2 != 0 && n % 3 != 0 && n % 5 != 0 && n % 7 != 0 && n % 11 != 0 && n % 13 != 0 && n % 17 != 0 && n % 19 != 0);
+    itype::u64 FindFactor(itype::u64 x) {
+        MontgomeryModint64Impl mint;
+        mint.set(x);
+        static Rand64 engine;
+        constexpr itype::u32 repeat = 8192;
+    retry:
+        itype::u64 r = mint.raw(engine() % (x - 1) + 1), a, b = mint.raw(engine() % (x - 1) + 1);
+        itype::u32 k = repeat;
+        while (true) {
+            for (itype::u32 i = k + 1; --i;) b = mint.fma(b, b, r);
+            a = b;
+            for (itype::u32 i = 0; i < k; i += repeat) {
+                itype::u64 mul = mint.one(), prev = b;
+                for (itype::u32 j = repeat + 1; --j;) {
+                    b = mint.fma(b, b, r);
+                    mul = mint.mul(mul, mint.sub(a, b));
+                }
+                itype::u64 g = GCD(mint.val(mul), x);
+                if (g == x) {
+                    mul = mint.one();
+                    do {
+                        prev = mint.fma(prev, prev, r);
+                        mul = mint.mul(mul, mint.sub(a, prev));
+                        g = GCD(mint.val(mul), x);
+                    } while (g == 1);
+                    if (g == x) goto retry;
+                }
+                if (g != 1) return g;
+            }
+            k *= 2;
+        }
+    }
+    itype::u64* FactorizeSub64(itype::u64 n, itype::u64* res) noexcept {
+        Assume(n % 2 != 0 && n % 3 != 0 && n % 5 != 0 && n % 7 != 0 && n % 11 != 0 && n % 13 != 0);
         if (IsPrime(n)) {
             *(res++) = n;
             return res;
         }
         if (n <= 0xffffffff) {
-            for (itype::u32 i = 8; n >= 529; ++i) {
-                itype::u64 m = InvPrime<0>.table[i];
+            auto check = [&](itype::u64 idx, itype::u64 m) {
                 if (m * n < m) {
-                    itype::u64 p = TinyPrimes<0>.table[i];
+                    itype::u64 p = TinyPrimes.table[idx];
                     do {
                         *(res++) = p;
                         n = (static_cast<itype::u128>(m) * n) >> 64;
                     } while (m * n < m);
                 }
+            };
+            for (itype::u32 i = 4; i != 14; ++i) {
+                check(i, InvPrime.table[i]);
+            }
+            itype::u64 p = InvPrime.table[15];
+            if (p * p > n) {
+                if (n != 1) *(res++) = n;
+                return res;
+            }
+            for (itype::u32 i = 14; i != 6542; i += 8) {
+                itype::u64 m1 = InvPrime.table[i];
+                itype::u64 m2 = InvPrime.table[i + 1];
+                itype::u64 m3 = InvPrime.table[i + 2];
+                itype::u64 m4 = InvPrime.table[i + 3];
+                itype::u64 m5 = InvPrime.table[i + 4];
+                itype::u64 m6 = InvPrime.table[i + 5];
+                itype::u64 m7 = InvPrime.table[i + 6];
+                itype::u64 m8 = InvPrime.table[i + 7];
+                if (m1 * n < m1 || m2 * n < m2 || m3 * n < m3 || m4 * n < m4 || m5 * n < m5 || m6 * n < m6 || m7 * n < m7 || m8 * n < m8) [[unlikely]] {
+                    check(i, m1);
+                    check(i + 1, m2);
+                    check(i + 2, m3);
+                    check(i + 3, m4);
+                    check(i + 4, m5);
+                    check(i + 5, m6);
+                    check(i + 6, m7);
+                    check(i + 7, m8);
+                }
+                itype::u64 p = TinyPrimes.table[i + 7];
+                if (p * p >= n) break;
             }
             if (n != 1) *(res++) = n;
             return res;
         }
-        itype::u64 m = n;
-        {
-            internal::MontgomeryModint64Impl mint;
-            mint.set(n);
-            for (itype::u32 k = 2; m == n; ++k) {
-                itype::u64 f = mint.raw(k);
-                for (itype::u32 i = 1;; i += 64) {
-                    itype::u64 prev = f;
-                    itype::u64 s = mint.one();
-                    for (itype::u32 j = 0; j != 64; ++j) {
-                        f = mint.pow(f, i + j);
-                        s = mint.mul(s, mint.dec(f));
-                    }
-                    itype::u64 g = GCD(mint.val(s), n);
-                    if (g == 1) continue;
-                    if (g == n) {
-                        g = 1;
-                        f = prev;
-                        for (itype::u32 j = 0; g == 1; ++j) {
-                            f = mint.pow(f, i + j);
-                            g = GCD(mint.val(mint.dec(f)), n);
-                        }
-                    }
-                    m = g;
-                    break;
-                }
-            }
-        }
+        itype::u64 m = FindFactor(n);
         if (n / m < 529) *(res++) = n / m;
         else res = FactorizeSub64(n / m, res);
         if (m < 529) {
@@ -356,10 +397,10 @@ namespace internal {
         } else return FactorizeSub64(m, res);
     }
 }  // namespace internal
-constexpr Arr<itype::u64> Factorize(itype::u64 n) {
+auto Factorize(itype::u64 n) {
+    thread_local itype::u64 res[64];
     if (n <= 1) [[unlikely]]
-        return {};
-    itype::u64 res[64];
+        return Subrange(res, res);
     itype::u64* p = res;
     {
         Assume(n != 0);
@@ -418,7 +459,7 @@ constexpr Arr<itype::u64> Factorize(itype::u64 n) {
         *p = n;
         p += n != 1;
     }
-    return { res, p };
+    return Subrange(res, p);
 }
 
 }  // namespace gsh

@@ -57,6 +57,11 @@ GSH_INTERNAL_INLINE constexpr bool Unpredictable(const bool f) {
 #endif
 }
 
+GSH_INTERNAL_INLINE void PreventConstexpr() noexcept {
+    [[maybe_unused]] thread_local u8 dummy = 0;
+    ++dummy;
+}
+
 class InPlaceTag {};
 [[maybe_unused]] constexpr InPlaceTag InPlace;
 

@@ -301,29 +301,8 @@ constexpr u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64,0,0,0,
 }
 
 namespace internal {
-    auto TinyPrimes = []() {
-        static u16 table[6542] = {};
-        struct {
-            u16* table;
-        } res;
-        res.table = table;
-        u32 cnt = 0;
-        for (u32 i = 0; i != (1 << 16); ++i) {
-            if (IsPrime16::calc(i)) res.table[cnt++] = i;
-        }
-        return res;
-    }();
-    auto InvPrime = []() {
-        static u64 table[6542] = {};
-        struct {
-            u64* table;
-        } res;
-        res.table = table;
-        for (u32 i = 0; i != 6542; ++i) {
-            res.table[i] = 0xffffffffffffffff / TinyPrimes.table[i] + 1;
-        }
-        return res;
-    }();
+    u16 TinyPrimes[6542] = {};
+    u64 InvPrimes[6542] = {};
     u64 FindFactor(u64 x) {
         MontgomeryModint64Impl mint;
         mint.set(x);
@@ -363,9 +342,18 @@ namespace internal {
             return res;
         }
         if (n <= 0xffffffff) {
+            if (TinyPrimes[0] == 0) {
+                u32 cnt = 0;
+                for (u32 i = 0; i != (1 << 16); ++i) {
+                    if (IsPrime16::calc(i)) TinyPrimes[cnt++] = i;
+                }
+                for (u32 i = 0; i != 6542; ++i) {
+                    InvPrimes[i] = 0xffffffffffffffff / TinyPrimes[i] + 1;
+                }
+            }
             auto check = [&](u64 idx, u64 m) {
                 if (m * n < m) {
-                    u64 p = TinyPrimes.table[idx];
+                    u64 p = TinyPrimes[idx];
                     do {
                         *(res++) = p;
                         n = (static_cast<u128>(m) * n) >> 64;
@@ -373,22 +361,22 @@ namespace internal {
                 }
             };
             for (u32 i = 8; i != 14; ++i) {
-                check(i, InvPrime.table[i]);
-                u64 p = TinyPrimes.table[i + 1];
+                check(i, InvPrimes[i]);
+                u64 p = TinyPrimes[i + 1];
                 if (p * p > n) {
                     if (n != 1) *(res++) = n;
                     return res;
                 }
             }
             for (u32 i = 14; i != 6542; i += 8) {
-                u64 m1 = InvPrime.table[i];
-                u64 m2 = InvPrime.table[i + 1];
-                u64 m3 = InvPrime.table[i + 2];
-                u64 m4 = InvPrime.table[i + 3];
-                u64 m5 = InvPrime.table[i + 4];
-                u64 m6 = InvPrime.table[i + 5];
-                u64 m7 = InvPrime.table[i + 6];
-                u64 m8 = InvPrime.table[i + 7];
+                u64 m1 = InvPrimes[i];
+                u64 m2 = InvPrimes[i + 1];
+                u64 m3 = InvPrimes[i + 2];
+                u64 m4 = InvPrimes[i + 3];
+                u64 m5 = InvPrimes[i + 4];
+                u64 m6 = InvPrimes[i + 5];
+                u64 m7 = InvPrimes[i + 6];
+                u64 m8 = InvPrimes[i + 7];
                 if (m1 * n < m1 || m2 * n < m2 || m3 * n < m3 || m4 * n < m4 || m5 * n < m5 || m6 * n < m6 || m7 * n < m7 || m8 * n < m8) {
                     check(i, m1);
                     check(i + 1, m2);
@@ -399,7 +387,7 @@ namespace internal {
                     check(i + 6, m7);
                     check(i + 7, m8);
                 }
-                u64 p = TinyPrimes.table[i + 7];
+                u64 p = TinyPrimes[i + 7];
                 if (p * p >= n) break;
             }
             if (n != 1) *(res++) = n;

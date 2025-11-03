@@ -32,8 +32,8 @@ public:
     using const_reference = const T&;
     using iterator = T*;
     using const_iterator = const T*;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using value_type = T;
     using allocator_type = Allocator;
     using pointer = typename traits::pointer;
@@ -319,7 +319,7 @@ public:
 };
 template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
 
-template<class T, itype::u32 N>
+template<class T, u32 N>
     requires std::same_as<T, std::remove_cv_t<T>>
 class StaticArr : public ViewInterface<StaticArr<T, N>, T> {
     union {
@@ -330,8 +330,8 @@ public:
     using const_reference = const T&;
     using iterator = T*;
     using const_iterator = const T*;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using value_type = T;
     using pointer = T*;
     using const_pointer = const T*;
@@ -345,39 +345,39 @@ public:
     }
     template<class... Args> constexpr StaticArr(ArrInitTag<void>, Args&&... args) : elems{ static_cast<T>(std::forward<Args>(args))... } { static_assert(sizeof...(Args) <= N, "gsh::StaticArr::StaticArr / The number of arguments is greater than the length of the array."); }
     constexpr explicit StaticArr(const value_type& value) {
-        for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, value);
+        for (u32 i = 0; i != N; ++i) std::construct_at(elems + i, value);
     }
     template<std::input_iterator InputIter> constexpr explicit StaticArr(InputIter first) {
-        for (itype::u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
+        for (u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
     }
     template<std::input_iterator InputIter> constexpr StaticArr(InputIter first, InputIter last) {
-        const itype::u32 n = std::distance(first, last);
+        const u32 n = std::distance(first, last);
         if (n != N) throw gsh::Exception("gsh::StaticArr::StaticArr / The size of the given range differs from the size of the array.");
-        for (itype::u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
+        for (u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
     }
     constexpr StaticArr(const value_type (&a)[N]) {
-        for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, a[i]);
+        for (u32 i = 0; i != N; ++i) std::construct_at(elems + i, a[i]);
     }
     constexpr StaticArr(value_type (&&a)[N]) {
-        for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, std::move(a[i]));
+        for (u32 i = 0; i != N; ++i) std::construct_at(elems + i, std::move(a[i]));
     }
     constexpr StaticArr(const StaticArr& x) {
-        for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, x.elems[i]);
+        for (u32 i = 0; i != N; ++i) std::construct_at(elems + i, x.elems[i]);
     }
     constexpr StaticArr(StaticArr&& y) {
-        for (itype::u32 i = 0; i != N; ++i) std::construct_at(elems + i, std::move(y.elems[i]));
+        for (u32 i = 0; i != N; ++i) std::construct_at(elems + i, std::move(y.elems[i]));
     }
     constexpr StaticArr(std::initializer_list<value_type> il) : StaticArr(il.begin(), il.end()) {}
     constexpr ~StaticArr() noexcept {
         if constexpr (!std::is_trivially_destructible_v<value_type>)
-            for (itype::u32 i = 0; i != N; ++i) std::destroy_at(elems + i);
+            for (u32 i = 0; i != N; ++i) std::destroy_at(elems + i);
     }
     constexpr StaticArr& operator=(const StaticArr& x) {
-        for (itype::u32 i = 0; i != N; ++i) elems[i] = x.elems[i];
+        for (u32 i = 0; i != N; ++i) elems[i] = x.elems[i];
         return *this;
     }
     constexpr StaticArr& operator=(StaticArr&& x) noexcept {
-        for (itype::u32 i = 0; i != N; ++i) elems[i] = std::move(x.elems[i]);
+        for (u32 i = 0; i != N; ++i) elems[i] = std::move(x.elems[i]);
         return *this;
     }
     constexpr StaticArr& operator=(std::initializer_list<value_type> init) {
@@ -440,20 +440,20 @@ public:
     constexpr reference back() noexcept { return elems[N - 1]; }
     constexpr const_reference back() const noexcept { return elems[N - 1]; }
     template<std::input_iterator InputIter> constexpr void assign(InputIter first) {
-        for (itype::u32 i = 0; i != N; ++first, ++i) elems[i] = *first;
+        for (u32 i = 0; i != N; ++first, ++i) elems[i] = *first;
     }
     template<std::input_iterator InputIter> constexpr void assign(InputIter first, const InputIter last) {
-        const itype::u32 n = std::distance(first, last);
+        const u32 n = std::distance(first, last);
         if (n != N) throw gsh::Exception("gsh::StaticArr::assign / The size of the given range differs from the size of the array.");
-        for (itype::u32 i = 0; i != N; ++first, ++i) elems[i] = *first;
+        for (u32 i = 0; i != N; ++first, ++i) elems[i] = *first;
     }
     constexpr void assign(const value_type& value) {
-        for (itype::u32 i = 0; i != N; ++i) elems[i] = value;
+        for (u32 i = 0; i != N; ++i) elems[i] = value;
     }
     constexpr void assign(std::initializer_list<value_type> il) { assign(il.begin(), il.end()); }
     constexpr void swap(StaticArr& x) {
         using std::swap;
-        for (itype::u32 i = 0; i != N; ++i) swap(elems[i], x.elems[i]);
+        for (u32 i = 0; i != N; ++i) swap(elems[i], x.elems[i]);
     }
     friend constexpr bool operator==(const StaticArr& x, const StaticArr& y) {
         bool res = true;
@@ -472,23 +472,23 @@ template<class U, class... Args> StaticArr(ArrInitTag<U>, Args...) -> StaticArr<
 }  // namespace gsh
 
 namespace std {
-template<class T, gsh::itype::u32 N> struct tuple_size<gsh::StaticArr<T, N>> : integral_constant<size_t, N> {};
-template<std::size_t M, class T, gsh::itype::u32 N> struct tuple_element<M, gsh::StaticArr<T, N>> {
+template<class T, gsh::u32 N> struct tuple_size<gsh::StaticArr<T, N>> : integral_constant<size_t, N> {};
+template<std::size_t M, class T, gsh::u32 N> struct tuple_element<M, gsh::StaticArr<T, N>> {
     static_assert(M < N, "std::tuple_element<gsh::StaticArr<T, N>> / The index is out of range.");
     using type = T;
 };
 }  // namespace std
 
 namespace gsh {
-template<std::size_t M, class T, itype::u32 N> const T& get(const StaticArr<T, N>& a) {
+template<std::size_t M, class T, u32 N> const T& get(const StaticArr<T, N>& a) {
     static_assert(M < N, "gsh::get(gsh::StaticArr<T, N>) / The index is out of range.");
     return a[M];
 }
-template<std::size_t M, class T, itype::u32 N> T& get(StaticArr<T, N>& a) {
+template<std::size_t M, class T, u32 N> T& get(StaticArr<T, N>& a) {
     static_assert(M < N, "gsh::get(gsh::StaticArr<T, N>) / The index is out of range.");
     return a[M];
 }
-template<std::size_t M, class T, itype::u32 N> T&& get(StaticArr<T, N>&& a) {
+template<std::size_t M, class T, u32 N> T&& get(StaticArr<T, N>&& a) {
     static_assert(M < N, "gsh::get(gsh::StaticArr<T, N>) / The index is out of range.");
     return std::move(a[M]);
 }

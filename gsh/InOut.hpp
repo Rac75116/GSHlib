@@ -6,7 +6,7 @@
 #include "TypeDef.hpp"     // gsh::itype, gsh::ctype
 #include "Parser.hpp"      // gsh::Parser
 #include "Formatter.hpp"   // gsh::Formatter
-#include "Functional.hpp"  // gsh::Invoke
+#include "Functional.hpp"  // gsh::std::invoke
 #include "Util.hpp"        // gsh::TypeArr
 
 #include <unistd.h>
@@ -63,10 +63,10 @@ public:
     template<std::size_t N> friend constexpr decltype(auto) get(const ParsingChain& chain) {
         auto get_result = [](auto&& parser, auto&&... args) GSH_INTERNAL_INLINE -> decltype(auto) {
             if constexpr (std::is_void_v<std::invoke_result_t<decltype(parser), decltype(args)...>>) {
-                Invoke(std::forward<decltype(parser)>(parser), std::forward<decltype(args)>(args)...);
+                std::invoke(std::forward<decltype(parser)>(parser), std::forward<decltype(args)>(args)...);
                 return NoParsingResult{};
             } else {
-                return Invoke(std::forward<decltype(parser)>(parser), std::forward<decltype(args)>(args)...);
+                return std::invoke(std::forward<decltype(parser)>(parser), std::forward<decltype(args)>(args)...);
             }
         };
         using value_type = typename TypeArr<Types...>::template type<N>;
@@ -81,9 +81,9 @@ public:
         }
     }
     constexpr void ignore() const {
-        [this]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
+        [this]<u32... I>(std::integer_sequence<u32, I...>) {
             (..., get<I>(*this));
-        }(std::make_integer_sequence<itype::u32, sizeof...(Types)>());
+        }(std::make_integer_sequence<u32, sizeof...(Types)>());
     }
     template<class T> constexpr operator T() const {
         static_assert(sizeof...(Types) == 1);
@@ -97,13 +97,13 @@ public:
         requires(sizeof...(To) == 0 || sizeof...(To) == sizeof...(Types))
     constexpr auto bind() const {
         if constexpr (sizeof...(To) == 0) {
-            return [this]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
+            return [this]<u32... I>(std::integer_sequence<u32, I...>) {
                 return std::tuple{ get<I>(*this)... };
-            }(std::make_integer_sequence<itype::u32, sizeof...(Types)>());
+            }(std::make_integer_sequence<u32, sizeof...(Types)>());
         } else {
-            return [this]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
+            return [this]<u32... I>(std::integer_sequence<u32, I...>) {
                 return std::tuple<To...>{ static_cast<To>(get<I>(*this))... };
-            }(std::make_integer_sequence<itype::u32, sizeof...(Types)>());
+            }(std::make_integer_sequence<u32, sizeof...(Types)>());
         }
     }
 };
@@ -133,33 +133,33 @@ namespace internal {
         constexpr D& derived() { return *static_cast<D*>(this); }
     public:
         template<class Sep, class... Args> constexpr void write_sep(Sep&& sep, Args&&... args) {
-            [&]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
-                auto print_value = [&]<itype::u32 Idx>(std::integral_constant<itype::u32, Idx>, auto&& val) {
+            [&]<u32... I>(std::integer_sequence<u32, I...>) {
+                auto print_value = [&]<u32 Idx>(std::integral_constant<u32, Idx>, auto&& val) {
                     Formatter<std::decay_t<decltype(val)>>()(derived(), val);
                     if constexpr (Idx != sizeof...(Args) - 1) Formatter<std::decay_t<Sep>>()(derived(), std::forward<Sep>(sep));
                 };
-                (..., print_value(std::integral_constant<itype::u32, I>(), std::forward<Args>(args)));
-            }(std::make_integer_sequence<itype::u32, sizeof...(Args)>());
+                (..., print_value(std::integral_constant<u32, I>(), std::forward<Args>(args)));
+            }(std::make_integer_sequence<u32, sizeof...(Args)>());
         }
         template<class Sep, class... Args> constexpr void writeln_sep(Sep&& sep, Args&&... args) {
             write_sep(std::forward<Sep>(sep), std::forward<Args>(args)...);
-            Formatter<ctype::c8>()(derived(), '\n');
+            Formatter<c8>()(derived(), '\n');
         }
         template<class... Args> constexpr void write(Args&&... args) { write_sep(' ', std::forward<Args>(args)...); }
         template<class... Args> constexpr void writeln(Args&&... args) {
             write_sep(' ', std::forward<Args>(args)...);
-            Formatter<ctype::c8>()(derived(), '\n');
+            Formatter<c8>()(derived(), '\n');
         }
     };
 }  // namespace internal
 
-template<itype::u32 Bufsize = (1 << 18)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
-    itype::i32 fd = 0;
-    ctype::c8 buf[Bufsize + 1] = {};
-    ctype::c8 *cur = buf, *eof = buf;
+template<u32 Bufsize = (1 << 18)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
+    i32 fd = 0;
+    c8 buf[Bufsize + 1] = {};
+    c8 *cur = buf, *eof = buf;
 public:
     BasicReader() {}
-    BasicReader(itype::i32 filehandle) : fd(filehandle) {}
+    BasicReader(i32 filehandle) : fd(filehandle) {}
     BasicReader(const BasicReader& rhs) {
         fd = rhs.fd;
         std::memcpy(buf, rhs.buf, rhs.eof - rhs.cur);
@@ -179,39 +179,39 @@ public:
                 while (*p >= '!') ++p;
                 return p;
             }() == eof) [[likely]] {
-            itype::u32 rem = eof - cur;
+            u32 rem = eof - cur;
             std::memmove(buf, cur, rem);
             *(eof = buf + rem + read(fd, buf + rem, Bufsize - rem)) = '\0';
             cur = buf;
         }
     }
-    void reload(itype::u32 len) {
+    void reload(u32 len) {
         if (avail() < len) [[unlikely]]
             reload();
     }
-    itype::u32 avail() const { return eof - cur; }
-    const ctype::c8* current() const { return cur; }
-    void skip(itype::u32 n) { cur += n; }
+    u32 avail() const { return eof - cur; }
+    const c8* current() const { return cur; }
+    void skip(u32 n) { cur += n; }
 };
 class StaticStrReader : public internal::IstreamInterface<StaticStrReader> {
-    const ctype::c8* cur;
+    const c8* cur;
 public:
     constexpr StaticStrReader() {}
-    constexpr StaticStrReader(const ctype::c8* c) : cur(c) {}
+    constexpr StaticStrReader(const c8* c) : cur(c) {}
     constexpr void reload() const {}
-    constexpr void reload(itype::u32) const {}
-    constexpr itype::u32 avail() const { return static_cast<itype::u32>(-1); }
-    constexpr const ctype::c8* current() { return cur; }
-    constexpr void skip(itype::u32 n) { cur += n; }
+    constexpr void reload(u32) const {}
+    constexpr u32 avail() const { return static_cast<u32>(-1); }
+    constexpr const c8* current() { return cur; }
+    constexpr void skip(u32 n) { cur += n; }
 };
 
-template<itype::u32 Bufsize = (1 << 18)> class BasicWriter : public internal::OstreamInterface<BasicWriter<Bufsize>> {
-    itype::i32 fd = 1;
-    ctype::c8 buf[Bufsize + 1] = {};
-    ctype::c8 *cur = buf, *eof = buf + Bufsize;
+template<u32 Bufsize = (1 << 18)> class BasicWriter : public internal::OstreamInterface<BasicWriter<Bufsize>> {
+    i32 fd = 1;
+    c8 buf[Bufsize + 1] = {};
+    c8 *cur = buf, *eof = buf + Bufsize;
 public:
     BasicWriter() {}
-    BasicWriter(itype::i32 filehandle) : fd(filehandle) {}
+    BasicWriter(i32 filehandle) : fd(filehandle) {}
     BasicWriter(const BasicWriter& rhs) {
         fd = rhs.fd;
         std::memcpy(buf, rhs.buf, rhs.cur - rhs.buf);
@@ -224,32 +224,32 @@ public:
         return *this;
     }
     void reload() {
-        [[maybe_unused]] itype::i32 tmp = write(fd, buf, cur - buf);
+        [[maybe_unused]] i32 tmp = write(fd, buf, cur - buf);
         cur = buf;
     }
-    void reload(itype::u32 len) {
+    void reload(u32 len) {
         if (eof - cur < len) [[unlikely]]
             reload();
     }
-    itype::u32 avail() const { return eof - cur; }
-    ctype::c8* current() { return cur; }
-    void skip(itype::u32 n) { cur += n; }
+    u32 avail() const { return eof - cur; }
+    c8* current() { return cur; }
+    void skip(u32 n) { cur += n; }
 };
 class StaticStrWriter : public internal::OstreamInterface<StaticStrWriter> {
-    ctype::c8* cur;
+    c8* cur;
 public:
     constexpr StaticStrWriter() {}
-    constexpr StaticStrWriter(ctype::c8* c) : cur(c) {}
+    constexpr StaticStrWriter(c8* c) : cur(c) {}
     constexpr void reload() const {}
-    constexpr void reload(itype::u32) const {}
-    constexpr itype::u32 avail() const { return static_cast<itype::u32>(-1); }
-    constexpr ctype::c8* current() { return cur; }
-    constexpr void skip(itype::u32 n) { cur += n; }
+    constexpr void reload(u32) const {}
+    constexpr u32 avail() const { return static_cast<u32>(-1); }
+    constexpr c8* current() { return cur; }
+    constexpr void skip(u32 n) { cur += n; }
 };
 
 class MmapReader : public internal::IstreamInterface<MmapReader> {
-    [[maybe_unused]] const itype::i32 fh;
-    ctype::c8 *buf, *cur, *eof;
+    [[maybe_unused]] const i32 fh;
+    c8 *buf, *cur, *eof;
 public:
     MmapReader() : fh(0) {
 #if !defined(__linux__)
@@ -261,16 +261,16 @@ public:
 #else
         struct stat st;
         fstat(0, &st);
-        buf = reinterpret_cast<ctype::c8*>(mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, 0, 0));
+        buf = reinterpret_cast<c8*>(mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, 0, 0));
         cur = buf;
         eof = buf + st.st_size;
 #endif
     }
     void reload() const {}
-    void reload(itype::u32) const {}
-    itype::u32 avail() const { return eof - cur; }
-    const ctype::c8* current() const { return cur; }
-    void skip(itype::u32 n) { cur += n; }
+    void reload(u32) const {}
+    u32 avail() const { return eof - cur; }
+    const c8* current() const { return cur; }
+    void skip(u32 n) { cur += n; }
 };
 
 }  // namespace gsh

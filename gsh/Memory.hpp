@@ -63,7 +63,7 @@ namespace internal {
         using type = typename T::const_void_pointer;
     };
     template<class T> struct GetDifferenceTypeSub {
-        using type = itype::i32;
+        using type = i32;
     };
     template<class T>
         requires requires { typename T::difference_type; }
@@ -215,8 +215,8 @@ template<class T> class Allocator {
 public:
     using value_type = T;
     using propagate_on_container_move_assignment = std::true_type;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using is_always_equal = std::true_type;
     constexpr Allocator() noexcept {}
     constexpr Allocator(const Allocator&) noexcept {}
@@ -252,8 +252,8 @@ template<class T> class NoFreeAllocator {
 public:
     using value_type = T;
     using propagate_on_container_move_assignment = std::true_type;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using is_always_equal = std::true_type;
     constexpr NoFreeAllocator() noexcept {}
     constexpr NoFreeAllocator(const NoFreeAllocator&) noexcept {}
@@ -271,12 +271,12 @@ public:
 };
 
 
-template<class T, itype::u32 Align = 32> class AlignedAllocator {
+template<class T, u32 Align = 32> class AlignedAllocator {
 public:
     using value_type = T;
     using propagate_on_container_move_assignment = std::true_type;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using is_always_equal = std::true_type;
     constexpr AlignedAllocator() noexcept {}
     constexpr AlignedAllocator(const AlignedAllocator&) noexcept {}
@@ -293,16 +293,16 @@ public:
     template<class U> friend constexpr bool operator==(const AlignedAllocator&, const AlignedAllocator<U>&) noexcept { return true; }
 };
 
-template<class T, itype::u32 N> class PoolAllocator {
-    ctype::c8* cur = buf;
-    alignas(T) ctype::c8 buf[sizeof(T) * N];
+template<class T, u32 N> class PoolAllocator {
+    c8* cur = buf;
+    alignas(T) c8 buf[sizeof(T) * N];
 public:
     using value_type = T;
     using propagate_on_container_copy_assignmant = std::true_type;
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using is_always_equal = std::false_type;
     template<class U> class rebind {
     public:
@@ -311,7 +311,7 @@ public:
     };
     constexpr PoolAllocator() noexcept {}
     constexpr PoolAllocator(const PoolAllocator&) noexcept {}
-    template<class U, itype::u32 M> constexpr PoolAllocator(const PoolAllocator<U, M>&) noexcept {}
+    template<class U, u32 M> constexpr PoolAllocator(const PoolAllocator<U, M>&) noexcept {}
     [[nodiscard]] T* allocate(size_type n) noexcept {
         T* result = reinterpret_cast<T*>(cur);
         cur += sizeof(T) * n;
@@ -319,14 +319,14 @@ public:
     }
     constexpr void deallocate(T*, size_type) noexcept {}
     constexpr PoolAllocator& operator=(const PoolAllocator&) noexcept {}
-    template<class U, itype::u32 M> friend constexpr bool operator==(const PoolAllocator&, const PoolAllocator<U, M>&) noexcept { return false; }
+    template<class U, u32 M> friend constexpr bool operator==(const PoolAllocator&, const PoolAllocator<U, M>&) noexcept { return false; }
 };
 
 template<class T> class SingleAllocator {
     T* buffer[24] = {};
-    itype::u32 x = 0xffffffff, y = 0;
+    u32 x = 0xffffffff, y = 0;
     T** del = nullptr;
-    itype::u32 end = 0;
+    u32 end = 0;
     [[no_unique_address]] Allocator<T> alloc;
     [[no_unique_address]] Allocator<T*> del_alloc;
     using traits = AllocatorTraits<Allocator<T>>;
@@ -336,18 +336,18 @@ public:
     using propagate_on_container_copy_assignmant = std::false_type;
     using propagate_on_container_move_assignment = std::false_type;
     using propagate_on_container_swap = std::false_type;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using is_always_equal = std::false_type;
     constexpr SingleAllocator() noexcept {}
     constexpr SingleAllocator(const SingleAllocator&) noexcept {}
     template<class U> constexpr SingleAllocator(const SingleAllocator<U>&) noexcept {}
     constexpr ~SingleAllocator() noexcept {
-        for (itype::u32 i = 0; i != x + 1; ++i) traits::deallocate(alloc, buffer[i], 1 << i);
+        for (u32 i = 0; i != x + 1; ++i) traits::deallocate(alloc, buffer[i], 1 << i);
         if (del != nullptr) del_alloc_traits::deallocate(del_alloc, del, (1u << (x + 1)) - 1);
     }
     constexpr SingleAllocator& operator=(const SingleAllocator&) noexcept {}
-    constexpr T* allocate(itype::u32) {
+    constexpr T* allocate(u32) {
         if (y == (1u << (x + 1)) >> 1) {
             if (end != 0) [[likely]] {
                 return del[--end];
@@ -356,7 +356,7 @@ public:
                 buffer[x] = traits::allocate(alloc, 1 << x);
                 T** new_del = del_alloc_traits::allocate(del_alloc, (1 << (x + 1)) - 1);
                 if (del != nullptr) [[likely]] {
-                    for (itype::u32 i = 0; i != end; ++i) new_del[i] = del[i];
+                    for (u32 i = 0; i != end; ++i) new_del[i] = del[i];
                     del_alloc_traits::deallocate(del_alloc, del, (1 << x) - 1);
                 }
                 del = new_del;
@@ -364,8 +364,8 @@ public:
         }
         return &buffer[x][y++];
     }
-    constexpr void deallocate(T* p, itype::u32) noexcept { del[end++] = p; }
-    constexpr itype::u32 max_size() const noexcept { return (1 << 24) - 1; }
+    constexpr void deallocate(T* p, u32) noexcept { del[end++] = p; }
+    constexpr u32 max_size() const noexcept { return (1 << 24) - 1; }
     constexpr SingleAllocator select_on_container_copy_construction() const noexcept { return {}; }
     template<class U> friend constexpr bool operator==(const SingleAllocator&, const SingleAllocator<U>&) noexcept { return false; }
     template<class... Args> constexpr void construct(T* p, Args&&... args) { std::construct_at(p, std::forward<Args>(args)...); }

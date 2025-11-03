@@ -13,7 +13,7 @@
 #define RETV_WITH(val, ...) { __VA_ARGS__; return val; } []{}()
 #define BRK_WITH(...) { __VA_ARGS__; break; } []{}()
 #define CTN_WITH(...) { __VA_ARGS__; continue; } []{}()
-#define EXT_WITH(...) [&](gsh::itype::i32 ret = 0){ __VA_ARGS__; std::exit(ret); }
+#define EXT_WITH(...) [&](gsh::i32 ret = 0){ __VA_ARGS__; std::exit(ret); }
 
 #define GSH_INTERNAL_ARGS0() ()
 #define GSH_INTERNAL_ARGS1(a) (auto&& a)
@@ -74,7 +74,7 @@ namespace internal {
         constexpr InputAdapter(T& r) noexcept : ref(r) {}
         template<class U> constexpr operator U() const { return ref.template read<U>().val(); }
         template<class... Args> constexpr auto operator()(Args&&... args) const { return with_options<Args...>(ref, std::forward<Args>(args)...); }
-        template<class... Args> constexpr auto tied_containers(itype::u32 n) const {
+        template<class... Args> constexpr auto tied_containers(u32 n) const {
             std::tuple<Args...> containers;
             std::tuple<Parser<typename Args::value_type>...> parsers;
             [&]<std::size_t... I>(std::index_sequence<I...>) {
@@ -83,7 +83,7 @@ namespace internal {
                 };
                 (..., reserve(std::get<I>(containers)));
             }(std::make_index_sequence<sizeof...(Args)>());
-            for (itype::u32 i = 0; i != n; ++i) {
+            for (u32 i = 0; i != n; ++i) {
                 [&]<std::size_t... I>(std::index_sequence<I...>) {
                     auto add_value = [&]<class C>(C& container, auto& parser) {
                         if constexpr (requires { container.push_back(parser(ref)); }) container.push_back(parser(ref));

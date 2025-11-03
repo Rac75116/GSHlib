@@ -8,7 +8,7 @@ namespace internal {
 
     template<class Key, class Value, class Alloc> class AVLTree {
         struct node : KeyValuePair<Key, Value> {
-            itype::u32 sz, rev;
+            u32 sz, rev;
             node *left, *right;
         };
     public:

@@ -30,22 +30,22 @@ namespace internal {
         using const_pointer = typename traits::const_pointer;
         using reference = value_type&;
         using const_reference = const value_type&;
-        using size_type = itype::u32;
-        using difference_type = itype::i32;
+        using size_type = u32;
+        using difference_type = i32;
         using iterator = std::conditional_t<is_set, const value_type*, value_type*>;
         using const_iterator = const value_type*;
         static_assert(std::is_same_v<typename traits::value_type, value_type>);
     private:
         constexpr static bool is_hs_tp = requires { typename hasher::is_transparent; };
         constexpr static bool is_eq_tp = requires { typename key_equal::is_transparent; };
-        constexpr static itype::u32 default_bucket_size = 4;
+        constexpr static u32 default_bucket_size = 4;
         using hashed_type = std::invoke_result_t<hasher, key_type>;
-        static_assert(std::is_integral_v<hashed_type> && std::is_unsigned_v<hashed_type> && sizeof(hashed_type) <= sizeof(itype::u64));
+        static_assert(std::is_integral_v<hashed_type> && std::is_unsigned_v<hashed_type> && sizeof(hashed_type) <= sizeof(u64));
         using value_allocator_type = allocator_type;
         using value_allocator_traits = AllocatorTraits<value_allocator_type>;
         using hash_allocator_type = typename value_allocator_traits::template rebind_alloc<hashed_type>;
         using hash_allocator_traits = AllocatorTraits<hash_allocator_type>;
-        using sig_allocator_type = typename value_allocator_traits::template rebind_alloc<itype::u8>;
+        using sig_allocator_type = typename value_allocator_traits::template rebind_alloc<u8>;
         using sig_allocator_traits = AllocatorTraits<sig_allocator_type>;
         using index_allocator_type = typename value_allocator_traits::template rebind_alloc<size_type>;
         using index_allocator_traits = AllocatorTraits<index_allocator_type>;
@@ -57,7 +57,7 @@ namespace internal {
         [[no_unique_address]] index_allocator_type index_alloc;
         value_type* elem;
         hashed_type* hash;
-        itype::u8* sig;
+        u8* sig;
         size_type* index;
         size_type elem_size;
         size_type elem_capacity;
@@ -75,12 +75,12 @@ namespace internal {
         constexpr void construct_elem_hash(size_type new_elem_cap) {
             value_type* new_elem = value_allocator_traits::allocate(value_alloc, new_elem_cap);
             hashed_type* new_hash = hash_allocator_traits::allocate(hash_alloc, new_elem_cap);
-            for (itype::u32 i = 0; i < elem_size; i++) {
+            for (u32 i = 0; i < elem_size; i++) {
                 value_allocator_traits::construct(value_alloc, new_elem + i, std::move_if_noexcept(elem[i]));
                 hash_allocator_traits::construct(hash_alloc, new_hash + i, std::move_if_noexcept(hash[i]));
             }
             if constexpr (!std::is_trivially_destructible_v<value_type>) {
-                for (itype::u32 i = 0; i < elem_size; i++) {
+                for (u32 i = 0; i < elem_size; i++) {
                     value_allocator_traits::destroy(value_alloc, elem + i);
                 }
             }
@@ -91,15 +91,15 @@ namespace internal {
             elem_capacity = new_elem_cap;
         }
         constexpr bool construct_sig_index() {
-            for (itype::u32 i = 0; i < elem_size; i++) {
+            for (u32 i = 0; i < elem_size; i++) {
                 const hashed_type h = hash[i];
-                const itype::u8 s = static_cast<itype::u8>(h & 0x7f) | 0x80;
+                const u8 s = static_cast<u8>(h & 0x7f) | 0x80;
                 const size_type b = (h >> 7) & (bucket_size - 1);
                 auto mask = _mm256_movemask_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(sig + b)));
                 if (mask == 0xffff) {
                     return false;
                 }
-                const itype::u32 inv = ~mask;
+                const u32 inv = ~mask;
                 Assume(inv != 0);
                 const auto bit = std::countr_zero(inv);
                 sig[b + bit] = s;
@@ -114,14 +114,14 @@ namespace internal {
                 const size_type new_bucket_cap = bucket_capacity * 2;
                 sig = sig_allocator_traits::allocate(sig_alloc, new_bucket_cap + 31);
                 index = index_allocator_traits::allocate(index_alloc, new_bucket_cap + 31);
-                for (itype::u32 i = 0; i < new_bucket_cap + 31; i++) {
+                for (u32 i = 0; i < new_bucket_cap + 31; i++) {
                     sig[i] = 0;
                 }
                 bucket_capacity = new_bucket_cap;
                 bucket_size = new_bucket_cap;
             } else {
                 bucket_size *= 2;
-                for (itype::u32 i = 0; i < bucket_size + 31; i++) {
+                for (u32 i = 0; i < bucket_size + 31; i++) {
                     sig[i] = 0;
                 }
             }
@@ -135,14 +135,14 @@ namespace internal {
                 const size_type new_bucket_cap = std::bit_ceil(new_bucket_size);
                 sig = sig_allocator_traits::allocate(sig_alloc, new_bucket_cap + 31);
                 index = index_allocator_traits::allocate(index_alloc, new_bucket_cap + 31);
-                for (itype::u32 i = 0; i < new_bucket_cap + 31; i++) {
+                for (u32 i = 0; i < new_bucket_cap + 31; i++) {
                     sig[i] = 0;
                 }
                 bucket_capacity = new_bucket_cap;
                 bucket_size = new_bucket_cap;
             } else {
                 bucket_size = std::bit_ceil(new_bucket_size);
-                for (itype::u32 i = 0; i < bucket_size + 31; i++) {
+                for (u32 i = 0; i < bucket_size + 31; i++) {
                     sig[i] = 0;
                 }
             }
@@ -160,17 +160,17 @@ namespace internal {
             hash = hash_allocator_traits::allocate(hash_alloc, elem_cap);
             sig = sig_allocator_traits::allocate(sig_alloc, bucket_cap + 31);
             index = index_allocator_traits::allocate(index_alloc, bucket_cap + 31);
-            for (itype::u32 i = 0; i < bucket_cap + 31; i++) {
+            for (u32 i = 0; i < bucket_cap + 31; i++) {
                 sig[i] = 0;
             }
         }
         template<class K> constexpr size_type find_impl(const K& k) const {
             const hashed_type h = hash_f(k);
             const size_type b = (h >> 7) & (bucket_size - 1);
-            const itype::u8 s = static_cast<itype::u8>(h & 0x7f) | 0x80;
+            const u8 s = static_cast<u8>(h & 0x7f) | 0x80;
             auto mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(s), _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(sig + b))));
             while (mask != 0) {
-                const auto bit = std::countr_zero(static_cast<itype::u32>(mask));
+                const auto bit = std::countr_zero(static_cast<u32>(mask));
                 const size_type i = index[b + bit];
                 if (key_eq_f(k, get_key(elem[i]))) return i;
                 mask &= mask - 1;
@@ -178,18 +178,18 @@ namespace internal {
             return 0xffffffff;
         }
         template<class K> constexpr std::pair<size_type, bool> insert_impl(const K& v, const hashed_type h) {
-            const itype::u8 s = static_cast<itype::u8>(h & 0x7f) | 0x80;
+            const u8 s = static_cast<u8>(h & 0x7f) | 0x80;
             while (true) {
                 const size_type b = (h >> 7) & (bucket_size - 1);
                 const auto sigs = _mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(sig + b));
-                itype::u32 mask1 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(s), sigs));
+                u32 mask1 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_set1_epi8(s), sigs));
                 while (mask1 != 0) {
                     const auto bit = std::countr_zero(mask1);
                     const size_type i = index[b + bit];
                     if (key_eq_f(v, get_key(elem[i]))) return { i, false };
                     mask1 &= mask1 - 1;
                 }
-                itype::u32 mask2 = _mm256_movemask_epi8(sigs);
+                u32 mask2 = _mm256_movemask_epi8(sigs);
                 if (mask2 == 0xffffffff) {
                     while (!rehash_impl());
                     continue;
@@ -226,7 +226,7 @@ namespace internal {
         constexpr ~HashTable() noexcept {
             if (elem_capacity != 0) {
                 if constexpr (!std::is_trivially_destructible_v<value_type>) {
-                    for (itype::u32 i = 0; i < elem_size; i++) {
+                    for (u32 i = 0; i < elem_size; i++) {
                         value_allocator_traits::destroy(value_alloc, elem + i);
                     }
                 }
@@ -269,7 +269,7 @@ namespace internal {
             const auto [pos, f] = insert_impl(k, h);
             if (f) {
                 hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
-                sig[pos] = static_cast<itype::u8>(h & 0x7f) | 0x80;
+                sig[pos] = static_cast<u8>(h & 0x7f) | 0x80;
                 index[pos] = elem_size;
                 elem_size++;
                 return { elem + (elem_size - 1), true };
@@ -291,7 +291,7 @@ namespace internal {
                 }
                 value_allocator_traits::construct(value_alloc, elem + elem_size, v);
                 hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
-                sig[pos] = static_cast<itype::u8>(h & 0x7f) | 0x80;
+                sig[pos] = static_cast<u8>(h & 0x7f) | 0x80;
                 index[pos] = elem_size;
                 elem_size++;
                 return { elem + (elem_size - 1), true };
@@ -309,7 +309,7 @@ namespace internal {
                 }
                 value_allocator_traits::construct(value_alloc, elem + elem_size, std::move(v));
                 hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
-                sig[pos] = static_cast<itype::u8>(h & 0x7f) | 0x80;
+                sig[pos] = static_cast<u8>(h & 0x7f) | 0x80;
                 index[pos] = elem_size;
                 elem_size++;
                 return { elem + (elem_size - 1), true };

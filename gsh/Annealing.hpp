@@ -11,57 +11,57 @@ namespace gsh {
 class ZeroTemp {
 public:
     ZeroTemp() {}
-    ftype::f64 operator()([[maybe_unused]] ftype::f64 progress) const { return 0.0; }
+    f64 operator()([[maybe_unused]] f64 progress) const { return 0.0; }
 };
 
 class LinearTemp {
-    ftype::f64 init_temp, final_temp;
+    f64 init_temp, final_temp;
 public:
-    LinearTemp(ftype::f64 init_temp, ftype::f64 final_temp = 0.0) : init_temp(init_temp), final_temp(final_temp) {}
-    ftype::f64 operator()(ftype::f64 progress) const { return init_temp + (final_temp - init_temp) * progress; }
+    LinearTemp(f64 init_temp, f64 final_temp = 0.0) : init_temp(init_temp), final_temp(final_temp) {}
+    f64 operator()(f64 progress) const { return init_temp + (final_temp - init_temp) * progress; }
 };
 
 class ExponentialTemp {
-    ftype::f64 init_temp;
-    ftype::f64 ratio;
+    f64 init_temp;
+    f64 ratio;
 public:
-    ExponentialTemp(ftype::f64 init_temp, ftype::f64 final_temp = 0.001) : init_temp(init_temp), ratio(final_temp / init_temp) {}
-    ftype::f64 operator()(ftype::f64 progress) const { return init_temp * std::pow(ratio, progress); }
+    ExponentialTemp(f64 init_temp, f64 final_temp = 0.001) : init_temp(init_temp), ratio(final_temp / init_temp) {}
+    f64 operator()(f64 progress) const { return init_temp * std::pow(ratio, progress); }
 };
 
 class VariableExponentialTemp {
-    ftype::f64 init_temp;
-    ftype::f64 shape;
-    ftype::f64 ratio;
+    f64 init_temp;
+    f64 shape;
+    f64 ratio;
 public:
-    VariableExponentialTemp(ftype::f64 init_temp, ftype::f64 final_temp = 0.001, ftype::f64 shape = 2.0) : init_temp(init_temp), shape(shape), ratio(final_temp / init_temp) {}
-    ftype::f64 operator()(ftype::f64 progress) const { return init_temp * std::pow(ratio, std::pow(progress, shape)); }
+    VariableExponentialTemp(f64 init_temp, f64 final_temp = 0.001, f64 shape = 2.0) : init_temp(init_temp), shape(shape), ratio(final_temp / init_temp) {}
+    f64 operator()(f64 progress) const { return init_temp * std::pow(ratio, std::pow(progress, shape)); }
 };
 
 class LogarithmicTemp {
-    ftype::f64 init_temp;
-    ftype::f64 shape;
+    f64 init_temp;
+    f64 shape;
 public:
-    LogarithmicTemp(ftype::f64 init_temp, ftype::f64 shape = 10000.0) : init_temp(init_temp), shape(shape) {}
-    ftype::f64 operator()(ftype::f64 progress) { return init_temp / std::log(progress * shape + 2.71828182845904523536); }
+    LogarithmicTemp(f64 init_temp, f64 shape = 10000.0) : init_temp(init_temp), shape(shape) {}
+    f64 operator()(f64 progress) { return init_temp / std::log(progress * shape + 2.71828182845904523536); }
 };
 
 class ReciprocalTemp {
-    ftype::f64 init_temp;
-    ftype::f64 shape;
+    f64 init_temp;
+    f64 shape;
 public:
-    ReciprocalTemp(ftype::f64 init_temp, ftype::f64 shape = 5.0) : init_temp(init_temp), shape(shape) {}
-    ftype::f64 operator()(ftype::f64 progress) const { return init_temp / (progress * shape + 1.0); }
+    ReciprocalTemp(f64 init_temp, f64 shape = 5.0) : init_temp(init_temp), shape(shape) {}
+    f64 operator()(f64 progress) const { return init_temp / (progress * shape + 1.0); }
 };
 
 class IterationProgress {
-    itype::u32 max_iter;
-    ftype::f64 current_progress = 0.0;
+    u32 max_iter;
+    f64 current_progress = 0.0;
 public:
-    IterationProgress(itype::u32 max_iter) : max_iter(max_iter) {}
-    ftype::f64 progress() const { return current_progress; }
-    bool update(itype::u32 current_iter) {
-        current_progress = static_cast<ftype::f64>(current_iter) / static_cast<ftype::f64>(max_iter);
+    IterationProgress(u32 max_iter) : max_iter(max_iter) {}
+    f64 progress() const { return current_progress; }
+    bool update(u32 current_iter) {
+        current_progress = static_cast<f64>(current_iter) / static_cast<f64>(max_iter);
         return current_iter < max_iter;
     }
 };
@@ -69,13 +69,13 @@ public:
 class TimeProgress {
     std::chrono::steady_clock::time_point start_time;
     std::chrono::steady_clock::duration max_duration;
-    ftype::f64 current_progress = 0.0;
+    f64 current_progress = 0.0;
 public:
     TimeProgress(std::chrono::milliseconds max_duration) : start_time(std::chrono::steady_clock::now()), max_duration(std::chrono::duration_cast<std::chrono::steady_clock::duration>(max_duration)) {}
-    ftype::f64 progress() const { return current_progress; }
-    bool update([[maybe_unused]] itype::u32 current_iter) {
+    f64 progress() const { return current_progress; }
+    bool update([[maybe_unused]] u32 current_iter) {
         auto now = std::chrono::steady_clock::now();
-        current_progress = static_cast<ftype::f64>((now - start_time).count()) / static_cast<ftype::f64>(max_duration.count());
+        current_progress = static_cast<f64>((now - start_time).count()) / static_cast<f64>(max_duration.count());
         return now - start_time < max_duration;
     }
 };
@@ -92,23 +92,23 @@ template<class OptType, class TempFunction, class ProgressFunction> class Anneal
     constexpr static bool is_minimize = std::is_same<OptType, annealing::_Minimize>::value;
     TempFunction temp_function;
     ProgressFunction progress_function;
-    ftype::f64 current_score;
-    ftype::f64 threshold_score;
-    ftype::f64 best_score;
-    ftype::f64 current_temp = 0.0;
-    itype::u32 ugap;
-    itype::u32 current_iter = 0;
+    f64 current_score;
+    f64 threshold_score;
+    f64 best_score;
+    f64 current_temp = 0.0;
+    u32 ugap;
+    u32 current_iter = 0;
     bool is_best_updated = false;
-    [[no_unique_address]] Allocator<ftype::f32> alloc;
-    ftype::f32* rnd_buf = nullptr;
-    itype::u32 rnd_buf_size;
+    [[no_unique_address]] Allocator<f32> alloc;
+    f32* rnd_buf = nullptr;
+    u32 rnd_buf_size;
 public:
     Annealing() = delete;
-    Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, ftype::f64 init_score, itype::u32 update_gap = 8, itype::u32 seed = Rand32::default_seed, itype::u32 buf_size = 12) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(1u << update_gap), alloc(), rnd_buf_size(1u << buf_size) {
+    Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, f64 init_score, u32 update_gap = 8, u32 seed = Rand32::default_seed, u32 buf_size = 12) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(1u << update_gap), alloc(), rnd_buf_size(1u << buf_size) {
         if constexpr (!std::is_same<TempFunction, ZeroTemp>::value) {
             rnd_buf = alloc.allocate(rnd_buf_size);
             Rand32 rand_function(seed);
-            for (itype::u32 i = 0; i < rnd_buf_size; ++i) {
+            for (u32 i = 0; i < rnd_buf_size; ++i) {
                 rnd_buf[i] = std::log(1.0f - Canocicaled32(rand_function));
             }
         }
@@ -116,13 +116,13 @@ public:
     ~Annealing() {
         if (rnd_buf) alloc.deallocate(rnd_buf, rnd_buf_size);
     }
-    itype::u32 iterations() const { return current_iter; }
-    ftype::f64 temp() const { return current_temp; }
-    ftype::f64 score() const { return current_score; }
-    ftype::f64 threshold() const { return threshold_score; }
-    ftype::f64 best() const { return best_score; }
-    itype::u32 gap() const { return ugap; }
-    ftype::f64 progress() const { return progress_function.progress(); }
+    u32 iterations() const { return current_iter; }
+    f64 temp() const { return current_temp; }
+    f64 score() const { return current_score; }
+    f64 threshold() const { return threshold_score; }
+    f64 best() const { return best_score; }
+    u32 gap() const { return ugap; }
+    f64 progress() const { return progress_function.progress(); }
     TempFunction& tempf() { return temp_function; }
     ProgressFunction& progressf() { return progress_function; }
     bool update() {
@@ -135,7 +135,7 @@ public:
         if constexpr (std::is_same<TempFunction, ZeroTemp>::value) {
             threshold_score = current_score;
         } else {
-            ftype::f64 rnd_val = static_cast<ftype::f64>(rnd_buf[current_iter & (rnd_buf_size - 1)]);
+            f64 rnd_val = static_cast<f64>(rnd_buf[current_iter & (rnd_buf_size - 1)]);
             if constexpr (is_minimize) {
                 threshold_score = current_score - current_temp * rnd_val;
             } else {
@@ -145,14 +145,14 @@ public:
         ++current_iter;
         return true;
     }
-    bool acceptable(ftype::f64 new_score) {
+    bool acceptable(f64 new_score) {
         if constexpr (is_minimize) {
             return new_score < threshold_score;
         } else {
             return new_score > threshold_score;
         }
     }
-    bool accept(ftype::f64 new_score) {
+    bool accept(f64 new_score) {
         is_best_updated = false;
         if constexpr (is_minimize) {
             if (new_score < threshold_score) {

@@ -87,15 +87,15 @@ public:
     constexpr auto as_multiset() const { return std::multiset(get_begin(), get_end()); }
     constexpr auto as_multiset() { return std::multiset(get_begin(), get_end()); }
     constexpr auto slice() { return Subrange(get_begin(), get_end()); }
-    constexpr auto slice(itype::u32 start) { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
-    constexpr auto slice(itype::u32 start, itype::u32 end) { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
+    constexpr auto slice(u32 start) { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
+    constexpr auto slice(u32 start, u32 end) { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
     constexpr auto slice() const { return Subrange(get_begin(), get_end()); }
-    constexpr auto slice(itype::u32 start) const { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
-    constexpr auto slice(itype::u32 start, itype::u32 end) const { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
-    constexpr auto drop(itype::u32 n) { return slice(n); }
-    constexpr auto drop(itype::u32 n) const { return slice(n); }
-    constexpr auto take(itype::u32 n) { return Subrange(get_begin(), std::ranges::next(get_begin(), n)); }
-    constexpr auto take(itype::u32 n) const { return Subrange(get_begin(), std::ranges::next(get_begin(), n)); }
+    constexpr auto slice(u32 start) const { return Subrange(std::ranges::next(get_begin(), start), get_end()); }
+    constexpr auto slice(u32 start, u32 end) const { return Subrange(std::ranges::next(get_begin(), start), std::ranges::next(get_begin(), end)); }
+    constexpr auto drop(u32 n) { return slice(n); }
+    constexpr auto drop(u32 n) const { return slice(n); }
+    constexpr auto take(u32 n) { return Subrange(get_begin(), std::ranges::next(get_begin(), n)); }
+    constexpr auto take(u32 n) const { return Subrange(get_begin(), std::ranges::next(get_begin(), n)); }
     template<class T> static constexpr derived_type iota(T&& end) { return from_range(std::views::iota(std::decay_t<T>(), end)); }
     template<class T, class U> static constexpr derived_type iota(T&& start, U&& end) {
         using ct = std::common_type_t<T, U>;
@@ -106,10 +106,10 @@ public:
     constexpr void iterate(Proj&& proj = {}) {
         auto start = get_begin();
         auto end = get_end();
-        for (itype::u32 idx = 0; start != end; ++start, ++idx) {
-            if constexpr (requires { Invoke(proj, *start, idx, *this); }) Invoke(proj, *start, idx, *this);
-            else if constexpr (requires { Invoke(proj, *start, idx); }) Invoke(proj, *start, idx);
-            else if constexpr (requires { Invoke(proj, *start); }) Invoke(proj, *start);
+        for (u32 idx = 0; start != end; ++start, ++idx) {
+            if constexpr (requires { std::invoke(proj, *start, idx, *this); }) std::invoke(proj, *start, idx, *this);
+            else if constexpr (requires { std::invoke(proj, *start, idx); }) std::invoke(proj, *start, idx);
+            else if constexpr (requires { std::invoke(proj, *start); }) std::invoke(proj, *start);
             else proj();
         }
     }
@@ -118,11 +118,11 @@ public:
     constexpr void iterate(Proj&& proj = {}) const {
         auto start = get_begin();
         auto end = get_end();
-        for (itype::u32 idx = 0; start != end; ++start, ++idx) {
-            if constexpr (requires { Invoke(proj, *start, idx, *this); }) Invoke(proj, *start, idx, *this);
-            else if constexpr (requires { Invoke(proj, *start, idx); }) Invoke(proj, *start, idx);
-            else if constexpr (requires { Invoke(proj, *start); }) Invoke(proj, *start);
-            else Invoke(proj);
+        for (u32 idx = 0; start != end; ++start, ++idx) {
+            if constexpr (requires { std::invoke(proj, *start, idx, *this); }) std::invoke(proj, *start, idx, *this);
+            else if constexpr (requires { std::invoke(proj, *start, idx); }) std::invoke(proj, *start, idx);
+            else if constexpr (requires { std::invoke(proj, *start); }) std::invoke(proj, *start);
+            else std::invoke(proj);
         }
     }
     template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred>
@@ -138,13 +138,13 @@ public:
     template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred>
         requires std::ranges::input_range<derived_type>
     [[nodiscard]] constexpr auto erase_if(Pred&& pred = {}) {
-        auto view = derived().filter([&](auto&& x) { return !Invoke(pred, x); });
+        auto view = derived().filter([&](auto&& x) { return !std::invoke(pred, x); });
         derived() = derived_type(std::ranges::begin(view), std::ranges::end(view));
     }
     template<std::invocable<value_type> Proj>
         requires std::ranges::input_range<derived_type> && std::ranges::output_range<derived_type, std::invoke_result_t<Proj, value_type&&>>
     constexpr void apply(Proj&& proj = {}) {
-        for (auto&& x : derived()) x = Invoke(proj, std::move(x));
+        for (auto&& x : derived()) x = std::invoke(proj, std::move(x));
     }
     template<class T>
         requires std::ranges::output_range<derived_type, const T&>
@@ -164,28 +164,28 @@ public:
         requires std::ranges::input_range<derived_type>
     constexpr bool all_of(Pred&& f = {}) const {
         for (auto&& el : derived())
-            if (!Invoke(f, std::forward<decltype(el)>(el))) return false;
+            if (!std::invoke(f, std::forward<decltype(el)>(el))) return false;
         return true;
     }
     template<std::predicate<value_type> Pred>
         requires std::ranges::input_range<derived_type>
     constexpr bool any_of(Pred&& f = {}) const {
         for (auto&& el : derived())
-            if (Invoke(f, std::forward<decltype(el)>(el))) return true;
+            if (std::invoke(f, std::forward<decltype(el)>(el))) return true;
         return false;
     }
     template<std::predicate<value_type> Pred>
         requires std::ranges::input_range<derived_type>
     constexpr bool none_of(Pred f) const {
         for (auto&& el : derived())
-            if (Invoke(f, std::forward<decltype(el)>(el))) return false;
+            if (std::invoke(f, std::forward<decltype(el)>(el))) return false;
         return true;
     }
     template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo>
         requires std::ranges::input_range<derived_type>
     constexpr bool contains(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
         for (auto&& el : derived())
-            if (Invoke(comp, x, Invoke(proj, std::forward<decltype(el)>(el)))) return true;
+            if (std::invoke(comp, x, std::invoke(proj, std::forward<decltype(el)>(el)))) return true;
         return false;
     }
     template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo>
@@ -194,7 +194,7 @@ public:
         const auto end = get_end();
         auto itr = get_begin();
         for (; itr != end; ++itr)
-            if (Invoke(comp, x, Invoke(proj, *itr))) return itr;
+            if (std::invoke(comp, x, std::invoke(proj, *itr))) return itr;
         return itr;
     }
     template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo>
@@ -204,7 +204,7 @@ public:
             const auto end = get_rend();
             auto itr = get_rbegin();
             for (; itr != end; ++itr)
-                if (Invoke(comp, x, Invoke(proj, *itr))) return --itr.base();
+                if (std::invoke(comp, x, std::invoke(proj, *itr))) return --itr.base();
             return get_end();
         } else {
             const auto end = get_end();
@@ -212,7 +212,7 @@ public:
             decltype(itr) result = itr;
             bool found = false;
             for (; itr != end; ++itr) {
-                if (Invoke(comp, x, Invoke(proj, *itr))) {
+                if (std::invoke(comp, x, std::invoke(proj, *itr))) {
                     result = itr;
                     found = true;
                 }
@@ -223,20 +223,20 @@ public:
     }
     template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo>
         requires std::ranges::input_range<derived_type>
-    constexpr itype::u32 index_of(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
+    constexpr u32 index_of(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
         const auto end = get_end();
-        itype::u32 cnt = 0;
+        u32 cnt = 0;
         for (auto itr = get_begin(); itr != end; ++itr) {
-            if (Invoke(comp, x, Invoke(proj, *itr))) return cnt;
+            if (std::invoke(comp, x, std::invoke(proj, *itr))) return cnt;
             ++cnt;
         }
         return cnt;
     }
     template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo>
         requires std::ranges::input_range<derived_type>
-    constexpr itype::u32 count(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
-        itype::u32 res = 0;
-        for (auto&& el : derived()) res += static_cast<bool>(Invoke(comp, x, Invoke(proj, std::forward<decltype(el)>(el))));
+    constexpr u32 count(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
+        u32 res = 0;
+        for (auto&& el : derived()) res += static_cast<bool>(std::invoke(comp, x, std::invoke(proj, std::forward<decltype(el)>(el))));
         return res;
     }
     template<class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
@@ -346,7 +346,7 @@ public:
         return internal::LCMImpl(derived(), std::forward<Proj>(proj));
     }
     constexpr bool is_capitalized() const
-        requires std::ranges::input_range<derived_type> && std::same_as<value_type, ctype::c8>
+        requires std::ranges::input_range<derived_type> && std::same_as<value_type, c8>
     {
         auto itr = get_begin();
         auto sent = get_end();
@@ -359,7 +359,7 @@ public:
         return true;
     }
     constexpr void lower()
-        requires std::ranges::input_range<derived_type> && std::same_as<value_type, ctype::c8>
+        requires std::ranges::input_range<derived_type> && std::same_as<value_type, c8>
     {
         auto itr = get_begin();
         auto sent = get_end();
@@ -369,7 +369,7 @@ public:
         }
     }
     constexpr void upper()
-        requires std::ranges::input_range<derived_type> && std::same_as<value_type, ctype::c8>
+        requires std::ranges::input_range<derived_type> && std::same_as<value_type, c8>
     {
         auto itr = get_begin();
         auto sent = get_end();
@@ -436,10 +436,10 @@ public:
     }
     constexpr S end() const { return sent; }
     constexpr bool empty() const { return itr == sent; }
-    constexpr itype::u32 size() const
+    constexpr u32 size() const
         requires(K == RangeKind::Sized)
     {
-        return static_cast<itype::u32>(std::ranges::distance(itr, sent));
+        return static_cast<u32>(std::ranges::distance(itr, sent));
     }
     constexpr I data() const
         requires(std::is_pointer_v<I> && std::copyable<I>)

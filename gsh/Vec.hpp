@@ -23,8 +23,8 @@ public:
     using const_reference = const T&;
     using iterator = T*;
     using const_iterator = const T*;
-    using size_type = itype::u32;
-    using difference_type = itype::i32;
+    using size_type = u32;
+    using difference_type = i32;
     using value_type = T;
     using allocator_type = Allocator;
     using pointer = typename traits::pointer;

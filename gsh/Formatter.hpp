@@ -10,7 +10,7 @@
 
 namespace gsh {
 
-namespace itype {
+namespace io {
     struct i4dig;
     struct u4dig;
     struct i8dig;
@@ -26,7 +26,7 @@ namespace itype {
     struct u4dig_pad;
     struct u8dig_pad;
     struct u16dig_pad;
-}  // namespace itype
+}  // namespace io
 
 template<class T> class Formatter;
 
@@ -34,19 +34,19 @@ namespace internal {
 #ifndef GSH_USE_COMPILE_TIME_CALCULATION
     template<bool Flag> auto InttoStr = [] {
         struct {
-            ctype::c8* table;
+            c8* table;
         } res;
-        static ctype::c8 table[40004] = {};
+        static c8 table[40004] = {};
         res.table = table;
         if constexpr (Flag) {
-            for (itype::u32 i = 0; i != 10000; ++i) {
+            for (u32 i = 0; i != 10000; ++i) {
                 res.table[4 * i + 0] = i < 1000 ? ' ' : (i / 1000 + '0');
                 res.table[4 * i + 1] = i < 100 ? ' ' : (i / 100 % 10 + '0');
                 res.table[4 * i + 2] = i < 10 ? ' ' : (i / 10 % 10 + '0');
                 res.table[4 * i + 3] = (i % 10 + '0');
             }
         } else {
-            for (itype::u32 i = 0; i != 10000; ++i) {
+            for (u32 i = 0; i != 10000; ++i) {
                 res.table[4 * i + 0] = (i / 1000 + '0');
                 res.table[4 * i + 1] = (i / 100 % 10 + '0');
                 res.table[4 * i + 2] = (i / 10 % 10 + '0');
@@ -58,17 +58,17 @@ namespace internal {
 #else
     template<bool Flag> constexpr auto InttoStr = [] {
         struct {
-            ctype::c8 table[40004] = {};
+            c8 table[40004] = {};
         } res;
         if constexpr (Flag) {
-            for (itype::u32 i = 0; i != 10000; ++i) {
+            for (u32 i = 0; i != 10000; ++i) {
                 res.table[4 * i + 0] = i < 1000 ? ' ' : (i / 1000 + '0');
                 res.table[4 * i + 1] = i < 100 ? ' ' : (i / 100 % 10 + '0');
                 res.table[4 * i + 2] = i < 10 ? ' ' : (i / 10 % 10 + '0');
                 res.table[4 * i + 3] = (i % 10 + '0');
             }
         } else {
-            for (itype::u32 i = 0; i != 10000; ++i) {
+            for (u32 i = 0; i != 10000; ++i) {
                 res.table[4 * i + 0] = (i / 1000 + '0');
                 res.table[4 * i + 1] = (i / 100 % 10 + '0');
                 res.table[4 * i + 2] = (i / 10 % 10 + '0');
@@ -78,19 +78,19 @@ namespace internal {
         return res;
     }();
 #endif
-    template<bool Flag = false, class Stream> constexpr void Formatu16(Stream&& stream, itype::u16 n) {
+    template<bool Flag = false, class Stream> constexpr void Formatu16(Stream&& stream, u16 n) {
         auto *cur = stream.current(), *p = cur;
-        auto copy1 = [&](itype::u16 x) {
+        auto copy1 = [&](u16 x) {
             if constexpr (Flag) {
                 MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
                 p += 4;
             } else {
-                itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+                u32 off = (x < 10) + (x < 100) + (x < 1000);
                 MemoryCopy(p, InttoStr<false>.table + (4 * x + off), 4);
                 p += 4 - off;
             }
         };
-        auto copy2 = [&](itype::u16 x) {
+        auto copy2 = [&](u16 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
             p += 4;
         };
@@ -101,19 +101,19 @@ namespace internal {
         }
         stream.skip(p - cur);
     }
-    template<bool Flag = false, class Stream> constexpr void Formatu32(Stream&& stream, itype::u32 n) {
+    template<bool Flag = false, class Stream> constexpr void Formatu32(Stream&& stream, u32 n) {
         auto *cur = stream.current(), *p = cur;
-        auto copy1 = [&](itype::u32 x) {
+        auto copy1 = [&](u32 x) {
             if constexpr (Flag) {
                 MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
                 p += 4;
             } else {
-                itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+                u32 off = (x < 10) + (x < 100) + (x < 1000);
                 MemoryCopy(p, InttoStr<false>.table + (4 * x + off), 4);
                 p += 4 - off;
             }
         };
-        auto copy2 = [&](itype::u32 x) {
+        auto copy2 = [&](u32 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
             p += 4;
         };
@@ -130,81 +130,81 @@ namespace internal {
         }
         stream.skip(p - cur);
     }
-    template<bool Flag = false, class Stream> constexpr void Formatu64(Stream&& stream, itype::u64 n) {
+    template<bool Flag = false, class Stream> constexpr void Formatu64(Stream&& stream, u64 n) {
         auto *cur = stream.current(), *p = cur;
-        auto copy1 = [&](itype::u64 x) {
+        auto copy1 = [&](u64 x) {
             if constexpr (Flag) {
                 MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
                 p += 4;
             } else {
-                itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+                u32 off = (x < 10) + (x < 100) + (x < 1000);
                 MemoryCopy(p, InttoStr<false>.table + (4 * x + off), 4);
                 p += 4 - off;
             }
         };
-        auto copy2 = [&](itype::u64 x) {
+        auto copy2 = [&](u64 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
             p += 4;
         };
         if (n >= 10000000000000000) {
-            itype::u64 a = n / 100000000, b = n % 100000000;
-            itype::u64 c = a / 10000, d = a % 10000, e = b / 10000, f = b % 10000;
-            itype::u64 g = c / 10000, h = c % 10000;
+            u64 a = n / 100000000, b = n % 100000000;
+            u64 c = a / 10000, d = a % 10000, e = b / 10000, f = b % 10000;
+            u64 g = c / 10000, h = c % 10000;
             copy1(g), copy2(h), copy2(d), copy2(e), copy2(f);
         } else if (n >= 1000000000000) {
-            itype::u64 a = n / 100000000, b = n % 100000000;
-            itype::u64 c = a / 10000, d = a % 10000, e = b / 10000, f = b % 10000;
+            u64 a = n / 100000000, b = n % 100000000;
+            u64 c = a / 10000, d = a % 10000, e = b / 10000, f = b % 10000;
             copy1(c), copy2(d), copy2(e), copy2(f);
         } else if (n >= 100000000) {
-            itype::u64 a = n / 100000000, b = n % 100000000;
-            itype::u64 c = b / 10000, d = b % 10000;
+            u64 a = n / 100000000, b = n % 100000000;
+            u64 c = b / 10000, d = b % 10000;
             copy1(a), copy2(c), copy2(d);
         } else if (n >= 10000) {
-            itype::u64 a = n / 10000, b = n % 10000;
+            u64 a = n / 10000, b = n % 10000;
             copy1(a), copy2(b);
         } else {
             copy1(n);
         }
         stream.skip(p - cur);
     }
-    template<bool Flag = false, class Stream> constexpr void Formatu128(Stream&& stream, itype::u128 n) {
-        if (itype::u64(n >> 64) == 0) {
+    template<bool Flag = false, class Stream> constexpr void Formatu128(Stream&& stream, u128 n) {
+        if (u64(n >> 64) == 0) {
             Formatu64<Flag>(std::forward<Stream>(stream), n);
             return;
         }
         auto *cur = stream.current(), *p = cur;
-        auto copy1 = [&](itype::u32 x) {
+        auto copy1 = [&](u32 x) {
             if constexpr (Flag) {
                 MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
                 p += 4;
             } else {
-                itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+                u32 off = (x < 10) + (x < 100) + (x < 1000);
                 MemoryCopy(p, InttoStr<false>.table + (4 * x + off), 4);
                 p += 4 - off;
             }
         };
-        auto copy2 = [&](itype::u32 x) {
+        auto copy2 = [&](u32 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
             p += 4;
         };
-        constexpr itype::u128 t = static_cast<itype::u128>(10000000000000000) * 10000000000000000;
+        constexpr u128 t = static_cast<u128>(10000000000000000) * 10000000000000000;
         if (n >= t) {
-            const itype::u32 dv = n / t;
+            const u32 dv = n / t;
             n -= dv * t;
             if (dv >= 10000) {
                 copy1(dv / 10000);
                 copy2(dv % 10000);
             } else copy1(dv);
             auto [a, b] = Divu128(n >> 64, n, 10000000000000000);
-            const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
+            const u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
             copy2(c / 10000), copy2(c % 10000);
             copy2(d / 10000), copy2(d % 10000);
             copy2(e / 10000), copy2(e % 10000);
             copy2(f / 10000), copy2(f % 10000);
         } else {
             auto [a, b] = Divu128(n >> 64, n, 10000000000000000);
-            const itype::u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
-            const itype::u32 g = c / 10000, h = c % 10000, i = d / 10000, j = d % 10000, k = e / 10000, l = e % 10000, m = f / 10000, n = f % 10000;
+            const u32 c = a / 100000000, d = a % 100000000, e = b / 100000000, f = b % 100000000;
+            const u32 g = c / 10000, h = c % 10000, i = d / 10000, j = d % 10000, k = e / 10000, l = e % 10000, m = f / 10000, n = f % 10000;
             if (c == 0) {
                 if (i == 0) copy1(j);
                 else copy1(i), copy2(j);
@@ -216,29 +216,29 @@ namespace internal {
         }
         stream.skip(p - cur);
     }
-    template<bool Flag = false, class Stream> constexpr void Formatu4dig(Stream&& stream, itype::u16 x) {
+    template<bool Flag = false, class Stream> constexpr void Formatu4dig(Stream&& stream, u16 x) {
         if constexpr (Flag) {
             MemoryCopy(stream.current(), InttoStr<Flag>.table + 4 * x, 4);
             stream.skip(4);
         } else {
-            itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+            u32 off = (x < 10) + (x < 100) + (x < 1000);
             MemoryCopy(stream.current(), InttoStr<false>.table + (4 * x + off), 4);
             stream.skip(4 - off);
         }
     }
-    template<bool Flag = false, class Stream> constexpr void Formatu8dig(Stream&& stream, itype::u32 n) {
+    template<bool Flag = false, class Stream> constexpr void Formatu8dig(Stream&& stream, u32 n) {
         auto *cur = stream.current(), *p = cur;
-        auto copy1 = [&](itype::u32 x) {
+        auto copy1 = [&](u32 x) {
             if constexpr (Flag) {
                 MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
                 p += 4;
             } else {
-                itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+                u32 off = (x < 10) + (x < 100) + (x < 1000);
                 MemoryCopy(p, InttoStr<false>.table + (4 * x + off), 4);
                 p += 4 - off;
             }
         };
-        auto copy2 = [&](itype::u32 x) {
+        auto copy2 = [&](u32 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
             p += 4;
         };
@@ -249,19 +249,19 @@ namespace internal {
         }
         stream.skip(p - cur);
     }
-    template<bool Flag = false, class Stream> constexpr void Formatu16dig(Stream&& stream, itype::u64 n) {
+    template<bool Flag = false, class Stream> constexpr void Formatu16dig(Stream&& stream, u64 n) {
         auto *cur = stream.current(), *p = cur;
-        auto copy1 = [&](itype::u64 x) {
+        auto copy1 = [&](u64 x) {
             if constexpr (Flag) {
                 MemoryCopy(p, InttoStr<Flag>.table + 4 * x, 4);
                 p += 4;
             } else {
-                itype::u32 off = (x < 10) + (x < 100) + (x < 1000);
+                u32 off = (x < 10) + (x < 100) + (x < 1000);
                 MemoryCopy(p, InttoStr<false>.table + (4 * x + off), 4);
                 p += 4 - off;
             }
         };
-        auto copy2 = [&](itype::u64 x) {
+        auto copy2 = [&](u64 x) {
             MemoryCopy(p, InttoStr<false>.table + 4 * x, 4);
             p += 4;
         };
@@ -287,170 +287,170 @@ namespace internal {
     }
 }  // namespace internal
 
-template<> class Formatter<itype::u16> {
+template<> class Formatter<u16> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u16 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
         stream.reload(8);
         internal::Formatu16(stream, n);
     }
 };
-template<> class Formatter<itype::i16> {
+template<> class Formatter<i16> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::i16 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, i16 n) const {
         stream.reload(8);
         *stream.current() = '-';
         stream.skip(n < 0);
         internal::Formatu16(stream, n < 0 ? -n : n);
     }
 };
-template<> class Formatter<itype::u32> {
+template<> class Formatter<u32> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u32 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
         stream.reload(16);
         internal::Formatu32(stream, n);
     }
 };
-template<> class Formatter<itype::i32> {
+template<> class Formatter<i32> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::i32 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, i32 n) const {
         stream.reload(16);
         *stream.current() = '-';
         stream.skip(n < 0);
         internal::Formatu32(stream, n < 0 ? -n : n);
     }
 };
-template<> class Formatter<itype::u64> {
+template<> class Formatter<u64> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u64 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
         stream.reload(32);
         internal::Formatu64(stream, n);
     }
 };
-template<> class Formatter<itype::i64> {
+template<> class Formatter<i64> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::i64 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, i64 n) const {
         stream.reload(32);
         *stream.current() = '-';
         stream.skip(n < 0);
         internal::Formatu64(stream, n < 0 ? -n : n);
     }
 };
-template<> class Formatter<itype::u128> {
+template<> class Formatter<u128> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u128 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u128 n) const {
         stream.reload(64);
         internal::Formatu128(stream, n);
     }
 };
-template<> class Formatter<itype::i128> {
+template<> class Formatter<i128> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::i128 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, i128 n) const {
         stream.reload(64);
         *stream.current() = '-';
         stream.skip(n < 0);
         internal::Formatu128(stream, n < 0 ? -n : n);
     }
 };
-template<> class Formatter<itype::u4dig> {
+template<> class Formatter<io::u4dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u16 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
         stream.reload(4);
         internal::Formatu4dig(stream, n);
     }
 };
-template<> class Formatter<itype::i4dig> {
+template<> class Formatter<io::i4dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::i16 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, i16 n) const {
         stream.reload(5);
         *stream.current() = '-';
         stream.skip(n < 0);
-        internal::Formatu4dig(stream, static_cast<itype::u16>(n < 0 ? -n : n));
+        internal::Formatu4dig(stream, static_cast<u16>(n < 0 ? -n : n));
     }
 };
-template<> class Formatter<itype::u8dig> {
+template<> class Formatter<io::u8dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u32 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
         stream.reload(8);
         internal::Formatu8dig(stream, n);
     }
 };
-template<> class Formatter<itype::i8dig> {
+template<> class Formatter<io::i8dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::i32 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, i32 n) const {
         stream.reload(9);
         *stream.current() = '-';
         stream.skip(n < 0);
-        internal::Formatu8dig(stream, static_cast<itype::u32>(n < 0 ? -n : n));
+        internal::Formatu8dig(stream, static_cast<u32>(n < 0 ? -n : n));
     }
 };
-template<> class Formatter<itype::u16dig> {
+template<> class Formatter<io::u16dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u64 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
         stream.reload(16);
         internal::Formatu16dig(stream, n);
     }
 };
-template<> class Formatter<itype::i16dig> {
+template<> class Formatter<io::i16dig> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::i64 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, i64 n) const {
         stream.reload(17);
         *stream.current() = '-';
         stream.skip(n < 0);
-        internal::Formatu16dig(stream, static_cast<itype::u64>(n < 0 ? -n : n));
+        internal::Formatu16dig(stream, static_cast<u64>(n < 0 ? -n : n));
     }
 };
-template<> class Formatter<itype::u16_pad> {
+template<> class Formatter<io::u16_pad> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u16 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
         stream.reload(8);
         internal::Formatu16<true>(stream, n);
     }
 };
-template<> class Formatter<itype::u32_pad> {
+template<> class Formatter<io::u32_pad> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u32 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
         stream.reload(16);
         internal::Formatu32<true>(stream, n);
     }
 };
-template<> class Formatter<itype::u64_pad> {
+template<> class Formatter<io::u64_pad> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u64 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
         stream.reload(32);
         internal::Formatu64<true>(stream, n);
     }
 };
-template<> class Formatter<itype::u128_pad> {
+template<> class Formatter<io::u128_pad> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u128 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u128 n) const {
         stream.reload(64);
         internal::Formatu128<true>(stream, n);
     }
 };
-template<> class Formatter<itype::u4dig_pad> {
+template<> class Formatter<io::u4dig_pad> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u16 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
         stream.reload(4);
         internal::Formatu4dig<true>(stream, n);
     }
 };
-template<> class Formatter<itype::u8dig_pad> {
+template<> class Formatter<io::u8dig_pad> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u32 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
         stream.reload(8);
         internal::Formatu8dig<true>(stream, n);
     }
 };
-template<> class Formatter<itype::u16dig_pad> {
+template<> class Formatter<io::u16dig_pad> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, itype::u64 n) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
         stream.reload(16);
         internal::Formatu16dig<true>(stream, n);
     }
 };
-template<> class Formatter<ctype::c8> {
+template<> class Formatter<c8> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, ctype::c8 c) const {
+    template<class Stream> constexpr void operator()(Stream&& stream, c8 c) const {
         stream.reload(1);
         *stream.current() = c;
         stream.skip(1);
@@ -473,7 +473,7 @@ namespace io {
 namespace internal {
     template<class T> class FloatFormatter {
     public:
-        template<class Stream> constexpr void operator()(Stream&& stream, T f, io::FormatterOption fmt = io::Fixed, itype::i32 precision = 12) {
+        template<class Stream> constexpr void operator()(Stream&& stream, T f, io::FormatterOption fmt = io::Fixed, i32 precision = 12) {
             stream.reload(32);
             auto [ptr, err] = std::to_chars(stream.current(), stream.current() + stream.avail(), f, static_cast<std::chars_format>(fmt), precision);
             if (err != std::errc{}) [[unlikely]] {
@@ -508,9 +508,9 @@ template<> class Formatter<std::bfloat16_t> : public internal::FloatFormatter<st
 #ifdef __SIZEOF_FLOAT128__
 template<> class Formatter<__float128> : public internal::FloatFormatter<__float128> {};
 #endif
-template<> class Formatter<ftype::InvalidFloat16Tag> {};
-template<> class Formatter<ftype::InvalidFloat128Tag> {};
-template<> class Formatter<ftype::InvalidBfloat16Tag> {};
+template<> class Formatter<InvalidFloat16Tag> {};
+template<> class Formatter<InvalidFloat128Tag> {};
+template<> class Formatter<InvalidBfloat16Tag> {};
 template<> class Formatter<bool> {
 public:
     template<class Stream> constexpr void operator()(Stream&& stream, bool b) const {
@@ -519,11 +519,11 @@ public:
         stream.skip(1);
     }
 };
-template<> class Formatter<const ctype::c8*> {
+template<> class Formatter<const c8*> {
 public:
-    template<class Stream> constexpr void operator()(Stream&& stream, const ctype::c8* s) const { operator()(stream, s, StrLen(s)); }
-    template<class Stream> constexpr void operator()(Stream&& stream, const ctype::c8* s, itype::u32 len) const {
-        itype::u32 avail = stream.avail();
+    template<class Stream> constexpr void operator()(Stream&& stream, const c8* s) const { operator()(stream, s, StrLen(s)); }
+    template<class Stream> constexpr void operator()(Stream&& stream, const c8* s, u32 len) const {
+        u32 avail = stream.avail();
         if (avail >= len) [[likely]] {
             MemoryCopy(stream.current(), s, len);
             stream.skip(len);
@@ -535,7 +535,7 @@ public:
             while (len != 0) {
                 stream.reload();
                 avail = stream.avail();
-                const itype::u32 tmp = len < avail ? len : avail;
+                const u32 tmp = len < avail ? len : avail;
                 MemoryCopy(stream.current(), s, tmp);
                 len -= tmp;
                 s += tmp;
@@ -544,7 +544,7 @@ public:
         }
     }
 };
-template<> class Formatter<ctype::c8*> : public Formatter<const ctype::c8*> {};
+template<> class Formatter<c8*> : public Formatter<const c8*> {};
 
 class NoOutTag {};
 constexpr NoOutTag NoOut;
@@ -589,7 +589,7 @@ template<class T> concept FormatableTuple = requires { std::tuple_size<T>::value
 template<FormatableTuple T>
     requires(!FormatableRange<T>)
 class Formatter<T> {
-    template<itype::u32 I, class Stream, class U, class Sep> constexpr void print_element(Stream&& stream, U&& x, Sep&& sep) const {
+    template<u32 I, class Stream, class U, class Sep> constexpr void print_element(Stream&& stream, U&& x, Sep&& sep) const {
         using std::get;
         using element_type = std::decay_t<std::tuple_element_t<I, T>>;
         if constexpr (requires { x.template get<I>(); }) Formatter<element_type>()(stream, x.template get<I>());
@@ -597,9 +597,9 @@ class Formatter<T> {
         if constexpr (I < std::tuple_size_v<T> - 1) Formatter<std::decay_t<Sep>>()(stream, sep);
     }
     template<class Stream, class U, class Sep> constexpr void print(Stream&& stream, U&& x, Sep&& sep) const {
-        [&]<itype::u32... I>(std::integer_sequence<itype::u32, I...>) {
+        [&]<u32... I>(std::integer_sequence<u32, I...>) {
             (..., print_element<I>(stream, x, sep));
-        }(std::make_integer_sequence<itype::u32, std::tuple_size_v<T>>());
+        }(std::make_integer_sequence<u32, std::tuple_size_v<T>>());
     }
 public:
     template<class Stream, class U> constexpr void operator()(Stream&& stream, U&& x) const { print(std::forward<Stream>(stream), std::forward<U>(x), ' '); }

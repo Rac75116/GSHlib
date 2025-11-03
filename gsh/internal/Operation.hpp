@@ -1,6 +1,7 @@
 #pragma once
-#include <utility>      // std::move
-#include <type_traits>  // std::is_convertible_v
+#include <utility>
+#include <type_traits>
+#include "../TypeDef.hpp"
 
 namespace gsh {
 
@@ -41,8 +42,8 @@ namespace internal {
         constexpr D& derived() { return *static_cast<D*>(this); }
         constexpr const D& derived() const { return *static_cast<const D*>(this); }
     public:
-        using size_type = itype::u32;
-        using difference_type = itype::i32;
+        using size_type = u32;
+        using difference_type = i32;
         constexpr D operator++(int) noexcept(std::is_nothrow_copy_constructible_v<D> && noexcept(++derived())) {
             D copy = derived();
             ++derived();

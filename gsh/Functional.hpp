@@ -1,41 +1,19 @@
 #pragma once
-#include <concepts>                // std::totally_ordered_with, std::same_as, std::integral, std::floating_point
-#include <type_traits>             // std::remove_cv_t, std::remove_cvref_t
-#include <utility>                 // std::forward
-#include <cstddef>                 // std::nullptr_t
-#include <bit>                     // std::bit_cast
-#include <typeindex>               // std::hash
-#include "TypeDef.hpp"             // gsh::itype
-#include "Int128.hpp"              // gsh::itype::u128
-#include "internal/UtilMacro.hpp"  // GSH_INTERNAL_INLINE
+#include <concepts>
+#include <type_traits>
+#include <utility>
+#include <cstddef>
+#include <bit>
+#include <typeindex>
+#include <iterator>
+#include <array>
+#include <cstring>
+#include <functional>
+#include "TypeDef.hpp"
+#include "Int128.hpp"
+#include "internal/UtilMacro.hpp"
 
 namespace gsh {
-
-namespace internal {
-    template<class T> constexpr bool IsReferenceWrapper = false;
-    template<class U> constexpr bool IsReferenceWrapper<std::reference_wrapper<U>> = true;
-    // https://en.cppreference.com/w/cpp/utility/functional/invoke
-    template<class C, class Pointed, class Object, class... Args> GSH_INTERNAL_INLINE constexpr decltype(auto) InvokeMemPtr(Pointed C::* member, Object&& object, Args&&... args) {
-        using object_t = std::remove_cvref_t<Object>;
-        constexpr bool is_member_function = std::is_function_v<Pointed>;
-        constexpr bool is_wrapped = IsReferenceWrapper<object_t>;
-        constexpr bool is_derived_object = std::is_same_v<C, object_t> || std::is_base_of_v<C, object_t>;
-        if constexpr (is_member_function) {
-            if constexpr (is_derived_object) return (std::forward<Object>(object).*member)(std::forward<Args>(args)...);
-            else if constexpr (is_wrapped) return (object.get().*member)(std::forward<Args>(args)...);
-            else return ((*std::forward<Object>(object)).*member)(std::forward<Args>(args)...);
-        } else {
-            static_assert(std::is_object_v<Pointed> && sizeof...(args) == 0);
-            if constexpr (is_derived_object) return std::forward<Object>(object).*member;
-            else if constexpr (is_wrapped) return object.get().*member;
-            else return (*std::forward<Object>(object)).*member;
-        }
-    }
-}  // namespace internal
-template<class F, class... Args> GSH_INTERNAL_INLINE constexpr std::invoke_result_t<F, Args...> Invoke(F&& f, Args&&... args) noexcept(std::is_nothrow_invocable_v<F, Args...>) {
-    if constexpr (std::is_member_function_pointer_v<std::remove_cvref_t<F>>) return internal::InvokeMemPtr(f, std::forward<Args>(args)...);
-    else return std::forward<F>(f)(std::forward<Args>(args)...);
-}
 
 namespace internal {
     template<typename T, typename U> concept LessPtrCmp = requires(T&& t, U&& u) {
@@ -49,8 +27,8 @@ public:
     GSH_INTERNAL_INLINE constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<T>() < std::declval<U>())) {
         if constexpr (internal::LessPtrCmp<T, U>) {
             if (std::is_constant_evaluated()) return t < u;
-            auto x = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<T>(t)));
-            auto y = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<U>(u)));
+            auto x = reinterpret_cast<u64>(static_cast<const volatile void*>(std::forward<T>(t)));
+            auto y = reinterpret_cast<u64>(static_cast<const volatile void*>(std::forward<U>(u)));
             return x < y;
         } else return std::forward<T>(t) < std::forward<U>(u);
     }
@@ -63,8 +41,8 @@ public:
     GSH_INTERNAL_INLINE constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<U>() < std::declval<T>())) {
         if constexpr (internal::LessPtrCmp<U, T>) {
             if (std::is_constant_evaluated()) return u < t;
-            auto x = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<T>(t)));
-            auto y = reinterpret_cast<itype::u64>(static_cast<const volatile void*>(std::forward<U>(u)));
+            auto x = reinterpret_cast<u64>(static_cast<const volatile void*>(std::forward<T>(t)));
+            auto y = reinterpret_cast<u64>(static_cast<const volatile void*>(std::forward<U>(u)));
             return y < x;
         } else return std::forward<U>(u) < std::forward<T>(t);
     }
@@ -117,10 +95,10 @@ public:
         requires(sizeof...(Args) == sizeof...(G))
     constexpr BindFront(Arg&& arg, Args&&... args) noexcept(std::is_nothrow_constructible_v<F, Arg> && noexcept(BindFront<G...>(std::forward<Args>(args)...))) : func(std::forward<Arg>(arg)),
                                                                                                                                                                  bind(std::forward<Args>(args)...) {}
-    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) & noexcept(std::is_nothrow_invocable_v<F, Args...>) { return Invoke(bind, Invoke(func, std::forward<Args>(args)...)); }
-    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) && noexcept(std::is_nothrow_invocable_v<F, Args...>) { return Invoke(std::move(bind), Invoke(std::move(func), std::forward<Args>(args)...)); }
-    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) const& noexcept(std::is_nothrow_invocable_v<F, Args...>) { return Invoke(bind, Invoke(func, std::forward<Args>(args)...)); }
-    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) const&& noexcept(std::is_nothrow_invocable_v<F, Args...>) { return Invoke(std::move(bind), Invoke(std::move(func), std::forward<Args>(args)...)); }
+    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) & noexcept(std::is_nothrow_invocable_v<F, Args...>) { return std::invoke(bind, std::invoke(func, std::forward<Args>(args)...)); }
+    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) && noexcept(std::is_nothrow_invocable_v<F, Args...>) { return std::invoke(std::move(bind), std::invoke(std::move(func), std::forward<Args>(args)...)); }
+    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) const& noexcept(std::is_nothrow_invocable_v<F, Args...>) { return std::invoke(bind, std::invoke(func, std::forward<Args>(args)...)); }
+    template<class... Args> constexpr decltype(auto) operator()(Args&&... args) const&& noexcept(std::is_nothrow_invocable_v<F, Args...>) { return std::invoke(std::move(bind), std::invoke(std::move(func), std::forward<Args>(args)...)); }
 };
 template<class F> class BindFront<F> : public F {
 public:
@@ -131,122 +109,147 @@ public:
 template<class T> class CustomizedHash;
 
 namespace internal {
-    template<class T> concept Nocvref = std::same_as<T, std::remove_cv_t<T>> && !std::is_reference_v<T>;
-    constexpr itype::u64 MixIntegers(itype::u64 a, itype::u64 b) {
-        itype::u128 tmp = static_cast<itype::u128>(a) * b;
-        return static_cast<itype::u64>(tmp) ^ static_cast<itype::u64>(tmp >> 64);
+    GSH_INTERNAL_INLINE constexpr u64 HashMix(u64 x) {
+        constexpr u64 m = 0xe9846af9b1a615d;
+        x ^= x >> 32;
+        x *= m;
+        x ^= x >> 32;
+        x *= m;
+        x ^= x >> 28;
+        return x;
     }
-    constexpr itype::u64 HashBytes(const ctype::c8* ptr, itype::u32 len) noexcept {
-        constexpr itype::u64 m = 0xc6a4a7935bd1e995;
-        constexpr itype::u64 seed = 0xe17a1465;
-        constexpr itype::u32 r = 47;
-        itype::u64 h = seed ^ (len * m);
-        const itype::u32 n_blocks = len / 8;
-        for (itype::u64 i = 0; i < n_blocks; ++i) {
-            itype::u64 k;
-            const auto p = ptr + i * 8;
+    GSH_INTERNAL_INLINE constexpr u64 Mulx(u64 x, u64 y) {
+        u128 r = static_cast<u128>(x) * y;
+        return static_cast<u64>(r) ^ static_cast<u64>(r >> 64);
+    }
+
+    template<class T> concept IsCharType = std::same_as<T, char> || std::same_as<T, signed char> || std::same_as<T, unsigned char> || std::same_as<T, char8_t> || std::same_as<T, std::byte>;
+    template<std::random_access_iterator It>
+        requires IsCharType<typename std::iterator_traits<It>::value_type>
+    GSH_INTERNAL_INLINE constexpr u64 HashRangeBytes(It first, It last) {
+        const auto* p = std::to_address(first);
+        const u64 n = last - first;
+        constexpr u64 q = 0x9e3779b97f4a7c15;
+        constexpr u64 k = 0xdf442d22ce4859b9;
+        u64 w = Mulx(0ull + q, k);
+        u64 h = w ^ n;
+        u64 remaining = n;
+        while (remaining >= 8) {
+            u64 v1;
             if (std::is_constant_evaluated()) {
-                k = 0;
-                for (itype::u32 j = 0; j != 8; ++j) k |= static_cast<itype::u64>(p[j]) << (8 * j);
+                v1 = 0;
+                for (int i = 0; i < 8; ++i) v1 |= static_cast<u64>(static_cast<unsigned char>(p[i])) << (i * 8);
             } else {
-                for (int j = 0; j != 8; ++j) *(reinterpret_cast<ctype::c8*>(&k) + j) = *(p + j);
+                std::memcpy(&v1, p, sizeof(v1));
             }
-            k *= m;
-            k ^= k >> r;
-            k *= m;
-            h ^= k;
-            h *= m;
+            w += q;
+            h ^= Mulx(v1 + w, k);
+            p += 8;
+            remaining -= 8;
         }
-        const auto data8 = ptr + n_blocks * 8;
-        switch (len & 7u) {
-        case 7 : h ^= static_cast<itype::u64>(data8[6]) << 48U; [[fallthrough]];
-        case 6 : h ^= static_cast<itype::u64>(data8[5]) << 40U; [[fallthrough]];
-        case 5 : h ^= static_cast<itype::u64>(data8[4]) << 32U; [[fallthrough]];
-        case 4 : h ^= static_cast<itype::u64>(data8[3]) << 24U; [[fallthrough]];
-        case 3 : h ^= static_cast<itype::u64>(data8[2]) << 16U; [[fallthrough]];
-        case 2 : h ^= static_cast<itype::u64>(data8[1]) << 8U; [[fallthrough]];
-        case 1 :
-            h ^= static_cast<itype::u64>(data8[0]);
-            h *= m;
-            [[fallthrough]];
-        default : break;
+        u64 v1 = 0;
+        if (remaining > 0) {
+            if (std::is_constant_evaluated()) {
+                for (u64 i = 0; i < remaining; ++i) v1 |= static_cast<u64>(static_cast<unsigned char>(p[i])) << (i * 8);
+            } else {
+                std::memcpy(&v1, p, remaining);
+            }
         }
-        h ^= h >> r;
-        return h;
+        w += q;
+        h ^= Mulx(v1 + w, k);
+        return Mulx(h + w, k);
     }
-    constexpr itype::u64 HashBytes(const ctype::c8* ptr) noexcept {
-        auto last = ptr;
-        while (*last != '\0') ++last;
-        return HashBytes(ptr, last - ptr);
-    }
-    template<class T> concept StdHashCallable = requires(T x) {
-        { std::hash<T>{}(x) } -> std::integral;
-    };
+
     template<class T> concept CustomizedHashCallable = requires(T x) {
         { CustomizedHash<T>{}(x) } -> std::integral;
     };
 }  // namespace internal
 
-// https://raw.githubusercontent.com/martinus/unordered_dense/v1.3.0/include/ankerl/unordered_dense.h
+// Copyright 2022 Peter Dimov
+// Distributed under the Boost Software License, Version 1.0.
+// https://www.boost.org/LICENSE_1_0.txt
 class Hash {
 public:
-    template<class T>
-        requires internal::CustomizedHashCallable<T>
-    constexpr itype::u64 operator()(const T& x) const {
-        return static_cast<itype::u64>(CustomizedHash<T>{}(x));
-    }
-    template<class T>
-        requires internal::CustomizedHashCallable<T>
-    constexpr itype::u64 operator()(const T& x, const CustomizedHash<T>& h) const {
-        return static_cast<itype::u64>(h(x));
-    }
-    template<class T>
-        requires(!internal::CustomizedHashCallable<T> && !std::is_volatile_v<T>)
-    constexpr itype::u64 operator()(const T& x) const {
-        if constexpr (std::same_as<T, std::nullptr_t>) return operator()(static_cast<void*>(x));
-        else if constexpr (std::is_pointer_v<T>) {
-            static_assert(sizeof(x) == 4 || sizeof(x) == 8);
-            if constexpr (sizeof(x) == 8) return operator()(std::bit_cast<itype::u64>(x));
-            else return operator()(std::bit_cast<itype::u32>(x));
-        } else if constexpr (std::same_as<T, itype::u64>) return internal::MixIntegers(x, 0x9e3779b97f4a7c15);
-        else if constexpr (std::same_as<T, itype::u128>) {
-            itype::u64 a = internal::MixIntegers(static_cast<itype::u64>(x), 0x9e3779b97f4a7c15);
-            itype::u64 b = internal::MixIntegers(static_cast<itype::u64>(x >> 64), 12638153115695167455ull);
-            return a ^ b;
-        } else if constexpr (std::integral<T>) {
-            static_assert(sizeof(T) <= 16);
-            if constexpr (sizeof(T) <= 8) return operator()(static_cast<itype::u64>(x));
-            else return operator()(static_cast<itype::u128>(x));
-        } else if constexpr (std::floating_point<T>) {
-            static_assert(sizeof(T) <= 16);
-            if constexpr (sizeof(T) == 2) return operator()(std::bit_cast<itype::u16>(x));
-            else if constexpr (sizeof(T) == 4) return operator()(std::bit_cast<itype::u32>(x));
-            else if constexpr (sizeof(T) == 8) return operator()(std::bit_cast<itype::u64>(x));
-            else if constexpr (sizeof(T) == 16) return operator()(std::bit_cast<itype::u128>(x));
-            else if constexpr (sizeof(T) < 8) {
-                struct a {
-                    ctype::c8 b[sizeof(T)];
-                };
-                struct c {
-                    a d;
-                    ctype::c8 e[8 - sizeof(T)]{};
-                } f;
-                f.d = std::bit_cast<a>(x);
-                return operator()(std::bit_cast<itype::u64>(f));
+    template<class T> GSH_INTERNAL_INLINE constexpr u64 operator()(const T& v) const {
+        using Type = std::remove_cvref_t<T>;
+        if constexpr (internal::CustomizedHashCallable<Type>) {
+            return static_cast<u64>(CustomizedHash<Type>{}(v));
+        } else if constexpr (std::is_same_v<Type, std::nullptr_t>) {
+            return (*this)(static_cast<void*>(nullptr));
+        } else if constexpr (std::is_pointer_v<Type>) {
+            auto x = reinterpret_cast<std::uintptr_t>(v);
+            return (*this)(x + (x >> 3));
+        } else if constexpr (std::is_enum_v<Type>) {
+            return (*this)(static_cast<std::underlying_type_t<Type>>(v));
+        } else if constexpr (std::integral<Type>) {
+            if constexpr (sizeof(Type) <= sizeof(u64)) {
+                return internal::HashMix(static_cast<u64>(v));
             } else {
-                struct a {
-                    struct b {
-                        ctype::c8 c[sizeof(T)];
-                    } d;
-                    ctype::c8 e[16 - sizeof(T)]{};
-                } f;
-                f.d = std::bit_cast<a::b>(x);
-                return operator()(std::bit_cast<itype::u128>(f));
+                u128 val = static_cast<u128>(v);
+                u64 seed = (*this)(static_cast<u64>(val >> 64));
+                seed ^= (*this)(static_cast<u64>(val)) + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2);
+                return seed;
             }
-        } else if constexpr (internal::StdHashCallable<std::remove_cvref_t<T>>) return static_cast<itype::u64>(std::hash<std::remove_cvref_t<T>>{}(static_cast<std::remove_cvref_t<T>>(x)));
-        else {
-            static_assert((std::declval<T>(), false), "Cannot find the appropriate hash function.");
-            return 0ull;
+        } else if constexpr (std::floating_point<Type>) {
+            if constexpr (sizeof(Type) == 4) return (*this)(std::bit_cast<u32>(v));
+            else if constexpr (sizeof(Type) == 8) return (*this)(std::bit_cast<u64>(v));
+            else {
+                u128 bits{};
+                if (std::is_constant_evaluated()) {
+                    auto bytes = std::bit_cast<std::array<c8, sizeof(Type)>>(v);
+                    for (size_t i = 0; i < sizeof(Type); ++i) {
+                        reinterpret_cast<c8*>(&bits)[i] = bytes[i];
+                    }
+                } else {
+                    std::memcpy(&bits, &v, sizeof(v));
+                }
+                return (*this)(bits);
+            }
+        } else if constexpr (requires {
+                                 v.begin();
+                                 v.end();
+                             }) {
+            if constexpr (requires {
+                              v.data();
+                              v.size();
+                          } && internal::IsCharType<typename std::iterator_traits<decltype(v.begin())>::value_type>) {
+                return internal::HashRangeBytes(v.data(), v.data() + v.size());
+            } else {
+                u64 seed = 0;
+                for (const auto& elem : v) {
+                    seed ^= (*this)(elem) + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2);
+                }
+                return seed;
+            }
+        } else if constexpr (requires {
+                                 std::get<0>(v);
+                                 std::tuple_size_v<Type>;
+                             }) {
+            u64 seed = 0;
+            [&]<std::size_t... I>(std::index_sequence<I...>) {
+                ((seed ^= (*this)(std::get<I>(v)) + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2)), ...);
+            }(std::make_index_sequence<std::tuple_size_v<Type>>{});
+            return seed;
+        } else if constexpr (requires {
+                                 v.has_value();
+                                 *v;
+                             }) {
+            if (v.has_value()) {
+                return (*this)(*v);
+            }
+            return 0x12345678;
+        } else if constexpr (requires {
+                                 v.index();
+                                 std::visit([](auto&&) {}, v);
+                             }) {
+            u64 seed = (*this)(v.index());
+            std::visit([&](auto&& val) { seed ^= (*this)(val) + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2); }, v);
+            return seed;
+        } else if constexpr (std::is_standard_layout_v<Type> && std::is_trivial_v<Type>) {
+            return internal::HashRangeBytes(reinterpret_cast<const c8*>(&v), reinterpret_cast<const c8*>(&v) + sizeof(Type));
+        } else {
+            static_assert(sizeof(T) >= 0, "gsh::Hash cannot hash this type. Please provide a gsh::CustomizedHash specialization.");
+            return 0;
         }
     }
     using is_transparent = void;

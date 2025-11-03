@@ -436,6 +436,11 @@ public:
     }
     constexpr S end() const { return sent; }
     constexpr bool empty() const { return itr == sent; }
+    constexpr itype::u32 size() const
+        requires(K == RangeKind::Sized)
+    {
+        return static_cast<itype::u32>(std::ranges::distance(itr, sent));
+    }
     constexpr I data() const
         requires(std::is_pointer_v<I> && std::copyable<I>)
     {

@@ -340,7 +340,7 @@ namespace internal {
         }
     }
     itype::u64* FactorizeSub64(itype::u64 n, itype::u64* res) noexcept {
-        Assume(n % 2 != 0 && n % 3 != 0 && n % 5 != 0 && n % 7 != 0 && n % 11 != 0 && n % 13 != 0);
+        Assume(n % 2 != 0 && n % 3 != 0 && n % 5 != 0 && n % 7 != 0 && n % 11 != 0 && n % 13 != 0 && n % 17 != 0 && n % 19 != 0);
         if (IsPrime(n)) {
             *(res++) = n;
             return res;
@@ -355,13 +355,13 @@ namespace internal {
                     } while (m * n < m);
                 }
             };
-            for (itype::u32 i = 4; i != 14; ++i) {
+            for (itype::u32 i = 8; i != 14; ++i) {
                 check(i, InvPrime.table[i]);
-            }
-            itype::u64 p = InvPrime.table[15];
-            if (p * p > n) {
-                if (n != 1) *(res++) = n;
-                return res;
+                itype::u64 p = TinyPrimes.table[i + 1];
+                if (p * p > n) {
+                    if (n != 1) *(res++) = n;
+                    return res;
+                }
             }
             for (itype::u32 i = 14; i != 6542; i += 8) {
                 itype::u64 m1 = InvPrime.table[i];
@@ -372,7 +372,7 @@ namespace internal {
                 itype::u64 m6 = InvPrime.table[i + 5];
                 itype::u64 m7 = InvPrime.table[i + 6];
                 itype::u64 m8 = InvPrime.table[i + 7];
-                if (m1 * n < m1 || m2 * n < m2 || m3 * n < m3 || m4 * n < m4 || m5 * n < m5 || m6 * n < m6 || m7 * n < m7 || m8 * n < m8) [[unlikely]] {
+                if (m1 * n < m1 || m2 * n < m2 || m3 * n < m3 || m4 * n < m4 || m5 * n < m5 || m6 * n < m6 || m7 * n < m7 || m8 * n < m8) {
                     check(i, m1);
                     check(i + 1, m2);
                     check(i + 2, m3);

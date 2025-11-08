@@ -1,10 +1,11 @@
 #pragma once
-#include <type_traits>
+#include "Arr.hpp"
+#include "Modint.hpp"
+#include "TypeDef.hpp"
 #include <cmath>
 #include <new>
-#include "TypeDef.hpp"
-#include "Modint.hpp"
-#include "Arr.hpp"
+#include <type_traits>
+
 
 namespace gsh {
 

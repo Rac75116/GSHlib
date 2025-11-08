@@ -1,16 +1,17 @@
 #pragma once
-#include <type_traits>
-#include <concepts>
-#include <utility>
-#include <iterator>
-#include <ranges>
-#include <tuple>
-#include <set>
-#include <cctype>
-#include "TypeDef.hpp"
-#include "internal/Operation.hpp"
 #include "Functional.hpp"
 #include "Memory.hpp"
+#include "TypeDef.hpp"
+#include "internal/Operation.hpp"
+#include <cctype>
+#include <concepts>
+#include <iterator>
+#include <ranges>
+#include <set>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+
 
 namespace gsh {
 

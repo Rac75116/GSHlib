@@ -1,13 +1,14 @@
 #pragma once
-#include <source_location>  // std::source_location
-#include <type_traits>
 #include "InOut.hpp"
 #include "Util.hpp"
+#include <source_location>  // std::source_location
+#include <type_traits>
+
 
 #ifndef NDEBUG
 namespace gsh {
 namespace internal {
-    BasicWriter<2048> DebugPrinter(2);
+    inline BasicWriter<2048> DebugPrinter(2);
     template<class... Args> void DebugPrintImpl(std::source_location loc, Args&&... args) {
 #if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
         DebugPrinter.write_sep(NoOut, "\e[2m[Debug] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\n\e[0m\e[1m\e[3m");

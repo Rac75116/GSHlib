@@ -1,10 +1,11 @@
 #pragma once
-#include <cstdlib>        // std::exit
-#include <tuple>          // std::forward_as_tuple
-#include <ranges>         // std::ranges
-#include "Range.hpp"      // gsh::Subrange
-#include "Parser.hpp"     // gsh::Parser
 #include "Formatter.hpp"  // gsh::NoOut
+#include "Parser.hpp"     // gsh::Parser
+#include "Range.hpp"      // gsh::Subrange
+#include <cstdlib>        // std::exit
+#include <ranges>         // std::ranges
+#include <tuple>          // std::forward_as_tuple
+
 
 #define NMIN(T) (std::numeric_limits<T>::lowest())
 #define NMAX(T) (std::numeric_limits<T>::max())

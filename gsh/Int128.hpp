@@ -1,11 +1,13 @@
 #pragma once
-#include <compare>  // std::strong_ordering
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include "internal/Operation.hpp"
+#include <compare>  // std::strong_ordering
+
 #ifdef _MSC_VER
-#include <intrin.h>
 #include <immintrin.h>
+#include <intrin.h>
+
 #pragma intrinsic(_umul128, __umulh, _udiv128, __shiftleft128, __shiftright128)
 #endif
 

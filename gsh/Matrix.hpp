@@ -5,4 +5,4 @@ namespace gsh {
 
 template<class T> class Matrix {};
 
-}
+}  // namespace gsh

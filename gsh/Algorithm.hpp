@@ -1,15 +1,16 @@
 #pragma once
-#include <type_traits>     // std::common_type
-#include <cstring>         // std::memset
-#include <cstdlib>         // std::malloc, std::free
+#include "Arr.hpp"         // gsh::Arr
+#include "Functional.hpp"  // gsh::Less, gsh::Greater
+#include "Range.hpp"       // gsh::Range
+#include "TypeDef.hpp"     // gsh::itype
+#include "Vec.hpp"         // gsh::Vec
 #include <algorithm>       // std::lower_bound
 #include <cmath>           // std::sqrt
+#include <cstdlib>         // std::malloc, std::free
+#include <cstring>         // std::memset
 #include <limits>          // std::numeric_limits
-#include "TypeDef.hpp"     // gsh::itype
-#include "Arr.hpp"         // gsh::Arr
-#include "Vec.hpp"         // gsh::Vec
-#include "Range.hpp"       // gsh::Range
-#include "Functional.hpp"  // gsh::Less, gsh::Greater
+#include <type_traits>     // std::common_type
+
 
 namespace gsh {
 

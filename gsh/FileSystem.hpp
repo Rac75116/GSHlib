@@ -1,10 +1,10 @@
 #include <cstdio>  // FILE, fread, fwrite, fflush
 #if __has_include(<unistd.h>) && __has_include(<fcntl.h>)
-#include <unistd.h>  // read, write
-#include <fcntl.h>
-
 #include "TypeDef.hpp"  // gsh::itype
 #include "Util.hpp"     // gsh::Unreachable
+#include <fcntl.h>
+#include <unistd.h>  // read, write
+
 
 namespace gsh {
 

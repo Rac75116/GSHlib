@@ -1,11 +1,12 @@
 #pragma once
-#include <type_traits>
-#include <tuple>
-#include <utility>
-#include "TypeDef.hpp"
-#include "Exception.hpp"
-#include "Vec.hpp"
 #include "Arr.hpp"
+#include "Exception.hpp"
+#include "TypeDef.hpp"
+#include "Vec.hpp"
+#include <tuple>
+#include <type_traits>
+#include <utility>
+
 
 namespace gsh {
 

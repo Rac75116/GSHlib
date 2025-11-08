@@ -1,0 +1,27 @@
+If:
+    PathMatch: .*
+
+CompileFlags:
+    Add:
+        - -std=gnu++20
+        - -O2
+        - -Wall
+        - -Wextra
+        - -Wno-unknown-pragmas
+        - -Wno-sign-compare
+        - -Wno-unqualified-std-cast-call
+        - -march=native
+        - -pipe
+        - -static
+        - -s
+        - --include-directory=C:\\Users\\tsout\\Desktop\\Projects\\Kyopro\\lib
+    Compiler: clang++
+
+Diagnostics:
+    UnusedIncludes: None
+
+InlayHints:
+    Enabled: false
+
+Hover:
+    ShowAKA: true

@@ -1,7 +1,8 @@
 #pragma once
-#include <utility>
-#include <type_traits>
 #include "../TypeDef.hpp"
+#include <type_traits>
+#include <utility>
+
 
 namespace gsh {
 

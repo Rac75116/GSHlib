@@ -1,15 +1,14 @@
 #pragma once
-#include <algorithm>
-#include <bit>
-#include <iostream>
-#include "TypeDef.hpp"
-#include "Modint.hpp"
-#include "Vec.hpp"
-#include "Numeric.hpp"
-#include "Int128.hpp"
 #include "Algorithm.hpp"
+#include "Int128.hpp"
+#include "Modint.hpp"
+#include "Numeric.hpp"
 #include "Random.hpp"
+#include "TypeDef.hpp"
 #include "Util.hpp"
+#include "Vec.hpp"
+#include <bit>
+
 
 namespace gsh {
 
@@ -256,7 +255,7 @@ constexpr u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64,0,0,0,
     Vec<u8> flag(flag_size, 0xffu);
     flag[0] = 0b11111110u;
     Vec<u32> primes{ 2, 3, 5 };
-    f64 primes_size = std::is_constant_evaluated() ? size / 8 : size / std::log(size);
+    f64 primes_size = std::is_constant_evaluated() ? static_cast<f64>(size) / 8 : size / std::log(size);
     primes.reserve(static_cast<u32>(1.1 * primes_size));
     Vec<u32> sieved(static_cast<u32>(primes_size));
     u32 *first = sieved.data(), *last;
@@ -301,9 +300,9 @@ constexpr u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64,0,0,0,
 }
 
 namespace internal {
-    u16 TinyPrimes[6542] = {};
-    u64 InvPrimes[6542] = {};
-    u64 FindFactor(u64 x) {
+    inline u16 TinyPrimes[6542] = {};
+    inline u64 InvPrimes[6542] = {};
+    inline u64 FindFactor(u64 x) {
         MontgomeryModint64Impl mint;
         mint.set(x);
         static Rand64 engine;
@@ -335,7 +334,7 @@ namespace internal {
             k *= 2;
         }
     }
-    u64* FactorizeSub64(u64 n, u64* res) noexcept {
+    inline u64* FactorizeSub64(u64 n, u64* res) noexcept {
         Assume(n % 2 != 0 && n % 3 != 0 && n % 5 != 0 && n % 7 != 0 && n % 11 != 0 && n % 13 != 0 && n % 17 != 0 && n % 19 != 0);
         if (IsPrime(n)) {
             *(res++) = n;
@@ -402,7 +401,7 @@ namespace internal {
         } else return FactorizeSub64(m, res);
     }
 }  // namespace internal
-auto Factorize(u64 n) {
+inline auto Factorize(u64 n) {
     thread_local u64 res[64];
     if (n <= 1) [[unlikely]]
         return Subrange(res, res);

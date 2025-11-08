@@ -1,12 +1,13 @@
 #pragma once
-#include <type_traits>       // std::is_unsigned_v
-#include <bit>               // std::bit_floor, std::bit_width, std::countr_zero
-#include <iterator>          // std::iterator_traits
-#include <initializer_list>  // std::initializer_list
-#include "TypeDef.hpp"       // gsh::itype
-#include "Memory.hpp"        // gsh::Allocator, gsh::AllocatorTraits
-#include "Arr.hpp"           // gsh::Arr
+#include "Arr.hpp"      // gsh::Arr
+#include "Memory.hpp"   // gsh::Allocator, gsh::AllocatorTraits
+#include "TypeDef.hpp"  // gsh::itype
 #include "internal/UtilMacro.hpp"
+#include <bit>               // std::bit_floor, std::bit_width, std::countr_zero
+#include <initializer_list>  // std::initializer_list
+#include <iterator>          // std::iterator_traits
+#include <type_traits>       // std::is_unsigned_v
+
 
 namespace gsh {
 

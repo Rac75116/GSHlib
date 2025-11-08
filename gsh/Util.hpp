@@ -1,15 +1,16 @@
 #pragma once
-#include <type_traits>  // std::is_constant_evaluated
-#include <cstring>      // std::memset
-#include <bit>          //std::bit_cast
-#include <utility>      // std::make_integer_sequence
 #include "TypeDef.hpp"
-#include "internal/UtilMacro.hpp"
 #include "internal/Operation.hpp"
+#include "internal/UtilMacro.hpp"
+#include <bit>          //std::bit_cast
+#include <cstring>      // std::memset
+#include <type_traits>  // std::is_constant_evaluated
+#include <utility>      // std::make_integer_sequence
+
 
 namespace gsh {
 
-[[noreturn]] void Unreachable() {
+[[noreturn]] inline void Unreachable() {
 #if defined __GNUC__ || defined __clang__
     __builtin_unreachable();
 #elif _MSC_VER
@@ -57,7 +58,7 @@ GSH_INTERNAL_INLINE constexpr bool Unpredictable(const bool f) {
 #endif
 }
 
-GSH_INTERNAL_INLINE void PreventConstexpr() noexcept {
+GSH_INTERNAL_INLINE inline void PreventConstexpr() noexcept {
     [[maybe_unused]] thread_local u8 dummy = 0;
     ++dummy;
 }

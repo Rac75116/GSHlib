@@ -73,7 +73,7 @@ template<class Value, class Key> constexpr auto& get(const gsh::KeyValuePair<Key
     return p.value;
 }
 template<class Value, class Key> constexpr decltype(auto) get(gsh::KeyValuePair<Key, Value>&& p) {
-    return static_cast<std::decay_t<decltype(p)>::value_type&&>(p.value);
+    return static_cast<typename std::decay_t<decltype(p)>::value_type&&>(p.value);
 }
 template<class Value, class Key> constexpr decltype(auto) get(const gsh::KeyValuePair<Key, Value>&& p) {
     return static_cast<const std::decay_t<decltype(p)>::value_type&&>(p.value);

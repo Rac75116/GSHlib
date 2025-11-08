@@ -1,7 +1,8 @@
 #pragma once
+#include "Functional.hpp"
 #include <deque>
 #include <utility>
-#include "Functional.hpp"
+
 
 namespace gsh {
 

@@ -1,17 +1,18 @@
 #pragma once
-#include <concepts>
-#include <type_traits>
-#include <utility>
-#include <cstddef>
-#include <bit>
-#include <typeindex>
-#include <iterator>
+#include "Int128.hpp"
+#include "TypeDef.hpp"
+#include "internal/UtilMacro.hpp"
 #include <array>
+#include <bit>
+#include <concepts>
+#include <cstddef>
 #include <cstring>
 #include <functional>
-#include "TypeDef.hpp"
-#include "Int128.hpp"
-#include "internal/UtilMacro.hpp"
+#include <iterator>
+#include <type_traits>
+#include <typeindex>
+#include <utility>
+
 
 namespace gsh {
 
@@ -248,7 +249,7 @@ public:
         } else if constexpr (std::is_standard_layout_v<Type> && std::is_trivial_v<Type>) {
             return internal::HashRangeBytes(reinterpret_cast<const c8*>(&v), reinterpret_cast<const c8*>(&v) + sizeof(Type));
         } else {
-            static_assert(sizeof(T) >= 0, "gsh::Hash cannot hash this type. Please provide a gsh::CustomizedHash specialization.");
+            static_assert(sizeof(T), "gsh::Hash cannot hash this type. Please provide a gsh::CustomizedHash specialization.");
             return 0;
         }
     }

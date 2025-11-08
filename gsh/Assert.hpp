@@ -1,11 +1,12 @@
 #pragma once
-#include <source_location>  // std::source_location
-#include "TypeDef.hpp"      // gsh::itype
 #include "InOut.hpp"        // gsh::BasicWriter
+#include "TypeDef.hpp"      // gsh::itype
+#include <source_location>  // std::source_location
+
 
 namespace gsh {
 namespace internal {
-    [[noreturn]] void AssertPrint(const c8* message, std::source_location loc) {
+    [[noreturn]] inline void AssertPrint(const c8* message, std::source_location loc) {
         BasicWriter<2048> w(2);
 #if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
         w.writeln_sep(NoOut, "\e[2m[Assert] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\n\e[0mDuring the execution of \e[1m\e[3m'", loc.function_name(), "'\e[0m: \e[31mAssertion Failed:\e[0m \e[1m\e[3m'", message, "'\e[0m");

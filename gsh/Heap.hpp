@@ -1,8 +1,9 @@
 #pragma once
-#include "TypeDef.hpp"     // gsh::itype
 #include "Functional.hpp"  // gsh::Less, gsh::std::invoke
-#include "Vec.hpp"         // gsh::Vec
+#include "TypeDef.hpp"     // gsh::itype
 #include "Util.hpp"        // gsh::Assume
+#include "Vec.hpp"         // gsh::Vec
+
 
 namespace gsh {
 

@@ -1,12 +1,13 @@
 #pragma once
-#include <utility>  // std::swap
-#include "TypeDef.hpp"
 #include "Functional.hpp"
 #include "Memory.hpp"
 #include "Range.hpp"
-#include "Vec.hpp"
+#include "TypeDef.hpp"
 #include "Util.hpp"
+#include "Vec.hpp"
 #include <immintrin.h>
+#include <utility>  // std::swap
+
 
 namespace gsh {
 

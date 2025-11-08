@@ -1,18 +1,19 @@
 #pragma once
-#include <iterator>          // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
+#include "Exception.hpp"  // gsh::Exception
+#include "Memory.hpp"     // gsh::Allocator, gsh::AllocatorTraits, gsh::DestroyAt
+#include "Range.hpp"      // gsh::ViewInterface
+#include "TypeDef.hpp"    // gsh::itype
+#include "Util.hpp"       // gsh::Assume
+#include "internal/UtilMacro.hpp"
 #include <algorithm>         // std::lexicographical_compare_three_way
-#include <initializer_list>  // std::initializer_list
-#include <type_traits>       // std::remove_cv_t, std::is_constant_evaluated, std::common_type_t, std::conditional_t, std::is_void_v, std::integral_constant
 #include <concepts>          // std::same_as
 #include <cstring>           // std::memset
-#include <utility>           // std::move, std::forward, std::swap
+#include <initializer_list>  // std::initializer_list
+#include <iterator>          // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
 #include <tuple>             // std::tuple_size, std::tuple_element
-#include "TypeDef.hpp"       // gsh::itype
-#include "Exception.hpp"     // gsh::Exception
-#include "Range.hpp"         // gsh::ViewInterface
-#include "Memory.hpp"        // gsh::Allocator, gsh::AllocatorTraits, gsh::DestroyAt
-#include "Util.hpp"          // gsh::Assume
-#include "internal/UtilMacro.hpp"
+#include <type_traits>       // std::remove_cv_t, std::is_constant_evaluated, std::common_type_t, std::conditional_t, std::is_void_v, std::integral_constant
+#include <utility>           // std::move, std::forward, std::swap
+
 
 namespace gsh {
 

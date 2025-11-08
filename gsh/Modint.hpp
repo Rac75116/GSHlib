@@ -1,10 +1,11 @@
 #pragma once
-#include <type_traits>    // std::conditional_t, std::decay_t, std::is_same_v, std::is_integral_v, std::is_unsigned_v
-#include <limits>         // std::numeric_limits
-#include <bit>            // std::countr_zero, std::has_single_bit
-#include "TypeDef.hpp"    // gsh::itype
 #include "Exception.hpp"  // gsh::Exception
 #include "Int128.hpp"     //gsh::u128
+#include "TypeDef.hpp"    // gsh::itype
+#include <bit>            // std::countr_zero, std::has_single_bit
+#include <limits>         // std::numeric_limits
+#include <type_traits>    // std::conditional_t, std::decay_t, std::is_same_v, std::is_integral_v, std::is_unsigned_v
+
 
 namespace gsh {
 

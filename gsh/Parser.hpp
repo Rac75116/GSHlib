@@ -1,12 +1,13 @@
 #pragma once
-#include <bit>            // std::countr_zero
-#include <ranges>         // std::ranges::forward_range
-#include <cstdlib>        // std::strtod, std::strtof, std::strtold
-#include <cerrno>         // errno
+#include "Exception.hpp"  // gsh::Exception
+#include "Int128.hpp"     // gsh::u128, gsh::i128
 #include "TypeDef.hpp"    // gsh::itype, gsh::ctype
 #include "Util.hpp"       // gsh::MemoryCopy
-#include "Int128.hpp"     // gsh::u128, gsh::i128
-#include "Exception.hpp"  // gsh::Exception
+#include <bit>            // std::countr_zero
+#include <cerrno>         // errno
+#include <cstdlib>        // std::strtod, std::strtof, std::strtold
+#include <ranges>         // std::ranges::forward_range
+
 
 namespace gsh {
 

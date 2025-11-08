@@ -1,9 +1,10 @@
 #pragma once
-#include "TypeDef.hpp"     // gsh::itype
 #include "Arr.hpp"         // gsh::Arr
-#include "Vec.hpp"         // gsh::Vec
 #include "Exception.hpp"   // gsh::Exception
 #include "Functional.hpp"  // gsh::Plus, gsh::Negate
+#include "TypeDef.hpp"     // gsh::itype
+#include "Vec.hpp"         // gsh::Vec
+
 
 namespace gsh {
 

@@ -1,16 +1,17 @@
 #pragma once
-#include <iterator>          // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
+#include "Exception.hpp"  // gsh::Exception
+#include "Memory.hpp"     // gsh::Allocator, gsh::AllocatorTraits
+#include "Range.hpp"      // gsh::ViewInterface
+#include "Str.hpp"        // gsh::Str
+#include "TypeDef.hpp"    // gsh::itype
+#include "Util.hpp"       // gsh::Assume
+#include "internal/UtilMacro.hpp"
 #include <algorithm>         // std::lexicographical_compare_three_way
 #include <initializer_list>  // std::initializer_list
+#include <iterator>          // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
 #include <type_traits>       // std::is_same_v, std::is_const_v, std::is_constant_evaluated
 #include <utility>           // std::move, std::forward, std::swap
-#include "TypeDef.hpp"       // gsh::itype
-#include "Exception.hpp"     // gsh::Exception
-#include "Range.hpp"         // gsh::ViewInterface
-#include "Memory.hpp"        // gsh::Allocator, gsh::AllocatorTraits
-#include "Str.hpp"           // gsh::Str
-#include "Util.hpp"          // gsh::Assume
-#include "internal/UtilMacro.hpp"
+
 
 namespace gsh {
 

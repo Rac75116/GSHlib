@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <typeindex>
 #include <utility>
-
+#include <variant>
 
 namespace gsh {
 

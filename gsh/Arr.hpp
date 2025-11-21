@@ -276,12 +276,19 @@ public:
             for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, t);
         }
     }
-    constexpr void assign(const size_type n, ArrNoInitTag) {
+    constexpr void assign(ArrNoInitTag, const size_type n) {
         clear();
         if (n != 0) {
             ptr = traits::allocator(alloc, n);
             len = n;
         }
+    }
+    constexpr void assign(ArrNoInitTag, const pointer p, const size_type n) {
+        clear();
+        if (n == 0) [[unlikely]]
+            return;
+        ptr = p;
+        len = n;
     }
     constexpr void assign(std::initializer_list<value_type> il) { assign(il.begin(), il.end()); }
     constexpr void swap(Arr& x) noexcept(traits::propagate_on_container_swap::value || traits::is_always_equal::value) {

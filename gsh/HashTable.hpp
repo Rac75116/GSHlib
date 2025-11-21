@@ -409,9 +409,9 @@ namespace internal {
     };
 }  // namespace internal
 
-template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = Allocator<Key>> using HashSet = internal::HashTable<Key, void, Hasher, Pred, Alloc, false>;
-template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = Allocator<Key>> using HashMultiset = internal::HashTable<Key, void, Hasher, Pred, Alloc, true>;
-template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = Allocator<KeyValuePair<Key, Value>>> using HashMap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, false>;
-template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = Allocator<KeyValuePair<Key, Value>>> using HashMultimap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, true>;
+template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<Key>> using HashSet = internal::HashTable<Key, void, Hasher, Pred, Alloc, false>;
+template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<Key>> using HashMultiset = internal::HashTable<Key, void, Hasher, Pred, Alloc, true>;
+template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<KeyValuePair<Key, Value>>> using HashMap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, false>;
+template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<KeyValuePair<Key, Value>>> using HashMultimap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, true>;
 
 }  // namespace gsh

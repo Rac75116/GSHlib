@@ -24,10 +24,10 @@ template<class T = void> constexpr ArrInitTag<T> ArrInit;
 class ArrNoInitTag {};
 constexpr ArrNoInitTag ArrNoInit;
 
-template<class T, class Allocator = std::allocator<T>>
-    requires std::same_as<T, typename std::allocator_traits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
-class Arr : public ViewInterface<Arr<T, Allocator>, T> {
-    using traits = std::allocator_traits<Allocator>;
+template<class T, class Alloc = std::allocator<T>>
+    requires std::same_as<T, typename std::allocator_traits<Alloc>::value_type> && std::same_as<T, std::remove_cv_t<T>>
+class Arr : public ViewInterface<Arr<T, Alloc>, T> {
+    using traits = std::allocator_traits<Alloc>;
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -36,7 +36,7 @@ public:
     using size_type = u32;
     using difference_type = i32;
     using value_type = T;
-    using allocator_type = Allocator;
+    using allocator_type = Alloc;
     using pointer = typename traits::pointer;
     using const_pointer = typename traits::const_pointer;
     using reverse_iterator = std::reverse_iterator<iterator>;
@@ -46,35 +46,35 @@ private:
     pointer ptr = nullptr;
     size_type len = 0;
 public:
-    constexpr Arr() noexcept(noexcept(Allocator())) : Arr(Allocator()) {}
+    constexpr Arr() noexcept(noexcept(Alloc())) : Arr(Alloc()) {}
     constexpr explicit Arr(const allocator_type& a) noexcept : alloc(a) {}
-    constexpr explicit Arr(size_type n, const allocator_type& a = Allocator()) : alloc(a) {
+    constexpr explicit Arr(size_type n, const allocator_type& a = Alloc()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n;
         for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
     }
-    constexpr explicit Arr(ArrNoInitTag, size_type n, const allocator_type& a = Allocator()) : alloc(a) {
+    constexpr explicit Arr(ArrNoInitTag, size_type n, const allocator_type& a = Alloc()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n;
     }
-    constexpr explicit Arr(ArrNoInitTag, pointer p, size_type n, const allocator_type& a = Allocator()) : alloc(a) {
+    constexpr explicit Arr(ArrNoInitTag, pointer p, size_type n, const allocator_type& a = Alloc()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
         ptr = p;
         len = n;
     }
-    constexpr explicit Arr(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
+    constexpr explicit Arr(const size_type n, const value_type& value, const allocator_type& a = Alloc()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n;
         for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
     }
-    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Arr(Iter first, Sent last, const allocator_type& a = Allocator()) : alloc(a) {
+    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Arr(Iter first, Sent last, const allocator_type& a = Alloc()) : alloc(a) {
         const size_type n = std::ranges::distance(first, last);
         if (n == 0) [[unlikely]]
             return;
@@ -105,7 +105,7 @@ public:
             x.ptr = nullptr, x.len = 0;
         }
     }
-    constexpr Arr(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Arr(il.begin(), il.end(), a) {}
+    constexpr Arr(std::initializer_list<value_type> il, const allocator_type& a = Alloc()) : Arr(il.begin(), il.end(), a) {}
     constexpr ~Arr() {
         if (len != 0) {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);

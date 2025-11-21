@@ -15,10 +15,10 @@
 
 namespace gsh {
 
-template<class T, class Allocator = std::allocator<T>>
-    requires std::is_same_v<T, typename std::allocator_traits<Allocator>::value_type> && (!std::is_const_v<T>)
-class Vec : public ViewInterface<Vec<T, Allocator>, T> {
-    using traits = std::allocator_traits<Allocator>;
+template<class T, class Alloc = std::allocator<T>>
+    requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)
+class Vec : public ViewInterface<Vec<T, Alloc>, T> {
+    using traits = std::allocator_traits<Alloc>;
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -27,7 +27,7 @@ public:
     using size_type = u32;
     using difference_type = i32;
     using value_type = T;
-    using allocator_type = Allocator;
+    using allocator_type = Alloc;
     using pointer = typename traits::pointer;
     using const_pointer = typename traits::const_pointer;
     using reverse_iterator = std::reverse_iterator<iterator>;
@@ -37,23 +37,23 @@ private:
     pointer ptr = nullptr;
     size_type len = 0, cap = 0;
 public:
-    constexpr Vec() noexcept(noexcept(Allocator())) {}
+    constexpr Vec() noexcept(noexcept(Alloc())) {}
     constexpr explicit Vec(const allocator_type& a) noexcept : alloc(a) {}
-    constexpr explicit Vec(size_type n, const Allocator& a = Allocator()) : alloc(a) {
+    constexpr explicit Vec(size_type n, const Alloc& a = Alloc()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n, cap = n;
         for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
     }
-    constexpr explicit Vec(const size_type n, const value_type& value, const allocator_type& a = Allocator()) : alloc(a) {
+    constexpr explicit Vec(const size_type n, const value_type& value, const allocator_type& a = Alloc()) : alloc(a) {
         if (n == 0) [[unlikely]]
             return;
         ptr = traits::allocate(alloc, n);
         len = n, cap = n;
         for (size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
     }
-    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Vec(Iter first, Sent last, const allocator_type& a = Allocator()) : alloc(a) {
+    template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Vec(Iter first, Sent last, const allocator_type& a = Alloc()) : alloc(a) {
         const size_type n = std::ranges::distance(first, last);
         if (n == 0) [[unlikely]]
             return;
@@ -84,7 +84,7 @@ public:
             x.ptr = nullptr, x.len = 0, x.cap = 0;
         }
     }
-    constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Allocator()) : Vec(il.begin(), il.end(), a) {}
+    constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Alloc()) : Vec(il.begin(), il.end(), a) {}
     constexpr ~Vec() {
         if (cap != 0) {
             for (size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);

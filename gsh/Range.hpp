@@ -45,12 +45,12 @@ template<std::input_or_output_iterator I, std::sentinel_for<I> S, RangeKind K>
     requires(K == RangeKind::Sized || !std::sized_sentinel_for<S, I>)
 class Subrange;
 
-template<class T, class Allocator>
-    requires std::same_as<T, typename std::allocator_traits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
+template<class T, class Alloc>
+    requires std::same_as<T, typename std::allocator_traits<Alloc>::value_type> && std::same_as<T, std::remove_cv_t<T>>
 class Arr;
 
-template<class T, class Allocator>
-    requires std::is_same_v<T, typename std::allocator_traits<Allocator>::value_type> && (!std::is_const_v<T>)
+template<class T, class Alloc>
+    requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)
 class Vec;
 
 template<class D, class V>

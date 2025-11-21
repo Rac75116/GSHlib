@@ -209,11 +209,11 @@ public:
         return *this;
     }
     template<class... Args> constexpr auto allocate(Args&&... args) noexcept(noexcept(alloc.allocate(std::forward<Args>(args)...))) {
-        if (std::is_constant_evaluated()) return Allocator<value_type>().allocate(std::forward<Args>(args)...);
+        if (std::is_constant_evaluated()) return std::allocator<value_type>().allocate(std::forward<Args>(args)...);
         else return alloc.allocate(std::forward<Args>(args)...);
     }
     template<class... Args> constexpr void deallocate(Args&&... args) noexcept(noexcept(alloc.deallocate(std::forward<Args>(args)...))) {
-        if (std::is_constant_evaluated()) return Allocator<value_type>().deallocate(std::forward<Args>(args)...);
+        if (std::is_constant_evaluated()) return std::allocator<value_type>().deallocate(std::forward<Args>(args)...);
         else return alloc.deallocate(std::forward<Args>(args)...);
     }
     constexpr size_type max_size() const noexcept {

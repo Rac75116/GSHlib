@@ -3,8 +3,8 @@
 
 namespace gsh {
 
-template<class T, class Allocator>
-    requires std::is_same_v<T, typename std::allocator_traits<Allocator>::value_type> && (!std::is_const_v<T>)
+template<class T, class Alloc>
+    requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)
 class Vec;
 
 template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum {

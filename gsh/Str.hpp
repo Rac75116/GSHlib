@@ -14,7 +14,7 @@ namespace internal {
 
     template<class CharT> class StrViewImpl;
 
-    template<class CharT, class Alloc = Allocator<CharT>> class StrImpl : public std::basic_string<CharT, std::char_traits<CharT>, Alloc>, public ViewInterface<StrImpl<CharT, Alloc>, CharT> {
+    template<class CharT, class Alloc = std::allocator<CharT>> class StrImpl : public std::basic_string<CharT, std::char_traits<CharT>, Alloc>, public ViewInterface<StrImpl<CharT, Alloc>, CharT> {
         using base = std::basic_string<CharT, std::char_traits<CharT>, Alloc>;
         using view = ViewInterface<StrImpl<CharT, Alloc>, CharT>;
     public:
@@ -238,9 +238,9 @@ namespace internal {
     template<class CharT> constexpr void swap(StrViewImpl<CharT>& x, StrViewImpl<CharT>& y) noexcept(noexcept(x.swap(y))) {
         x.swap(y);
     }
-    template<class InputIterator, class Allocator = Allocator<typename std::iterator_traits<InputIterator>::value_type>> StrImpl(InputIterator, InputIterator, Allocator = Allocator()) -> StrImpl<typename std::iterator_traits<InputIterator>::value_type, Allocator>;
-    template<class CharT, class Allocator = Allocator<CharT>> explicit StrImpl(StrViewImpl<CharT>, const Allocator& = Allocator()) -> StrImpl<CharT, Allocator>;
-    template<class CharT, class Allocator = Allocator<CharT>> StrImpl(StrViewImpl<CharT>, typename StrViewImpl<CharT>::size_type, typename StrViewImpl<CharT>::size_type, const Allocator& = Allocator()) -> StrImpl<CharT, Allocator>;
+    template<class InputIterator, class Allocator = std::allocator<typename std::iterator_traits<InputIterator>::value_type>> StrImpl(InputIterator, InputIterator, Allocator = Allocator()) -> StrImpl<typename std::iterator_traits<InputIterator>::value_type, Allocator>;
+    template<class CharT, class Allocator = std::allocator<CharT>> explicit StrImpl(StrViewImpl<CharT>, const Allocator& = Allocator()) -> StrImpl<CharT, Allocator>;
+    template<class CharT, class Allocator = std::allocator<CharT>> StrImpl(StrViewImpl<CharT>, typename StrViewImpl<CharT>::size_type, typename StrViewImpl<CharT>::size_type, const Allocator& = Allocator()) -> StrImpl<CharT, Allocator>;
 
 }  // namespace internal
 

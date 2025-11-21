@@ -6,7 +6,7 @@
 #include "Util.hpp"
 #include "Vec.hpp"
 #include <immintrin.h>
-#include <utility>  // std::swap
+#include <utility>
 
 
 namespace gsh {
@@ -19,7 +19,7 @@ namespace internal {
     };
     template<> struct DefMappedType<void> {};
     template<class Key, class Value, class Hasher, class Pred, class Alloc, bool Multi> class HashTable : public ViewInterface<HashTable<Key, Value, Hasher, Pred, Alloc, Multi>, std::conditional_t<std::is_void_v<Value>, Key, KeyValuePair<Key, Value>>>, public DefMappedType<Value> {
-        using traits = AllocatorTraits<Alloc>;
+        using traits = std::allocator_traits<Alloc>;
         constexpr static bool is_set = std::is_void_v<Value>;
     public:
         using key_type = Key;
@@ -43,13 +43,13 @@ namespace internal {
         using hashed_type = std::invoke_result_t<hasher, key_type>;
         static_assert(std::is_integral_v<hashed_type> && std::is_unsigned_v<hashed_type> && sizeof(hashed_type) <= sizeof(u64));
         using value_allocator_type = allocator_type;
-        using value_allocator_traits = AllocatorTraits<value_allocator_type>;
+        using value_allocator_traits = std::allocator_traits<value_allocator_type>;
         using hash_allocator_type = typename value_allocator_traits::template rebind_alloc<hashed_type>;
-        using hash_allocator_traits = AllocatorTraits<hash_allocator_type>;
+        using hash_allocator_traits = std::allocator_traits<hash_allocator_type>;
         using sig_allocator_type = typename value_allocator_traits::template rebind_alloc<u8>;
-        using sig_allocator_traits = AllocatorTraits<sig_allocator_type>;
+        using sig_allocator_traits = std::allocator_traits<sig_allocator_type>;
         using index_allocator_type = typename value_allocator_traits::template rebind_alloc<size_type>;
-        using index_allocator_traits = AllocatorTraits<index_allocator_type>;
+        using index_allocator_traits = std::allocator_traits<index_allocator_type>;
         [[no_unique_address]] mutable hasher hash_f;
         [[no_unique_address]] mutable key_equal key_eq_f;
         [[no_unique_address]] hash_allocator_type hash_alloc;

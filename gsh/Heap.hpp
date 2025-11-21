@@ -1,13 +1,13 @@
 #pragma once
-#include "Functional.hpp"  // gsh::Less, gsh::std::invoke
-#include "TypeDef.hpp"     // gsh::itype
-#include "Util.hpp"        // gsh::Assume
-#include "Vec.hpp"         // gsh::Vec
+#include "Functional.hpp"
+#include "TypeDef.hpp"
+#include "Util.hpp"
+#include "Vec.hpp"
 
 
 namespace gsh {
 
-template<class T, class Comp = Less, class Alloc = Allocator<T>> class Heap {
+template<class T, class Comp = Less, class Alloc = std::allocator<T>> class Heap {
     Vec<T, Alloc> data;
     [[no_unique_address]] Comp comp_func;
     u32 mx = 0;

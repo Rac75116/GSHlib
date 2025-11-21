@@ -2,10 +2,10 @@
 #include "TypeDef.hpp"
 #include "internal/Operation.hpp"
 #include "internal/UtilMacro.hpp"
-#include <bit>          //std::bit_cast
-#include <cstring>      // std::memset
-#include <type_traits>  // std::is_constant_evaluated
-#include <utility>      // std::make_integer_sequence
+#include <bit>  //std::bit_cast
+#include <cstring>
+#include <type_traits>
+#include <utility>
 
 
 namespace gsh {

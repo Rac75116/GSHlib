@@ -1,7 +1,7 @@
 #pragma once
-#include "InOut.hpp"        // gsh::BasicWriter
-#include "TypeDef.hpp"      // gsh::itype
-#include <source_location>  // std::source_location
+#include "InOut.hpp"
+#include "TypeDef.hpp"
+#include <source_location>
 
 
 namespace gsh {

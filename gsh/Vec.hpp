@@ -1,24 +1,24 @@
 #pragma once
-#include "Exception.hpp"  // gsh::Exception
-#include "Memory.hpp"     // gsh::Allocator, gsh::AllocatorTraits
-#include "Range.hpp"      // gsh::ViewInterface
-#include "Str.hpp"        // gsh::Str
-#include "TypeDef.hpp"    // gsh::itype
-#include "Util.hpp"       // gsh::Assume
+#include "Exception.hpp"
+#include "Memory.hpp"
+#include "Range.hpp"
+#include "Str.hpp"
+#include "TypeDef.hpp"
+#include "Util.hpp"
 #include "internal/UtilMacro.hpp"
-#include <algorithm>         // std::lexicographical_compare_three_way
-#include <initializer_list>  // std::initializer_list
-#include <iterator>          // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
-#include <type_traits>       // std::is_same_v, std::is_const_v, std::is_constant_evaluated
-#include <utility>           // std::move, std::forward, std::swap
+#include <algorithm>
+#include <initializer_list>
+#include <iterator>
+#include <type_traits>
+#include <utility>
 
 
 namespace gsh {
 
-template<class T, class Allocator = Allocator<T>>
-    requires std::is_same_v<T, typename AllocatorTraits<Allocator>::value_type> && (!std::is_const_v<T>)
+template<class T, class Allocator = std::allocator<T>>
+    requires std::is_same_v<T, typename std::allocator_traits<Allocator>::value_type> && (!std::is_const_v<T>)
 class Vec : public ViewInterface<Vec<T, Allocator>, T> {
-    using traits = AllocatorTraits<Allocator>;
+    using traits = std::allocator_traits<Allocator>;
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -352,9 +352,9 @@ public:
     friend constexpr auto operator<=>(const Vec& x, const Vec& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Vec& x, Vec& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Alloc = Alloc()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Alloc>;
+template<std::input_iterator InputIter, class Alloc = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Alloc = Alloc()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Alloc>;
 
-template<class T, class Alloc = Allocator<T>> using Vec2 = Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>;
-template<class T, class Alloc = Allocator<T>> using Vec3 = Vec<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<Vec<T, Alloc>, typename AllocatorTraits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>>>;
+template<class T, class Alloc = std::allocator<T>> using Vec2 = Vec<Vec<T, Alloc>, typename std::allocator_traits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>;
+template<class T, class Alloc = std::allocator<T>> using Vec3 = Vec<Vec<Vec<T, Alloc>, typename std::allocator_traits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>, typename std::allocator_traits<Alloc>::template rebind_alloc<Vec<Vec<T, Alloc>, typename std::allocator_traits<Alloc>::template rebind_alloc<Vec<T, Alloc>>>>>;
 
 }  // namespace gsh

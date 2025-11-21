@@ -2,7 +2,7 @@
 #include "Memory.hpp"
 #include "Random.hpp"
 #include "Range.hpp"
-#include "TypeDef.hpp"  // gsh::itype
+#include "TypeDef.hpp"
 #include <chrono>
 #include <cmath>
 
@@ -100,7 +100,7 @@ template<class OptType, class TempFunction, class ProgressFunction> class Anneal
     u32 ugap;
     u32 current_iter = 0;
     bool is_best_updated = false;
-    [[no_unique_address]] Allocator<f32> alloc;
+    [[no_unique_address]] std::allocator<f32> alloc;
     f32* rnd_buf = nullptr;
     u32 rnd_buf_size;
 public:

@@ -1,253 +1,16 @@
 #pragma once
-#include "Exception.hpp"  // gsh::Exception
-#include "TypeDef.hpp"    // gsh::itype
-#include <cstdlib>        // std::malloc, std::free, std::realloc, std::aligned_alloc
-#include <iterator>       // std::begin, std::end
-#include <limits>         // std::numeric_limits
-#include <memory>         // std::construct_at, std::destroy_at
-#include <new>            // ::operator new
-#include <type_traits>    // std::make_unsigned, std::is_empty, std::true_type, std::false_type, std::is_array_v, std::is_trivially_(***)
-#include <utility>        // std::forward
+#include "Exception.hpp"
+#include "TypeDef.hpp"
+#include <cstdlib>
+#include <iterator>
+#include <limits>
+#include <memory>
+#include <new>
+#include <type_traits>
+#include <utility>
 
 
 namespace gsh {
-
-namespace internal {
-    template<class T, class U> struct GetPtr {
-        using type = U*;
-    };
-    template<class T, class U>
-        requires requires { typename T::pointer; }
-    struct GetPtr<T, U> {
-        using type = typename T::pointer;
-    };
-    template<class T, class U> struct RepFirst {};
-    template<template<class, class...> class SomeTemplate, class U, class T, class... Types> struct RepFirst<SomeTemplate<T, Types...>, U> {
-        using type = SomeTemplate<U, Types...>;
-    };
-    template<class T, class U> struct Rebind {
-        using type = typename RepFirst<T, U>::type;
-    };
-    template<class T, class U>
-        requires requires { typename T::template rebind<U>; }
-    struct Rebind<T, U> {
-        using type = typename T::template rebind<U>;
-    };
-    template<class T, class U> struct GetRebindPtr {
-        using type = typename Rebind<T, U>::type;
-    };
-    template<class T, class U> struct GetRebindPtr<T*, U> {
-        using type = U;
-    };
-    template<class T, class U, class V> struct GetConstPtr {
-        using type = typename GetRebindPtr<U, const V*>::type;
-    };
-    template<class T, class U, class V>
-        requires requires { typename T::const_pointer; }
-    struct GetConstPtr<T, U, V> {
-        using type = typename T::const_pointer;
-    };
-    template<class T, class U> struct GetVoidPtr {
-        using type = typename GetRebindPtr<U, void*>::type;
-    };
-    template<class T, class U>
-        requires requires { typename T::void_pointer; }
-    struct GetVoidPtr<T, U> {
-        using type = typename T::void_pointer;
-    };
-    template<class T, class U> struct GetConstVoidPtr {
-        using type = typename GetRebindPtr<U, const void*>::type;
-    };
-    template<class T, class U>
-        requires requires { typename T::const_void_pointer; }
-    struct GetConstVoidPtr<T, U> {
-        using type = typename T::const_void_pointer;
-    };
-    template<class T> struct GetDifferenceTypeSub {
-        using type = i32;
-    };
-    template<class T>
-        requires requires { typename T::difference_type; }
-    struct GetDifferenceTypeSub<T> {
-        using type = typename T::difference_type;
-    };
-    template<class T, class U> struct GetDifferenceType {
-        using type = typename GetDifferenceTypeSub<U>::type;
-    };
-    template<class T, class U>
-        requires requires { typename T::difference_type; }
-    struct GetDifferenceType<T, U> {
-        using type = typename T::difference_type;
-    };
-    template<class T, class U> struct GetSizeType {
-        using type = std::make_unsigned_t<U>;
-    };
-    template<class T, class U>
-        requires requires { typename T::size_type; }
-    struct GetSizeType<T, U> {
-        using type = typename T::size_type;
-    };
-    template<class T> struct IsPropCopy {
-        using type = std::false_type;
-    };
-    template<class T>
-        requires requires { typename T::propagate_on_container_copy_assignment; }
-    struct IsPropCopy<T> {
-        using type = typename T::propagate_on_container_copy_assignment;
-    };
-    template<class T> struct IsPropMove {
-        using type = std::false_type;
-    };
-    template<class T>
-        requires requires { typename T::propagate_on_container_move_assignment; }
-    struct IsPropMove<T> {
-        using type = typename T::propagate_on_container_move_assignment;
-    };
-    template<class T> struct IsPropSwap {
-        using type = std::false_type;
-    };
-    template<class T>
-        requires requires { typename T::propagate_on_container_swap; }
-    struct IsPropSwap<T> {
-        using type = typename T::propagate_on_container_swap;
-    };
-    template<class T> struct IsAlwaysEqual {
-        using type = typename std::is_empty<T>::type;
-    };
-    template<class T>
-        requires requires { typename T::is_always_equal; }
-    struct IsAlwaysEqual<T> {
-        using type = typename T::is_always_equal;
-    };
-    template<class T, class U> struct RebindAlloc {
-        using type = typename internal::RepFirst<T, U>::type;
-    };
-    template<class T, class U>
-        requires requires { typename T::template rebind<U>::other; }
-    struct RebindAlloc<T, U> {
-        using type = typename T::template rebind<U>::other;
-    };
-}  // namespace internal
-
-template<class Alloc> class AllocatorTraits {
-public:
-    using allocator_type = Alloc;
-    using value_type = typename Alloc::value_type;
-    using pointer = typename internal::GetPtr<Alloc, value_type>::type;
-    using const_pointer = typename internal::GetConstPtr<Alloc, pointer, value_type>::type;
-    using void_pointer = typename internal::GetVoidPtr<Alloc, pointer>::type;
-    using const_void_pointer = typename internal::GetConstVoidPtr<Alloc, pointer>::type;
-    using difference_type = typename internal::GetDifferenceType<Alloc, pointer>::type;
-    using size_type = typename internal::GetSizeType<Alloc, difference_type>::type;
-    using propagate_on_container_copy_assignment = typename internal::IsPropCopy<Alloc>::type;
-    using propagate_on_container_move_assignment = typename internal::IsPropMove<Alloc>::type;
-    using propagate_on_container_swap = typename internal::IsPropSwap<Alloc>::type;
-    using is_always_equal = typename internal::IsAlwaysEqual<Alloc>::type;
-    template<class U> using rebind_alloc = typename internal::RebindAlloc<Alloc, U>::type;
-    template<class U> using rebind_traits = AllocatorTraits<typename internal::RebindAlloc<Alloc, U>::type>;
-private:
-    constexpr static bool with_hint = requires(Alloc& a, size_type n, const_void_pointer hint) { a.allocate(n, hint); };
-    constexpr static bool aligned_with_hint = requires(Alloc& a, size_type n, std::align_val_t align, const_void_pointer hint) { a.allocate(n, align, hint); };
-    template<class... Args> constexpr static bool constructible = requires(Alloc& a, pointer p, Args&&... args) { a.construct(p, std::forward<Args>(args)...); };
-    constexpr static bool destructible = requires(Alloc& a, pointer p) { a.destroy(p); };
-    constexpr static bool selectable = requires(Alloc& a) { a.select_on_container_copy_construction(); };
-public:
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n) noexcept(noexcept(a.allocate(n))) { return a.allocate(n); }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, std::align_val_t align) noexcept(noexcept(a.allocate(n, align))) { return a.allocate(n, align); }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, const_void_pointer hint) noexcept(noexcept(a.allocate(n, hint)))
-        requires(with_hint)
-    {
-        return a.allocate(n, hint);
-    }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, const_void_pointer) noexcept(noexcept(a.allocate(n)))
-        requires(!with_hint)
-    {
-        return a.allocate(n);
-    }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, std::align_val_t align, const_void_pointer hint) noexcept(noexcept(a.allocate(n, align, hint)))
-        requires(aligned_with_hint)
-    {
-        return a.allocate(n, align, hint);
-    }
-    [[nodiscard]] static constexpr pointer allocate(Alloc& a, size_type n, std::align_val_t align, const_void_pointer) noexcept(noexcept(a.allocate(align, n)))
-        requires(!aligned_with_hint)
-    {
-        return a.allocate(align, n);
-    }
-    static constexpr void deallocate(Alloc& a, pointer p, size_type n) noexcept(noexcept(a.deallocate(p, n))) { a.deallocate(p, n); }
-    static constexpr void deallocate(Alloc& a, pointer p, size_type n, std::align_val_t align) noexcept(noexcept(a.deallocate(p, n, align))) { a.deallocate(p, n, align); }
-    static constexpr size_type max_size(const Alloc& a) noexcept {
-        if constexpr (requires { a.max_size(); }) return a.max_size();
-        else return std::numeric_limits<size_type>::max() / sizeof(value_type);
-    }
-    template<class T, class... Args> static constexpr void construct(Alloc& a, T* p, Args&&... args) noexcept(noexcept(a.construct(p, std::forward<Args>(args)...)))
-        requires(constructible<Args...>)
-    {
-        a.construct(p, std::forward<Args>(args)...);
-    }
-    template<class T, class... Args> static constexpr void construct(Alloc&, T* p, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
-        requires(!constructible<Args...>)
-    {
-        std::construct_at(p, std::forward<Args>(args)...);
-    }
-    template<class T> static constexpr void destroy(Alloc& a, T* p) noexcept(noexcept(a.destroy(p)))
-        requires(destructible)
-    {
-        return a.destroy(p);
-    }
-    template<class T> static constexpr void destroy(Alloc&, T* p) noexcept(std::is_nothrow_destructible_v<T>)
-        requires(!destructible)
-    {
-        return std::destroy_at(p);
-    }
-    static constexpr Alloc select_on_container_copy_construction(const Alloc& a) noexcept(noexcept(a.select_on_container_copy_construction()))
-        requires(selectable)
-    {
-        return a.select_on_container_copy_construction();
-    }
-    static constexpr Alloc select_on_container_copy_construction(const Alloc& a) noexcept(std::is_nothrow_copy_constructible_v<Alloc>)
-        requires(!selectable)
-    {
-        return a;
-    }
-};
-
-template<class T> class Allocator {
-public:
-    using value_type = T;
-    using propagate_on_container_move_assignment = std::true_type;
-    using size_type = u32;
-    using difference_type = i32;
-    using is_always_equal = std::true_type;
-    constexpr Allocator() noexcept {}
-    constexpr Allocator(const Allocator&) noexcept {}
-    template<class U> constexpr Allocator(const Allocator<U>&) noexcept {}
-    [[nodiscard]] constexpr T* allocate(size_type n) {
-        if (std::is_constant_evaluated()) return std::allocator<T>().allocate(n);
-        if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) return static_cast<T*>(::operator new(sizeof(T) * n, static_cast<std::align_val_t>(alignof(T))));
-        else return static_cast<T*>(::operator new(sizeof(T) * n));
-    }
-    [[nodiscard]] T* allocate(size_type n, std::align_val_t align) { return static_cast<T*>(::operator new(sizeof(T) * n, align)); }
-    constexpr void deallocate(T* p, [[maybe_unused]] size_type n) noexcept {
-        if (std::is_constant_evaluated()) return std::allocator<T>().deallocate(p, n);
-#ifdef __cpp_sized_deallocation
-        if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, n, static_cast<std::align_val_t>(alignof(T)));
-        else ::operator delete(p, n);
-#else
-        if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__) ::operator delete(p, static_cast<std::align_val_t>(alignof(T)));
-        else ::operator delete(p);
-#endif
-    }
-    void deallocate(T* p, [[maybe_unused]] size_type n, std::align_val_t align) noexcept {
-#ifdef __cpp_sized_deallocation
-        ::operator delete(p, n, align);
-#else
-        ::operator delete(p, align);
-#endif
-    }
-    constexpr Allocator& operator=(const Allocator&) = default;
-    template<class U> friend constexpr bool operator==(const Allocator&, const Allocator<U>&) noexcept { return true; }
-};
 
 template<class T> class NoFreeAllocator {
 public:
@@ -328,10 +91,10 @@ template<class T> class SingleAllocator {
     u32 x = 0xffffffff, y = 0;
     T** del = nullptr;
     u32 end = 0;
-    [[no_unique_address]] Allocator<T> alloc;
-    [[no_unique_address]] Allocator<T*> del_alloc;
-    using traits = AllocatorTraits<Allocator<T>>;
-    using del_alloc_traits = AllocatorTraits<Allocator<T*>>;
+    [[no_unique_address]] std::allocator<T> alloc;
+    [[no_unique_address]] std::allocator<T*> del_alloc;
+    using traits = std::allocator_traits<std::allocator<T>>;
+    using del_alloc_traits = std::allocator_traits<std::allocator<T*>>;
 public:
     using value_type = T;
     using propagate_on_container_copy_assignmant = std::false_type;
@@ -385,7 +148,7 @@ namespace internal {
 }  // namespace internal
 template<class Alloc, bool OmitDestruction = false> class SharedAllocator {
     using alloc = internal::SharedAllocatorImpl<Alloc, OmitDestruction>;
-    using traits = AllocatorTraits<Alloc>;
+    using traits = std::allocator_traits<Alloc>;
 public:
     using value_type = typename traits::value_type;
     using propagate_on_container_copy_assignmant = std::true_type;
@@ -413,7 +176,7 @@ public:
 
 template<class Alloc> class ConstexprAllocator {
     [[no_unique_address]] Alloc alloc;
-    using traits = AllocatorTraits<Alloc>;
+    using traits = std::allocator_traits<Alloc>;
 public:
     using allocator_type = Alloc;
     using value_type = typename traits::value_type;
@@ -454,7 +217,7 @@ public:
         else return alloc.deallocate(std::forward<Args>(args)...);
     }
     constexpr size_type max_size() const noexcept {
-        if (std::is_constant_evaluated()) return AllocatorTraits<Allocator<value_type>>::max_size();
+        if (std::is_constant_evaluated()) return std::allocator_traits<std::allocator<value_type>>::max_size();
         else return alloc.max_size();
     }
     constexpr Alloc& get_allocator() noexcept { return alloc; }

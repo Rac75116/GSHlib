@@ -1,8 +1,8 @@
 #pragma once
-#include "Functional.hpp"  // gsh::Hash, gsh::internal::HashBytes, gsh::internal::MixIntegers, gsh::std::invoke
-#include "TypeDef.hpp"     // gsh::itype, gsh::ftype
-#include <bit>             // std::rotr, std::bit_cast
-#include <ctime>           // std::time, std::clock
+#include "Functional.hpp"
+#include "TypeDef.hpp"
+#include <bit>
+#include <ctime>
 #include <immintrin.h>
 #include <ranges>
 

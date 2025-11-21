@@ -1,14 +1,14 @@
 #pragma once
-#include "Formatter.hpp"   // gsh::Formatter
-#include "Functional.hpp"  // gsh::std::invoke
-#include "Parser.hpp"      // gsh::Parser
-#include "TypeDef.hpp"     // gsh::itype, gsh::ctype
-#include "Util.hpp"        // gsh::TypeArr
-#include <cstdlib>         // std::exit
-#include <cstring>         // std::memcpy, std::memmove
-#include <tuple>           // std::tuple, std::make_tuple
+#include "Formatter.hpp"
+#include "Functional.hpp"
+#include "Parser.hpp"
+#include "TypeDef.hpp"
+#include "Util.hpp"
+#include <cstdlib>
+#include <cstring>
+#include <tuple>
 #include <unistd.h>
-#include <utility>  // std::forward
+#include <utility>
 
 #if defined(__linux__)
 #include <sys/mman.h>  // mmap

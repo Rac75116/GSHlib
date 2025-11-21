@@ -1,4 +1,4 @@
 #pragma once
-#include "TypeDef.hpp"  // gsh::itype
+#include "TypeDef.hpp"
 
 namespace gsh {}  // namespace gsh

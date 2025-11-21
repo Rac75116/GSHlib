@@ -46,11 +46,11 @@ template<std::input_or_output_iterator I, std::sentinel_for<I> S, RangeKind K>
 class Subrange;
 
 template<class T, class Allocator>
-    requires std::same_as<T, typename AllocatorTraits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
+    requires std::same_as<T, typename std::allocator_traits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
 class Arr;
 
 template<class T, class Allocator>
-    requires std::is_same_v<T, typename AllocatorTraits<Allocator>::value_type> && (!std::is_const_v<T>)
+    requires std::is_same_v<T, typename std::allocator_traits<Allocator>::value_type> && (!std::is_const_v<T>)
 class Vec;
 
 template<class D, class V>
@@ -67,8 +67,8 @@ class ViewInterface {
     constexpr auto get_rend() { return std::ranges::rend(derived()); }
     constexpr auto get_rend() const { return std::ranges::rend(derived()); }
     using derived_type = D;
-    using arr_type = Arr<V, Allocator<V>>;
-    using vec_type = Vec<V, Allocator<V>>;
+    using arr_type = Arr<V, std::allocator<V>>;
+    using vec_type = Vec<V, std::allocator<V>>;
 public:
     using value_type = V;
     template<class Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) { derived() = derived_type(std::move(first), std::move(last)); }

@@ -2,7 +2,7 @@
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include "internal/Operation.hpp"
-#include <compare>  // std::strong_ordering
+#include <compare>
 
 #ifdef _MSC_VER
 #include <immintrin.h>

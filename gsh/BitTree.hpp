@@ -1,12 +1,12 @@
 #pragma once
-#include "Exception.hpp"    // gsh::Exception
-#include "FenwickTree.hpp"  // gsh::RangeSumQuery
-#include "TypeDef.hpp"      // gsh::itype
-#include "Util.hpp"         // gsh::Assume, gsh::StrLen
-#include <bit>              // std::popcount
-#include <cstring>          // std::memset
+#include "Exception.hpp"
+#include "FenwickTree.hpp"
+#include "TypeDef.hpp"
+#include "Util.hpp"
+#include <bit>
+#include <cstring>
 #include <immintrin.h>
-#include <type_traits>  // std::is_constant_evaluated
+#include <type_traits>
 
 
 namespace gsh {

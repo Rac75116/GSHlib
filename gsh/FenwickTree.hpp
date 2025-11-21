@@ -1,17 +1,17 @@
 #pragma once
-#include "Arr.hpp"      // gsh::Arr
-#include "Memory.hpp"   // gsh::Allocator, gsh::AllocatorTraits
-#include "TypeDef.hpp"  // gsh::itype
+#include "Arr.hpp"
+#include "Memory.hpp"
+#include "TypeDef.hpp"
 #include "internal/UtilMacro.hpp"
-#include <bit>               // std::bit_floor, std::bit_width, std::countr_zero
-#include <initializer_list>  // std::initializer_list
-#include <iterator>          // std::iterator_traits
-#include <type_traits>       // std::is_unsigned_v
+#include <bit>
+#include <initializer_list>
+#include <iterator>
+#include <type_traits>
 
 
 namespace gsh {
 
-template<class T, class Alloc = Allocator<T>> class RangeSumQuery {
+template<class T, class Alloc = std::allocator<T>> class RangeSumQuery {
 protected:
     Arr<T, Alloc> bit;
 public:
@@ -21,8 +21,8 @@ public:
     using difference_type = i32;
     using value_type = T;
     using allocator_type = Alloc;
-    using pointer = typename AllocatorTraits<Alloc>::pointer;
-    using const_pointer = typename AllocatorTraits<Alloc>::const_pointer;
+    using pointer = typename std::allocator_traits<Alloc>::pointer;
+    using const_pointer = typename std::allocator_traits<Alloc>::const_pointer;
     constexpr RangeSumQuery() noexcept(noexcept(Alloc())) : RangeSumQuery(Alloc()) {}
     constexpr explicit RangeSumQuery(const Alloc& alloc) noexcept : bit(alloc) {}
     constexpr explicit RangeSumQuery(u32 n, const Alloc& alloc = Alloc()) : bit(n, alloc) {}
@@ -34,7 +34,7 @@ public:
     constexpr RangeSumQuery(RangeSumQuery&& x, const Alloc& alloc) : bit(std::move(x.bit), alloc) {}
     constexpr RangeSumQuery(std::initializer_list<T> il, const Alloc& alloc = Alloc()) : RangeSumQuery(il.begin(), il.end(), alloc) {}
     constexpr RangeSumQuery& operator=(const RangeSumQuery&) = default;
-    constexpr RangeSumQuery& operator=(RangeSumQuery&&) noexcept(AllocatorTraits<Alloc>::propagate_on_container_move_assignment::value || AllocatorTraits<Alloc>::is_always_equal::value) = default;
+    constexpr RangeSumQuery& operator=(RangeSumQuery&&) noexcept(std::allocator_traits<Alloc>::propagate_on_container_move_assignment::value || std::allocator_traits<Alloc>::is_always_equal::value) = default;
     constexpr RangeSumQuery& operator=(std::initializer_list<T> il) {
         assign(il);
         return *this;
@@ -81,7 +81,7 @@ public:
         for (u32 i = 0; i != n; ++i) bit[i] = mul[std::countr_zero(i + 1)];
     }
     constexpr void assign(std::initializer_list<T> il) { assign(il.begin(), il.end()); }
-    constexpr void swap(RangeSumQuery& x) noexcept(AllocatorTraits<Alloc>::propagate_on_container_swap::value || AllocatorTraits<Alloc>::is_always_equal::value) { bit.swap(x.bit); };
+    constexpr void swap(RangeSumQuery& x) noexcept(std::allocator_traits<Alloc>::propagate_on_container_swap::value || std::allocator_traits<Alloc>::is_always_equal::value) { bit.swap(x.bit); };
     constexpr void clear() { bit.clear(); }
     constexpr allocator_type get_allocator() const noexcept { return bit.get_allocator(); }
     constexpr void add(u32 n, const value_type& x) {
@@ -134,6 +134,6 @@ public:
 template<class U, class Alloc> constexpr void swap(RangeSumQuery<U, Alloc>& x, RangeSumQuery<U, Alloc>& y) noexcept(noexcept(x.swap(y))) {
     x.swap(y);
 }
-template<class InputIterator, class Alloc = Allocator<typename std::iterator_traits<InputIterator>::value_type>> RangeSumQuery(InputIterator, InputIterator, Alloc = Alloc()) -> RangeSumQuery<typename std::iterator_traits<InputIterator>::value_type, Alloc>;
+template<class InputIterator, class Alloc = std::allocator<typename std::iterator_traits<InputIterator>::value_type>> RangeSumQuery(InputIterator, InputIterator, Alloc = Alloc()) -> RangeSumQuery<typename std::iterator_traits<InputIterator>::value_type, Alloc>;
 
 }  // namespace gsh

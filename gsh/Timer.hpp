@@ -1,8 +1,8 @@
 #pragma once
 #include "InOut.hpp"
 #include "TypeDef.hpp"
-#include <chrono>  // std::chrono::system_clock
-#include <limits>  // std::numeric_limits
+#include <chrono>
+#include <limits>
 
 
 namespace gsh {

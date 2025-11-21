@@ -1,18 +1,18 @@
 #pragma once
-#include "Exception.hpp"  // gsh::Exception
-#include "Memory.hpp"     // gsh::Allocator, gsh::AllocatorTraits, gsh::DestroyAt
-#include "Range.hpp"      // gsh::ViewInterface
-#include "TypeDef.hpp"    // gsh::itype
-#include "Util.hpp"       // gsh::Assume
+#include "Exception.hpp"
+#include "Memory.hpp"
+#include "Range.hpp"
+#include "TypeDef.hpp"
+#include "Util.hpp"
 #include "internal/UtilMacro.hpp"
-#include <algorithm>         // std::lexicographical_compare_three_way
-#include <concepts>          // std::same_as
-#include <cstring>           // std::memset
-#include <initializer_list>  // std::initializer_list
-#include <iterator>          // std::reverse_iterator, std::iterator_traits, std::input_iterator, std::distance
-#include <tuple>             // std::tuple_size, std::tuple_element
-#include <type_traits>       // std::remove_cv_t, std::is_constant_evaluated, std::common_type_t, std::conditional_t, std::is_void_v, std::integral_constant
-#include <utility>           // std::move, std::forward, std::swap
+#include <algorithm>
+#include <concepts>
+#include <cstring>
+#include <initializer_list>
+#include <iterator>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 
 namespace gsh {
@@ -24,10 +24,10 @@ template<class T = void> constexpr ArrInitTag<T> ArrInit;
 class ArrNoInitTag {};
 constexpr ArrNoInitTag ArrNoInit;
 
-template<class T, class Allocator = Allocator<T>>
-    requires std::same_as<T, typename AllocatorTraits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
+template<class T, class Allocator = std::allocator<T>>
+    requires std::same_as<T, typename std::allocator_traits<Allocator>::value_type> && std::same_as<T, std::remove_cv_t<T>>
 class Arr : public ViewInterface<Arr<T, Allocator>, T> {
-    using traits = AllocatorTraits<Allocator>;
+    using traits = std::allocator_traits<Allocator>;
 public:
     using reference = T&;
     using const_reference = const T&;
@@ -325,7 +325,7 @@ public:
     friend constexpr auto operator<=>(const Arr& x, const Arr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
     friend constexpr void swap(Arr& x, Arr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<std::input_iterator InputIter, class Alloc = Allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
+template<std::input_iterator InputIter, class Alloc = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
 
 template<class T, u32 N>
     requires std::same_as<T, std::remove_cv_t<T>>

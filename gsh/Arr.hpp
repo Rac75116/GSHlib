@@ -279,7 +279,7 @@ public:
     constexpr void assign(ArrNoInitTag, const size_type n) {
         clear();
         if (n != 0) {
-            ptr = traits::allocator(alloc, n);
+            ptr = traits::allocate(alloc, n);
             len = n;
         }
     }

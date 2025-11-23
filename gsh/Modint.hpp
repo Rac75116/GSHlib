@@ -1,6 +1,6 @@
 #pragma once
 #include "Exception.hpp"
-#include "Int128.hpp"  //gsh::u128
+#include "Int128.hpp"
 #include "TypeDef.hpp"
 #include <bit>
 #include <limits>

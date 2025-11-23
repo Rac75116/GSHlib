@@ -4,7 +4,7 @@
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include <bit>
-#include <cerrno>  // errno
+#include <cerrno>
 #include <cstdlib>
 #include <ranges>
 

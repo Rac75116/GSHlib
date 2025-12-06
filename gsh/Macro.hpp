@@ -9,44 +9,19 @@
 
 #define NMIN(T) (std::numeric_limits<T>::lowest())
 #define NMAX(T) (std::numeric_limits<T>::max())
-// clang-format off
-#define RET_WITH(...) { __VA_ARGS__; return; } []{}()
-#define RETV_WITH(val, ...) { __VA_ARGS__; return val; } []{}()
-#define BRK_WITH(...) { __VA_ARGS__; break; } []{}()
-#define CTN_WITH(...) { __VA_ARGS__; continue; } []{}()
-#define EXT_WITH(...) [&](gsh::i32 ret = 0){ __VA_ARGS__; std::exit(ret); }
 
-#define GSH_INTERNAL_ARGS0() ()
-#define GSH_INTERNAL_ARGS1(a) (auto&& a)
-#define GSH_INTERNAL_ARGS2(a, b) (auto&& a, auto&& b)
-#define GSH_INTERNAL_ARGS3(a, b, c) (auto&& a, auto&& b, auto&& c)
-#define GSH_INTERNAL_ARGS4(a, b, c, d) (auto&& a, auto&& b, auto&& c, auto&& d)
-#define GSH_INTERNAL_ARGS5(a, b, c, d, e) (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e)
-#define GSH_INTERNAL_ARGS6(a, b, c, d, e, f) (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e, auto&& f)
+#define GSH_INTERNAL_ARGS0()                    ()
+#define GSH_INTERNAL_ARGS1(a)                   (auto&& a)
+#define GSH_INTERNAL_ARGS2(a, b)                (auto&& a, auto&& b)
+#define GSH_INTERNAL_ARGS3(a, b, c)             (auto&& a, auto&& b, auto&& c)
+#define GSH_INTERNAL_ARGS4(a, b, c, d)          (auto&& a, auto&& b, auto&& c, auto&& d)
+#define GSH_INTERNAL_ARGS5(a, b, c, d, e)       (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e)
+#define GSH_INTERNAL_ARGS6(a, b, c, d, e, f)    (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e, auto&& f)
 #define GSH_INTERNAL_ARGS7(a, b, c, d, e, f, g) (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e, auto&& f, auto&& g)
-#define GSH_INTERNAL_ARGS(...) GSH_INTERNAL_SELECT8(__VA_ARGS__, GSH_INTERNAL_ARGS7, GSH_INTERNAL_ARGS6, GSH_INTERNAL_ARGS5, GSH_INTERNAL_ARGS4, GSH_INTERNAL_ARGS3, GSH_INTERNAL_ARGS2, GSH_INTERNAL_ARGS1, GSH_INTERNAL_ARGS0)(__VA_ARGS__)
-#define GSH_INTERNAL_LAMBDA_BODY(...) { return (__VA_ARGS__); }
-#define LAMBDA(...) [&] GSH_INTERNAL_ARGS(__VA_ARGS__) GSH_INTERNAL_LAMBDA_BODY
+#define LAMBDA(...)                             [&] GSH_INTERNAL_SELECT8(__VA_ARGS__, GSH_INTERNAL_ARGS7, GSH_INTERNAL_ARGS6, GSH_INTERNAL_ARGS5, GSH_INTERNAL_ARGS4, GSH_INTERNAL_ARGS3, GSH_INTERNAL_ARGS2, GSH_INTERNAL_ARGS1, GSH_INTERNAL_ARGS0)(__VA_ARGS__)
 #define GSH_INTERNAL_ITER_CALLBACK(...) __VA_ARGS__)
 #define ITERATE(...) iterate([&] GSH_INTERNAL_ARGS(__VA_ARGS__) GSH_INTERNAL_ITER_CALLBACK
 // clang-format on
-
-namespace gsh {
-namespace internal {
-    template<class T, class... Args> constexpr bool MatchAny(T&& value, Args&&... args) {
-        return (!!(value == args) || ...);
-    }
-    template<class T, class Left, class Right> constexpr bool InRange(T&& value, Left&& left, Right&& right) {
-        return !(left > value) && !!(value < right);
-    }
-}  // namespace internal
-}  // namespace gsh
-// clang-format off
-#define MATCH(...) if (auto&& gsh_internal_match = (__VA_ARGS__); false)
-#define THEN(...) else if (gsh::internal::MatchAny(gsh_internal_match, __VA_ARGS__))
-#define INRANGE(...) else if (gsh::internal::InRange(gsh_internal_match, __VA_ARGS__))
-// clang-format on
-
 
 #define GSH_INTERNAL_REP1(n)    std::views::iota(std::decay_t<decltype(n)>(), n)
 #define GSH_INTERNAL_REP2(n, m) std::views::iota(static_cast<std::common_type_t<std::decay_t<decltype(n)>, std::decay_t<decltype(m)>>>(n), static_cast<std::common_type_t<std::decay_t<decltype(n)>, std::decay_t<decltype(m)>>>(m))

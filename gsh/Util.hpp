@@ -152,10 +152,6 @@ GSH_INTERNAL_INLINE constexpr u32 StrLen(const c8* p) {
     } else return std::strlen(p);
 }
 
-template<class T, class U, class V> constexpr bool InRange(const T& l, const U& x, const V& r) {
-    return l <= x && x < r;
-}
-
 namespace internal {
     template<u32 N, class First, class... Tail> class TypeAtImpl : public TypeAtImpl<N - 1, Tail...> {};
     template<class T, class... Types> class TypeAtImpl<0, T, Types...> {

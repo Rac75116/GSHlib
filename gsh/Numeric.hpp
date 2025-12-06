@@ -28,6 +28,23 @@ constexpr u32 CharLength64(u64 x) {
     return lower_bound_table[clz] + static_cast<u32>(pow10[clz] <= x);
 }
 
+template<class... Bounds>
+    requires(sizeof...(Bounds) != 0 && sizeof...(Bounds) % 2 == 0)
+class InRange {
+    std::tuple<Bounds...> bounds;
+public:
+    constexpr InRange(Bounds&&... bounds) : bounds(std::forward<Bounds>(bounds)...) {}
+    template<class... Args>
+        requires(sizeof...(Args) == sizeof...(Bounds) / 2)
+    constexpr bool operator()(Args&&... args) {
+        return [&]<u32... I>(std::integer_sequence<u32, I...>) {
+            auto det = [&]<u32 Idx>(std::integral_constant<u32, Idx>, auto&& val) {
+                return std::get<2 * Idx>(bounds) <= val && val < std::get<2 * Idx + 1>(bounds);
+            };
+            return (det(std::integral_constant<u32, I>(), std::forward<Args>(args)) && ...);
+        }(std::make_integer_sequence<u32, sizeof...(Args)>());
+    }
+};
 
 //@brief Find the largest x for which x * x <= n (https://rsk0315.hatenablog.com/entry/2023/11/07/221428)
 GSH_INTERNAL_INLINE constexpr u32 IntSqrt32(const u32 x) {
@@ -351,6 +368,96 @@ constexpr u32 LinearModMin(u32 n, u32 m, u32 a, u32 b) {
     res += (z ? b : -b);
     return res;
 }
+
+template<class F> i64 FibonacciSearch(i64 left, i64 right, F&& func) {
+    using Ret = std::invoke_result_t<std::remove_reference_t<F>, i64>;
+    i64 length = right - left;
+    if (length <= 1) return left;
+    i64 fib[93];
+    fib[0] = 1;
+    fib[1] = 1;
+    i32 k = 1;
+    while (fib[k] < length && k + 1 < 93) {
+        ++k;
+        fib[k] = fib[k - 1] + fib[k - 2];
+    }
+    i64 L = 0;
+    i64 R = fib[k];
+    i64 m1 = fib[k - 2];
+    i64 m2 = fib[k - 1];
+    auto eval = [&](i64 offset) GSH_INTERNAL_INLINE_LAMBDA -> Ret {
+        i64 x = left + offset;
+        if (x >= right) return std::numeric_limits<Ret>::max();
+        return std::invoke(func, x);
+    };
+    Ret v1 = eval(m1);
+    Ret v2 = eval(m2);
+    while (k > 2) {
+        if (v1 < v2) {
+            R = m2;
+            m2 = m1;
+            v2 = v1;
+            --k;
+            m1 = L + fib[k - 2];
+            v1 = eval(m1);
+        } else {
+            L = m1;
+            m1 = m2;
+            v1 = v2;
+            --k;
+            m2 = L + fib[k - 1];
+            v2 = eval(m2);
+        }
+    }
+    i64 ans = L;
+    Ret best = eval(L);
+    if (m1 < R) {
+        if (v1 < best) {
+            best = v1;
+            ans = m1;
+        }
+    }
+    if (m2 < R && m2 != m1) {
+        if (v2 < best) {
+            best = v2;
+            ans = m2;
+        }
+    }
+    i64 xR = (R < length) ? R : (length - 1);
+    if (xR > L) {
+        Ret vR = eval(xR);
+        if (vR < best) {
+            best = vR;
+            ans = xR;
+        }
+    }
+    return left + ans;
+}
+
+template<class F> f64 GoldenSectionSearch(f64 left, f64 right, u32 precision, F&& func) {
+    constexpr f64 resphi = 2.0 - 1.61803398874989484820;
+    f64 x1 = left + (right - left) * resphi;
+    f64 x2 = right - (right - left) * resphi;
+    auto f1 = std::invoke(func, x1);
+    auto f2 = std::invoke(func, x2);
+    for (u32 i = 0; i < precision; ++i) {
+        if (f1 < f2) {
+            right = x2;
+            x2 = x1;
+            f2 = f1;
+            x1 = left + (right - left) * resphi;
+            f1 = std::invoke(func, x1);
+        } else {
+            left = x1;
+            x1 = x2;
+            f1 = f2;
+            x2 = right - (right - left) * resphi;
+            f2 = std::invoke(func, x2);
+        }
+    }
+    return (left + right) * 0.5;
+}
+
 
 class QuotientsList {
     const u64 x;

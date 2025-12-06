@@ -3,10 +3,6 @@
 
 namespace gsh {
 
-template<class T, class Alloc>
-    requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)
-class Vec;
-
 template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum {
     Arr<T, Alloc> prefix_sum;
     [[no_unique_address]] F func;

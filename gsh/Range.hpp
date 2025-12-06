@@ -2,6 +2,7 @@
 #include "Functional.hpp"
 #include "Memory.hpp"
 #include "TypeDef.hpp"
+#include "internal/ArrVecFwd.hpp"
 #include "internal/Operation.hpp"
 #include <cctype>
 #include <concepts>
@@ -44,14 +45,6 @@ namespace internal {
 template<std::input_or_output_iterator I, std::sentinel_for<I> S, RangeKind K>
     requires(K == RangeKind::Sized || !std::sized_sentinel_for<S, I>)
 class Subrange;
-
-template<class T, class Alloc>
-    requires std::same_as<T, typename std::allocator_traits<Alloc>::value_type> && std::same_as<T, std::remove_cv_t<T>>
-class Arr;
-
-template<class T, class Alloc>
-    requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)
-class Vec;
 
 template<class D, class V>
     requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>>
@@ -328,8 +321,18 @@ public:
     }
     template<class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
         requires std::ranges::forward_range<derived_type>
+    constexpr auto lower_bound_index(const T& value, Comp&& comp = {}, Proj&& proj = {}) const {
+        return std::ranges::distance(get_begin(), lower_bound(value, std::forward<Comp>(comp), std::forward<Proj>(proj)));
+    }
+    template<class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
+        requires std::ranges::forward_range<derived_type>
     constexpr auto upper_bound(const T& value, Comp&& comp = {}, Proj&& proj = {}) const {
         return internal::UpperBoundImpl(get_begin(), get_end(), value, std::forward<Comp>(comp), std::forward<Proj>(proj));
+    }
+    template<class T, class Proj = Identity, std::indirect_strict_weak_order<const T*, std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
+        requires std::ranges::forward_range<derived_type>
+    constexpr auto upper_bound_index(const T& value, Comp&& comp = {}, Proj&& proj = {}) const {
+        return std::ranges::distance(get_begin(), upper_bound(value, std::forward<Comp>(comp), std::forward<Proj>(proj)));
     }
     template<std::indirect_binary_predicate<std::ranges::iterator_t<derived_type>, std::ranges::iterator_t<derived_type>> Equal = EqualTo>
         requires std::ranges::bidirectional_range<derived_type>
@@ -378,6 +381,28 @@ public:
             *itr = std::toupper(*itr);
             ++itr;
         }
+    }
+    template<class R>
+        requires std::ranges::forward_range<derived_type> && std::ranges::input_range<R>
+    constexpr void permute(R&& location) {
+        auto begin = get_begin();
+        auto end = get_end();
+        auto loc_begin = std::ranges::begin(location);
+        u32 size = std::ranges::distance(begin, end);
+        arr_type tmp(ArrNoInit, size);
+        for (u32 i = 0; i != size; ++i) std::construct_at(&tmp[*(loc_begin++)], std::move(*(begin++)));
+        begin = get_begin();
+        for (u32 i = 0; i != size; ++i) *(begin++) = std::move(tmp[i]);
+    }
+    constexpr auto inverse()
+        requires std::ranges::random_access_range<derived_type>
+    {
+        auto begin = get_begin();
+        auto end = get_end();
+        u32 size = std::ranges::distance(begin, end);
+        arr_type tmp(ArrNoInit, size);
+        for (auto i = static_cast<value_type>(0); i != size; ++i) std::construct_at(&tmp[*(begin++)], i);
+        return tmp;
     }
 };
 

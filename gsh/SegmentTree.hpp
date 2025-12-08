@@ -3,10 +3,10 @@
 #include "Functional.hpp"
 #include "Numeric.hpp"
 #include "Vec.hpp"
+#include <bit>
 #include <concepts>
 #include <iterator>
 #include <limits>
-
 
 namespace gsh {
 
@@ -19,14 +19,14 @@ namespace internal {
 template<class Op, class Id>
     requires internal::IsValidMonoid<Op, Id>
 class Monoid {
-    [[no_unique_address]] Op op;
-    [[no_unique_address]] Id id;
+    [[no_unique_address]] mutable Op op;
+    [[no_unique_address]] mutable Id id;
 public:
     using value_type = std::remove_cvref_t<std::invoke_result_t<Id>>;
     constexpr Monoid() = default;
     constexpr Monoid(Op op, Id id) : op(op), id(id) {}
-    constexpr value_type operator()(const value_type& a, const value_type& b) noexcept(noexcept(std::is_nothrow_invocable_v<Op, const value_type&, const value_type&>)) { return static_cast<value_type>(std::invoke(op, a, b)); }
-    constexpr value_type identity() noexcept(noexcept(std::is_nothrow_invocable_v<Id>)) { return static_cast<value_type>(std::invoke(id)); }
+    constexpr value_type operator()(const value_type& a, const value_type& b) const noexcept(noexcept(std::is_nothrow_invocable_v<Op, const value_type&, const value_type&>)) { return static_cast<value_type>(std::invoke(op, a, b)); }
+    constexpr value_type identity() const noexcept(noexcept(std::is_nothrow_invocable_v<Id>)) { return static_cast<value_type>(std::invoke(id)); }
 };
 
 namespace monoids {
@@ -46,27 +46,31 @@ public:
     using difference_type = std::ptrdiff_t;
 private:
     size_type n;
+    size_type sz;
     Vec<value_type> tree;
 public:
-    constexpr SegmentTree() : n(0) {}
+    constexpr SegmentTree() : n(0), sz(0) {}
     constexpr SegmentTree(size_type n, M monoid = M()) : monoid(monoid), n(n) {
-        if (n > 0) tree.assign(2 * n, monoid.identity());
+        sz = n > 0 ? std::bit_ceil(n) : 0;
+        if (n > 0) tree.assign(2 * sz, monoid.identity());
     }
     template<class InputIt> constexpr SegmentTree(InputIt first, InputIt last, M monoid = M()) : monoid(monoid), n(std::distance(first, last)) {
+        sz = n > 0 ? std::bit_ceil(n) : 0;
         if (n > 0) {
-            tree.assign(2 * n, monoid.identity());
+            tree.assign(2 * sz, monoid.identity());
             auto it = first;
-            for (size_type i = 0; i < n; ++i, ++it) tree[n + i] = *it;
-            for (size_type i = n - 1; i >= 1; --i) tree[i] = monoid(tree[2 * i], tree[2 * i + 1]);
+            for (size_type i = 0; i < n; ++i, ++it) tree[sz + i] = *it;
+            for (size_type i = sz - 1; i >= 1; --i) tree[i] = monoid(tree[2 * i], tree[2 * i + 1]);
         }
     }
 
-    constexpr auto begin() const { return tree.cbegin() + n; }
-    constexpr auto end() const { return tree.cend(); }
-    constexpr auto cbegin() const { return tree.cbegin() + n; }
-    constexpr auto cend() const { return tree.cend(); }
+    constexpr auto begin() const { return tree.cbegin() + sz; }
+    constexpr auto end() const { return tree.cbegin() + sz + n; }
+    constexpr auto cbegin() const { return tree.cbegin() + sz; }
+    constexpr auto cend() const { return tree.cbegin() + sz + n; }
     constexpr void clear() {
         n = 0;
+        sz = 0;
         tree.clear();
     }
     constexpr bool empty() const { return n == 0; }
@@ -77,8 +81,8 @@ public:
         if (l > r || r > n) throw Exception("SegmentTree::prod: invalid range [", l, ", ", r, ") with size ", n);
 #endif
         value_type sml = monoid.identity(), smr = monoid.identity();
-        l += n;
-        r += n;
+        l += sz;
+        r += sz;
         while (l < r) {
             if (l & 1) sml = monoid(sml, tree[l++]);
             if (r & 1) smr = monoid(tree[--r], smr);
@@ -93,7 +97,7 @@ public:
 #ifndef NDEBUG
         if (i >= n) throw Exception("SegmentTree::set: index ", i, " is out of range [0, ", n, ")");
 #endif
-        i += n;
+        i += sz;
         tree[i] = x;
         while (i >>= 1) tree[i] = monoid(tree[2 * i], tree[2 * i + 1]);
     }
@@ -101,7 +105,7 @@ public:
 #ifndef NDEBUG
         if (i >= n) throw Exception("SegmentTree::operator[]: index ", i, " is out of range [0, ", n, ")");
 #endif
-        return tree[n + i];
+        return tree[sz + i];
     }
 
     // Returns the maximum r (l <= r <= n) such that f(prod(l, r)) is true.
@@ -113,18 +117,18 @@ public:
 #endif
         if (l == n) return n;
         value_type sm = monoid.identity();
-        l += n;
+        l += sz;
         do {
             while (l % 2 == 0) l >>= 1;
             if (!std::invoke(f, monoid(sm, tree[l]))) {
-                while (l < n) {
+                while (l < sz) {
                     l = (2 * l);
                     if (std::invoke(f, monoid(sm, tree[l]))) {
                         sm = monoid(sm, tree[l]);
                         l++;
                     }
                 }
-                return l - n;
+                return l - sz;
             }
             sm = monoid(sm, tree[l]);
             l++;
@@ -141,19 +145,19 @@ public:
 #endif
         if (r == 0) return 0;
         value_type sm = monoid.identity();
-        r += n;
+        r += sz;
         do {
             r--;
             while (r > 1 && (r % 2)) r >>= 1;
             if (!std::invoke(f, monoid(tree[r], sm))) {
-                while (r < n) {
+                while (r < sz) {
                     r = (2 * r + 1);
                     if (std::invoke(f, monoid(tree[r], sm))) {
                         sm = monoid(tree[r], sm);
                         r--;
                     }
                 }
-                return r + 1 - n;
+                return r + 1 - sz;
             }
             sm = monoid(tree[r], sm);
         } while ((r & -r) != r);

@@ -65,8 +65,7 @@ class ViewInterface {
 public:
     using value_type = V;
     template<class Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) { derived() = derived_type(std::move(first), std::move(last)); }
-    template<std::ranges::input_range R> static constexpr derived_type from_range(R&& r) { return derived_type(std::ranges::begin(r), std::ranges::end(r)); }
-    static constexpr derived_type from_range(std::initializer_list<value_type> init) { return derived_type(std::ranges::begin(init), std::ranges::end(init)); }
+    template<std::ranges::input_range R, class... Args> static constexpr derived_type from_range(R&& r, Args&&... args) { return derived_type(std::ranges::begin(r), std::ranges::end(r), std::forward<Args>(args)...); }
     template<std::ranges::input_range R> constexpr void assign_range(R&& r) { derived().assign(std::ranges::begin(r), std::ranges::end(r)); }
     constexpr void assign_range(std::initializer_list<value_type> init) { derived().assign(init); }
     constexpr derived_type copy() const& { return derived(); }

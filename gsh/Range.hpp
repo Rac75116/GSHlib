@@ -1,6 +1,5 @@
 #pragma once
 #include "Functional.hpp"
-#include "Memory.hpp"
 #include "TypeDef.hpp"
 #include "internal/ArrVecFwd.hpp"
 #include "internal/Operation.hpp"

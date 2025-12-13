@@ -54,8 +54,6 @@ namespace segment_specs {
     template<class T> class RangeAddRangeMax : public decltype(LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
     template<class T> class RangeAddRangeSum
       : public decltype(LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{ a.first + b.first, a.second + b.second }; }, []() -> std::pair<T, std::size_t> { return { static_cast<T>(0), 0 }; }, [](const T& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{ x.first + f * static_cast<T>(x.second), x.second }; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
-    template<class T> class RangeAffineRangeSum : public decltype(LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{ a.first + b.first, a.second + b.second }; }, []() -> std::pair<T, std::size_t> { return { static_cast<T>(0), 0 }; }, [](const std::pair<T, T>& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{ f.first * x.first + f.second * static_cast<T>(x.second), x.second }; },
-                                                                                  [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{ f.first * g.first, f.first * g.second + f.second }; }, []() -> std::pair<T, T> { return { static_cast<T>(1), static_cast<T>(0) }; })){};
 
 }  // namespace segment_specs
 

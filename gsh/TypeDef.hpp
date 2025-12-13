@@ -13,18 +13,6 @@ namespace gsh {
 using std::size_t;
 using std::ptrdiff_t;
 
-#if !defined(INT8_MAX) || !defined(UINT8_MAX)
-static_assert(false, "This library needs std::int8_t and std::uint8_t.");
-#endif
-#if !defined(INT16_MAX) || !defined(UINT16_MAX)
-static_assert(false, "This library needs std::int16_t and std::uint16_t.");
-#endif
-#if !defined(INT32_MAX) || !defined(UINT32_MAX)
-static_assert(false, "This library needs std::int32_t and std::uint32_t.");
-#endif
-#if !defined(INT64_MAX) || !defined(UINT64_MAX)
-static_assert(false, "This library needs std::int64_t and std::uint64_t.");
-#endif
 using i8 = std::int8_t;
 using u8 = std::uint8_t;
 using i16 = std::int16_t;

@@ -1,6 +1,5 @@
 #pragma once
 #include "Exception.hpp"
-#include "Memory.hpp"
 #include "Range.hpp"
 #include "TypeDef.hpp"
 #include "Util.hpp"

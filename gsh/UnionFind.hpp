@@ -93,15 +93,8 @@ namespace internal {
     };
 }  // namespace internal
 
-enum class UnionFindAlgorithms {
-    Naive,
-    PathCompression,
-    PathHalving,
-    PathSplitting,
-};  // namespace UnionFindAlgorithms
-
-template<UnionFindAlgorithms Algo = UnionFindAlgorithms::PathCompression> class UnionFind : public internal::UnionFindImpl<UnionFind<Algo>> {
-    friend class internal::UnionFindImpl<UnionFind<Algo>>;
+class UnionFind : public internal::UnionFindImpl<UnionFind> {
+    friend class internal::UnionFindImpl<UnionFind>;
     Arr<i32> parent;
     u32 cnt = 0;
     constexpr i32 rootimpl(i32 n) noexcept {
@@ -111,37 +104,11 @@ template<UnionFindAlgorithms Algo = UnionFindAlgorithms::PathCompression> class 
         return r;
     }
     GSH_INTERNAL_INLINE constexpr i32 root(i32 n) noexcept {
-        if constexpr (Algo == UnionFindAlgorithms::Naive) {
-            while (true) {
-                i32 p = parent[n];
-                if (p < 0) return n;
-                n = p;
-            }
-        } else if constexpr (Algo == UnionFindAlgorithms::PathHalving) {
-            while (true) {
-                i32 p = parent[n];
-                if (p < 0) return n;
-                i32 pp = parent[p];
-                if (pp < 0) return p;
-                parent[n] = pp;
-                n = pp;
-            }
-        } else if constexpr (Algo == UnionFindAlgorithms::PathSplitting) {
-            while (true) {
-                i32 p = parent[n];
-                if (p < 0) return n;
-                i32 pp = parent[p];
-                if (pp < 0) return p;
-                parent[n] = pp;
-                n = p;
-            }
-        } else {
-            if (parent[n] < 0) return n;
-            i32 m = parent[n];
-            if (parent[m] < 0) return parent[n] = m, m;
-            i32 r = rootimpl(parent[m]);
-            return parent[n] = r, parent[m] = r, r;
-        }
+        if (parent[n] < 0) return n;
+        i32 m = parent[n];
+        if (parent[m] < 0) return parent[n] = m, m;
+        i32 r = rootimpl(parent[m]);
+        return parent[n] = r, parent[m] = r, r;
     }
 public:
     using size_type = u32;

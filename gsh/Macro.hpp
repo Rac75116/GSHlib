@@ -19,8 +19,6 @@
 #define GSH_INTERNAL_ARGS6(a, b, c, d, e, f)    (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e, auto&& f)
 #define GSH_INTERNAL_ARGS7(a, b, c, d, e, f, g) (auto&& a, auto&& b, auto&& c, auto&& d, auto&& e, auto&& f, auto&& g)
 #define LAMBDA(...)                             [&] GSH_INTERNAL_SELECT8(__VA_ARGS__, GSH_INTERNAL_ARGS7, GSH_INTERNAL_ARGS6, GSH_INTERNAL_ARGS5, GSH_INTERNAL_ARGS4, GSH_INTERNAL_ARGS3, GSH_INTERNAL_ARGS2, GSH_INTERNAL_ARGS1, GSH_INTERNAL_ARGS0)(__VA_ARGS__)
-#define GSH_INTERNAL_ITER_CALLBACK(...) __VA_ARGS__)
-#define ITERATE(...) iterate([&] GSH_INTERNAL_ARGS(__VA_ARGS__) GSH_INTERNAL_ITER_CALLBACK
 // clang-format on
 
 #define GSH_INTERNAL_REP1(n)    std::views::iota(std::decay_t<decltype(n)>(), n)

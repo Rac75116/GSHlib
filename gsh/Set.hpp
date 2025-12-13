@@ -1,6 +1,6 @@
 #pragma once
-#include "gsh/Memory.hpp"
-#include "gsh/Pair.hpp"
+#include "Memory.hpp"
+#include "Pair.hpp"
 
 namespace gsh {
 

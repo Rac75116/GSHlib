@@ -60,6 +60,7 @@ private:
     Vec<value_type> tree;
 public:
     constexpr SegmentTree() : n(0), sz(0) {}
+    constexpr SegmentTree(Spec spec) : spec(spec), n(0), sz(0) {}
     constexpr SegmentTree(size_type n, Spec spec = Spec()) : spec(spec), n(n) {
         sz = n > 0 ? std::bit_ceil(n) : 0;
         if (n > 0) tree.assign(2 * sz, spec.e());

@@ -1,4 +1,5 @@
 #pragma once
+#include "Exception.hpp"
 #include "Functional.hpp"
 #include "TypeDef.hpp"
 #include "internal/ArrVecFwd.hpp"
@@ -302,6 +303,34 @@ public:
     constexpr auto order(Comp&& comp = {}, Proj&& proj = {}) const {
         return internal::OrderImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj));
     }
+    template<class Proj = Identity, class Comp = Less, class R>
+        requires std::ranges::random_access_range<derived_type> && std::ranges::forward_range<R>
+    constexpr void sort_with(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+#ifndef NDEBUG
+        if (std::ranges::size(r) != std::ranges::size(derived())) {
+            throw Exception("gsh::ViewInterface::sort_with / The size of the range passed as an argument differs from the size of the key.");
+        }
+#endif
+        auto ord = derived().sort_index(std::forward<Comp>(comp), std::forward<Proj>(proj)).inverse();
+        derived().permute(ord);
+        Subrange{ std::ranges::begin(r), std::ranges::end(r) }.permute(ord);
+    };
+    template<class Proj = Identity, class Comp = Less, class... Rs>
+        requires std::ranges::random_access_range<derived_type> && (std::ranges::forward_range<Rs> && ...)
+    constexpr void sort_with(std::tuple<Rs...> rs, Comp&& comp = {}, Proj&& proj = {}) {
+#ifndef NDEBUG
+        u32 sz = std::ranges::size(derived());
+        auto check = [&](auto&&... r) {
+            if ((... || (std::ranges::size(r) != sz))) {
+                throw Exception("gsh::ViewInterface::sort_with / The size of the range passed as an argument differs from the size of the key.");
+            }
+        };
+        std::apply(check, rs);
+#endif
+        auto ord = derived().sort_index(std::forward<Comp>(comp), std::forward<Proj>(proj)).inverse();
+        derived().permute(ord);
+        std::apply([&](auto&&... r) { (Subrange{ std::ranges::begin(r), std::ranges::end(r) }.permute(ord), ...); }, rs);
+    };
     template<class Proj = Identity, std::indirect_strict_weak_order<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = Less>
         requires std::ranges::forward_range<derived_type>
     constexpr auto is_sorted(Comp&& comp = {}, Proj&& proj = {}) const {

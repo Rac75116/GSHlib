@@ -88,6 +88,7 @@ private:
 
 public:
     constexpr LazySegmentTree() : n(0), sz(0), log(0) {}
+    constexpr LazySegmentTree(Spec spec) : spec(spec), n(0), sz(0), log(0) {}
     constexpr LazySegmentTree(size_type n, Spec spec = Spec()) : spec(spec), n(n) {
         sz = n > 0 ? std::bit_ceil(n) : 0;
         log = std::countr_zero(sz);

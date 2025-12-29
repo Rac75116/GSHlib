@@ -3,16 +3,12 @@
 #include <cstdint>
 #include <limits>
 #include <type_traits>
-
 #if __has_include(<stdfloat>)
 #include <stdfloat>
 #endif
-
 namespace gsh {
-
-using std::size_t;
 using std::ptrdiff_t;
-
+using std::size_t;
 using i8 = std::int8_t;
 using u8 = std::uint8_t;
 using i16 = std::int16_t;
@@ -53,11 +49,9 @@ using bf16 = std::bfloat16_t;
 #else
 using bf16 = InvalidBfloat16Tag;
 #endif
-
 using c8 = char;
 using wc = wchar_t;
 using utf8 = char8_t;
 using utf16 = char16_t;
 using utf32 = char32_t;
-
-}  // namespace gsh
+} // namespace gsh

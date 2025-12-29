@@ -2,33 +2,31 @@
 #include "InOut.hpp"
 #include "TypeDef.hpp"
 #include <source_location>
-
-
 namespace gsh {
 namespace internal {
-    [[noreturn]] inline void AssertPrint(const c8* message, std::source_location loc) {
-        BasicWriter<2048> w(2);
+[[noreturn]] inline void AssertPrint(const c8* message, std::source_location loc) {
+  BasicWriter<2048> w(2);
 #if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
-        w.writeln_sep(NoOut, "\e[2m[Assert] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\n\e[0mDuring the execution of \e[1m\e[3m'", loc.function_name(), "'\e[0m: \e[31mAssertion Failed:\e[0m \e[1m\e[3m'", message, "'\e[0m");
-        w.reload();
+  w.writeln_sep(NoOut, "\e[2m[Assert] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\n\e[0mDuring the execution of \e[1m\e[3m'", loc.function_name(), "'\e[0m: \e[31mAssertion Failed:\e[0m \e[1m\e[3m'", message, "'\e[0m");
+  w.reload();
 #else
-        w.writeln_sep(NoOut, "[Assert] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\nDuring the execution of '", loc.function_name(), "': Assertion Failed: '", message, '\'');
-        w.reload();
+  w.writeln_sep(NoOut, "[Assert] ", loc.file_name(), ':', loc.line(), ':', loc.column(), "\nDuring the execution of '", loc.function_name(), "': Assertion Failed: '", message, '\'');
+  w.reload();
 #endif
-        std::exit(1);
+  std::exit(1);
+}
+template<u32>
+GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const c8* message, std::source_location loc = std::source_location::current()) {
+  if(!cond) [[unlikely]] {
+    if(std::is_constant_evaluated()) {
+      throw 0;
+    } else {
+      AssertPrint(message, loc);
     }
-    template<u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const c8* message, std::source_location loc = std::source_location::current()) {
-        if (!cond) [[unlikely]] {
-            if (std::is_constant_evaluated()) {
-                throw 0;
-            } else {
-                AssertPrint(message, loc);
-            }
-        }
-    }
-}  // namespace internal
-}  // namespace gsh
-
+  }
+}
+} // namespace internal
+} // namespace gsh
 // clang-format off
 #define GSH_INTERNAL_ASSERT1(cond)          gsh::internal::Assert<0>(cond, #cond)
 #define GSH_INTERNAL_ASSERT2(cond, message) gsh::internal::Assert<0>(cond, message)

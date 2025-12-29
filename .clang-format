@@ -90,7 +90,7 @@ IntegerLiteralSeparator:
 KeepEmptyLines:
   AtEndOfFile: true
   AtStartOfBlock: false
-  AtStartOfFile: false
+  AtStartOfFile: true
 KeepFormFeed: true
 LambdaBodyIndentation: Signature
 LineEnding: LF

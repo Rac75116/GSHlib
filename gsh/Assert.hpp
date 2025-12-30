@@ -2,8 +2,7 @@
 #include "InOut.hpp"
 #include "TypeDef.hpp"
 #include <source_location>
-namespace gsh {
-namespace internal {
+namespace gsh { namespace internal {
 [[noreturn]] inline void AssertPrint(const c8* message, std::source_location loc) {
   BasicWriter<2048> w(2);
 #if !defined(_MSC_VER) && defined(GSH_DIAGNOSTICS_COLOR)
@@ -15,8 +14,7 @@ namespace internal {
 #endif
   std::exit(1);
 }
-template<u32>
-GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const c8* message, std::source_location loc = std::source_location::current()) {
+template<u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const c8* message, std::source_location loc = std::source_location::current()) {
   if(!cond) [[unlikely]] {
     if(std::is_constant_evaluated()) {
       throw 0;

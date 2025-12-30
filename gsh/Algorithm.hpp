@@ -11,29 +11,24 @@
 #include <limits>
 #include <type_traits>
 namespace gsh {
-template<class T, class U>
-constexpr std::common_type_t<T, U> Min(const T& a, const U& b) { return a < b ? a : b; }
+template<class T, class U> constexpr std::common_type_t<T, U> Min(const T& a, const U& b) { return a < b ? a : b; }
 template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto Min(const T& x, const Args&... args) { return Min(x, Min(args...)); }
-template<class T, class U>
-constexpr std::common_type_t<T, U> Max(const T& a, const U& b) { return a < b ? b : a; }
+template<class T, class U> constexpr std::common_type_t<T, U> Max(const T& a, const U& b) { return a < b ? b : a; }
 template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto Max(const T& x, const Args&... args) { return Max(x, Max(args...)); }
-template<class T, class U>
-constexpr bool Chmin(T& a, const U& b) {
+template<class T, class U> constexpr bool Chmin(T& a, const U& b) {
   const bool f = b < a;
   a = f ? b : a;
   return f;
 }
 template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr bool Chmin(T& a, const Args&... b) { return Chmin(a, Min(b...)); }
-template<class T, class U>
-constexpr bool Chmax(T& a, const U& b) {
+template<class T, class U> constexpr bool Chmax(T& a, const U& b) {
   const bool f = a < b;
   a = f ? b : a;
   return f;
 }
 template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr bool Chmax(T& a, const Args&... b) { return Chmax(a, Max(b...)); }
 namespace internal {
-template<class R, class Comp, class Proj>
-constexpr auto MinImpl(R&& r, Comp&& comp, Proj&& proj) {
+template<class R, class Comp, class Proj> constexpr auto MinImpl(R&& r, Comp&& comp, Proj&& proj) {
   auto first = std::ranges::begin(r);
   auto last = std::ranges::end(r);
   if(first == last) {
@@ -59,19 +54,16 @@ constexpr auto MinImpl(R&& r, Comp&& comp, Proj&& proj) {
   }
   return res;
 }
-template<class R, class Comp, class Proj>
-constexpr auto MaxImpl(R&& r, Comp&& comp, Proj&& proj) {
+template<class R, class Comp, class Proj> constexpr auto MaxImpl(R&& r, Comp&& comp, Proj&& proj) {
   if constexpr(std::same_as<std::remove_cvref_t<Comp>, Less>) return MinImpl(std::forward<R>(r), Greater(), proj);
   else if constexpr(std::same_as<std::remove_cvref_t<Comp>, Greater>) return MinImpl(std::forward<R>(r), Less(), proj);
   else return MinImpl(std::forward<R>(r), SwapArgs(std::forward<Comp>(comp)), proj);
 }
-template<class R, class T, class F>
-constexpr auto FoldImpl(R&& r, T init, F&& f) {
+template<class R, class T, class F> constexpr auto FoldImpl(R&& r, T init, F&& f) {
   for(auto&& x : std::forward<R>(r)) init = std::invoke(f, std::move(init), std::forward<decltype(x)>(x));
   return init;
 }
-template<class R, class F>
-constexpr auto SumImpl(R&& r, F&& f) {
+template<class R, class F> constexpr auto SumImpl(R&& r, F&& f) {
   auto itr = std::ranges::begin(r);
   auto sent = std::ranges::end(r);
   if(!(itr != sent)) {
@@ -85,8 +77,7 @@ constexpr auto SumImpl(R&& r, F&& f) {
   for(++itr; itr != sent; ++itr) res = std::invoke(f, std::move(res), *itr);
   return res;
 }
-template<class R, class F>
-constexpr void AdjacentDifferenceImpl(R&& r, F&& f) {
+template<class R, class F> constexpr void AdjacentDifferenceImpl(R&& r, F&& f) {
   auto itr = std::ranges::begin(r);
   auto sent = std::ranges::end(r);
   if(!(itr != sent)) return;
@@ -102,10 +93,8 @@ constexpr void AdjacentDifferenceImpl(R&& r, F&& f) {
   }
   *itr = prev;
 }
-template<class R>
-constexpr void ReverseImpl(R&& r) { std::ranges::reverse(std::forward<R>(r)); }
-template<class T, class Proj = Identity>
-void SortUnsigned8(T* const p, const u32 n, Proj&& proj = {}) {
+template<class R> constexpr void ReverseImpl(R&& r) { std::ranges::reverse(std::forward<R>(r)); }
+template<class T, class Proj = Identity> void SortUnsigned8(T* const p, const u32 n, Proj&& proj = {}) {
   std::unique_ptr<u32[]> cnt(new u32[1 << 8]{});
   for(u32 i = 0; i != n; ++i) ++cnt[std::invoke(proj, p[i]) & 0xff];
   for(u32 i = 0; i != (1 << 8) - 1; ++i) cnt[i + 1] += cnt[i];
@@ -113,8 +102,7 @@ void SortUnsigned8(T* const p, const u32 n, Proj&& proj = {}) {
   for(u32 i = n; i--;) std::construct_at(&tmp[--cnt[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
   for(u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
 }
-template<class T, class Proj = Identity>
-void SortUnsigned16(T* const p, const u32 n, Proj&& proj = {}) {
+template<class T, class Proj = Identity> void SortUnsigned16(T* const p, const u32 n, Proj&& proj = {}) {
   std::unique_ptr<u32[]> cnt(new u32[1 << 16]{});
   for(u32 i = 0; i != n; ++i) ++cnt[std::invoke(proj, p[i]) & 0xffff];
   for(u32 i = 0; i != (1 << 16) - 1; ++i) cnt[i + 1] += cnt[i];
@@ -122,8 +110,7 @@ void SortUnsigned16(T* const p, const u32 n, Proj&& proj = {}) {
   for(u32 i = n; i--;) std::construct_at(&tmp[--cnt[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
   for(u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
 }
-template<class T, class Proj = Identity>
-void SortUnsigned32(T* const p, const u32 n, Proj&& proj = {}) {
+template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const u32 n, Proj&& proj = {}) {
   std::unique_ptr<u32[]> cnt(new u32[2 * (1 << 16)]{});
   u32 *const cnt1 = cnt.get(), *const cnt2 = cnt.get() + (1 << 16);
   for(u32 i = 0; i != n; ++i) {
@@ -145,8 +132,7 @@ void SortUnsigned32(T* const p, const u32 n, Proj&& proj = {}) {
   }
   for(u32 i = n; i--;) p[--cnt2[std::invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
 }
-template<class T, class Proj = Identity>
-void SortUnsigned64(T* const p, const u32 n, Proj&& proj = {}) {
+template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const u32 n, Proj&& proj = {}) {
   std::unique_ptr<u32[]> cnt(new u32[4 * (1 << 16)]{});
   u32 *const cnt1 = cnt.get(), *const cnt2 = cnt.get() + (1 << 16), *const cnt3 = cnt.get() + 2 * (1 << 16), *const cnt4 = cnt.get() + 3 * (1 << 16);
   for(u32 i = 0; i != n; ++i) {
@@ -182,15 +168,13 @@ void SortUnsigned64(T* const p, const u32 n, Proj&& proj = {}) {
   for(u32 i = n; i--;) p[--cnt4[std::invoke(proj, tmp[i]) >> 48 & 0xffff]] = std::move(tmp[i]);
 }
 struct Revmsb {
-  template<class T>
-  constexpr auto operator()(T x) const {
+  template<class T> constexpr auto operator()(T x) const {
     using result_type = std::make_unsigned_t<T>;
     return std::bit_cast<result_type>(x) ^ (result_type(1) << (sizeof(T) * 8 - 1));
   }
 };
 struct ToUnsigned {
-  template<class T>
-  constexpr auto operator()(T x) const {
+  template<class T> constexpr auto operator()(T x) const {
     if constexpr(std::same_as<T, f16>) {
       u16 y = std::bit_cast<u16>(x);
       return u16(y ^ ((y >> 15) != 0 ? ~u16(0) : (u16(1) << 15)));
@@ -220,8 +204,7 @@ constexpr u32 SortBlockIndex[60][2] = {
     {6,7},{8,9}
 // clang-format on
 };
-template<class T, class Comp = Less, class Proj = Identity>
-constexpr void SortBlock(T* const p, Comp&& comp = {}, Proj&& proj = {}) {
+template<class T, class Comp = Less, class Proj = Identity> constexpr void SortBlock(T* const p, Comp&& comp = {}, Proj&& proj = {}) {
   if constexpr(std::is_scalar_v<T>) {
     GSH_INTERNAL_UNROLL(60)
     for(u32 i = 0; i != 60; ++i) {
@@ -241,8 +224,7 @@ constexpr void SortBlock(T* const p, Comp&& comp = {}, Proj&& proj = {}) {
     }
   }
 }
-template<class R, class Comp, class Proj>
-constexpr void SortImpl(R&& r, Comp&& comp, Proj&& proj) {
+template<class R, class Comp, class Proj> constexpr void SortImpl(R&& r, Comp&& comp, Proj&& proj) {
   if constexpr(!requires { std::ranges::data(r); }) {
     Arr tmp(std::move_iterator(std::ranges::begin(r)), std::move_sentinel(std::ranges::end(r)));
     SortImpl(tmp, std::forward<Comp>(comp), std::forward<Proj>(proj));
@@ -371,16 +353,14 @@ constexpr void SortImpl(R&& r, Comp&& comp, Proj&& proj) {
     }
   }
 }
-template<class R, class Comp, class Proj>
-constexpr auto SortIndexImpl(R&& r, Comp&& comp, Proj&& proj) {
+template<class R, class Comp, class Proj> constexpr auto SortIndexImpl(R&& r, Comp&& comp, Proj&& proj) {
   u32 n = std::ranges::size(r);
   Arr<u32> res(n);
   for(u32 i = 0; i != n; ++i) res[i] = i;
   SortImpl(res, std::forward<Comp>(comp), [start = std::ranges::begin(r), pj = std::forward<Proj>(proj)](u32 n) { return std::invoke(pj, *std::ranges::next(start, n)); });
   return res;
 }
-template<class R, class Comp, class Proj>
-constexpr auto OrderImpl(R&& r, Comp&& comp, Proj&& proj) {
+template<class R, class Comp, class Proj> constexpr auto OrderImpl(R&& r, Comp&& comp, Proj&& proj) {
   u32 n = std::ranges::size(r);
   if(n == 0) return Arr<u32>();
   auto idx = SortIndexImpl(r, comp, proj);
@@ -393,12 +373,9 @@ constexpr auto OrderImpl(R&& r, Comp&& comp, Proj&& proj) {
   }
   return res;
 }
-template<class R, class Comp, class Proj>
-constexpr auto IsSortedImpl(R&& r, Comp&& comp, Proj&& proj) { return std::ranges::is_sorted(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj)); }
-template<class R, class Comp, class Proj>
-constexpr auto IsSortedUntilImpl(R&& r, Comp&& comp, Proj&& proj) { return std::ranges::is_sorted_until(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj)); }
-template<class R, class Equal>
-constexpr auto IsPalindromeImpl(R&& r, Equal&& equal) {
+template<class R, class Comp, class Proj> constexpr auto IsSortedImpl(R&& r, Comp&& comp, Proj&& proj) { return std::ranges::is_sorted(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj)); }
+template<class R, class Comp, class Proj> constexpr auto IsSortedUntilImpl(R&& r, Comp&& comp, Proj&& proj) { return std::ranges::is_sorted_until(std::forward<R>(r), std::forward<Comp>(comp), std::forward<Proj>(proj)); }
+template<class R, class Equal> constexpr auto IsPalindromeImpl(R&& r, Equal&& equal) {
   u32 n = std::ranges::size(r);
   if(n == 0) return true;
   auto first = std::ranges::begin(r);
@@ -410,8 +387,7 @@ constexpr auto IsPalindromeImpl(R&& r, Equal&& equal) {
   }
   return true;
 }
-template<class Iter, class Sent, class T, class Proj, class Comp>
-constexpr auto LowerBoundImpl(Iter first, Sent last, const T& value, Comp&& comp, Proj&& proj) {
+template<class Iter, class Sent, class T, class Proj, class Comp> constexpr auto LowerBoundImpl(Iter first, Sent last, const T& value, Comp&& comp, Proj&& proj) {
   u32 len = std::ranges::distance(first, last);
   if(len == 0) [[unlikely]]
     return first;
@@ -425,8 +401,7 @@ constexpr auto LowerBoundImpl(Iter first, Sent last, const T& value, Comp&& comp
   }
   return first;
 }
-template<class Iter, class Sent, class T, class Proj, class Comp>
-constexpr auto UpperBoundImpl(Iter first, Sent last, const T& value, Comp&& comp, Proj&& proj) {
+template<class Iter, class Sent, class T, class Proj, class Comp> constexpr auto UpperBoundImpl(Iter first, Sent last, const T& value, Comp&& comp, Proj&& proj) {
   u32 len = std::ranges::distance(first, last);
   if(len == 0) [[unlikely]]
     return first;
@@ -441,8 +416,7 @@ constexpr auto UpperBoundImpl(Iter first, Sent last, const T& value, Comp&& comp
   return first;
 }
 } // namespace internal
-template<std::ranges::input_range R1, std::ranges::input_range R2, class Proj = Identity, class Comp = EqualTo>
-constexpr u32 HammingDistance(R1&& r1, R2&& r2, Comp&& comp = {}, Proj&& proj = {}) {
+template<std::ranges::input_range R1, std::ranges::input_range R2, class Proj = Identity, class Comp = EqualTo> constexpr u32 HammingDistance(R1&& r1, R2&& r2, Comp&& comp = {}, Proj&& proj = {}) {
   auto itr1 = std::ranges::begin(r1);
   auto itr2 = std::ranges::begin(r2);
   auto sent1 = std::ranges::end(r1);
@@ -456,8 +430,7 @@ constexpr u32 HammingDistance(R1&& r1, R2&& r2, Comp&& comp = {}, Proj&& proj = 
   if(itr1 != sent1 || itr2 != sent2) { throw Exception("gsh::HammingDistance / The sizes of the two ranges are different."); }
   return result;
 }
-template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less>
-constexpr Arr<u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less> constexpr Arr<u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
   using T = std::ranges::range_value_t<R>;
   Arr<u32> idx(std::ranges::size(r));
   u32 len = 0;
@@ -485,8 +458,7 @@ constexpr Arr<u32> LongestIncreasingSubsequence(R&& r, Comp&& comp = {}, Proj&& 
   }
   return res;
 }
-template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less>
-constexpr u32 LongestIncreasingSubsequenceLength(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
+template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less> constexpr u32 LongestIncreasingSubsequenceLength(R&& r, Comp&& comp = {}, Proj&& proj = {}) {
   using T = std::ranges::range_value_t<R>;
   Arr<T> dp(std::ranges::size(r));
   T *begin = dp.data(), *last = dp.data();
@@ -501,8 +473,7 @@ constexpr u32 LongestIncreasingSubsequenceLength(R&& r, Comp&& comp = {}, Proj&&
   }
   return last - begin;
 }
-template<std::ranges::random_access_range R>
-constexpr Arr<u32> LongestCommonPrefixArray(R&& r) {
+template<std::ranges::random_access_range R> constexpr Arr<u32> LongestCommonPrefixArray(R&& r) {
   const u32 n = std::ranges::size(r);
   Arr<u32> res(n);
   if(n == 0) return res;
@@ -553,8 +524,7 @@ template<class T = u64, std::ranges::range R> requires std::same_as<std::ranges:
   }
   return dp[n] - dp[0];
 }
-template<std::ranges::forward_range R>
-constexpr auto Majority(R&& r) {
+template<std::ranges::forward_range R> constexpr auto Majority(R&& r) {
   u32 c = 0;
   u32 len = 0;
   auto i = std::ranges::begin(r);
@@ -580,10 +550,8 @@ public:
   constexpr void reserve(u32 q) { qu.reserve(q); }
   constexpr void query(u32 l, u32 r) { qu.emplace_back(l, r); }
   constexpr void set_coef(double c) { coef = c; }
-  template<class F1, class F2, class F3>
-  void run(F1&& add, F2&& del, F3&& slv) const { run(add, add, del, del, slv); }
-  template<class F1, class F2, class F3, class F4, class F5>
-  void run(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
+  template<class F1, class F2, class F3> void run(F1&& add, F2&& del, F3&& slv) const { run(add, add, del, del, slv); }
+  template<class F1, class F2, class F3, class F4, class F5> void run(F1&& addl, F2&& addr, F3&& dell, F4&& delr, F5&& slv) const {
     const u32 Q = qu.size();
     u32 N = 0;
     for(u32 i = 0; i != Q; ++i) N = N < qu[i].r ? qu[i].r : N;

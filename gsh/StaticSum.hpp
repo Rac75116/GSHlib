@@ -6,9 +6,7 @@ template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std:
   [[no_unique_address]] F func;
   [[no_unique_address]] I inv;
   constexpr void build() {
-    for(u32 i = 0; i + 1 < prefix_sum.size(); ++i) {
-      prefix_sum[i + 1] = std::invoke(func, prefix_sum[i], prefix_sum[i + 1]);
-    }
+    for(u32 i = 0; i + 1 < prefix_sum.size(); ++i) { prefix_sum[i + 1] = std::invoke(func, prefix_sum[i], prefix_sum[i + 1]); }
   }
 public:
   using reference = T&;
@@ -97,9 +95,7 @@ public:
       if(sz != row_size) [[unlikely]]
         throw Exception("gsh::StaticSum2D::set / The sizes of the rows are not the same.");
 #endif
-      for(auto&& val : *itr) {
-        prefix_sum[idx++] = std::forward<decltype(val)>(val);
-      }
+      for(auto&& val : *itr) { prefix_sum[idx++] = std::forward<decltype(val)>(val); }
       ++itr;
     }
     for(u32 i = 0; i < h; ++i) {
@@ -185,9 +181,7 @@ public:
         if(sz_d != z_size) [[unlikely]]
           throw Exception("gsh::StaticSum3D::set / The sizes of the depths are not the same.");
 #endif
-        for(auto&& val : *itr2) {
-          prefix_sum[idx++] = std::forward<decltype(val)>(val);
-        }
+        for(auto&& val : *itr2) { prefix_sum[idx++] = std::forward<decltype(val)>(val); }
         ++itr2;
       }
       ++itr;

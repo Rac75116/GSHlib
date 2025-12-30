@@ -60,9 +60,7 @@ GSH_INTERNAL_INLINE inline void PreventConstexpr() noexcept {
 }
 class InPlaceTag {};
 [[maybe_unused]] constexpr InPlaceTag InPlace;
-template<class T>
-requires std::is_trivial_v<T>
-GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, c8 byte, u32 len) {
+template<class T> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, c8 byte, u32 len) {
   if(std::is_constant_evaluated()) {
     struct mem {
       c8 buf[sizeof(T)] = {};
@@ -78,9 +76,7 @@ GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, c8 byte, u32 len) {
     }
   } else std::memset(p, byte, len);
 }
-template<class T>
-requires std::is_trivial_v<T>
-GSH_INTERNAL_INLINE constexpr u32 MemoryChar(T* p, c8 byte, u32 len) {
+template<class T> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr u32 MemoryChar(T* p, c8 byte, u32 len) {
   if(std::is_constant_evaluated()) {
     struct mem {
       c8 buf[sizeof(T)] = {};
@@ -103,9 +99,7 @@ GSH_INTERNAL_INLINE constexpr u32 MemoryChar(T* p, c8 byte, u32 len) {
     return (tmp == nullptr ? 0xffffffff : static_cast<const c8*>(tmp) - reinterpret_cast<const c8*>(p));
   }
 }
-template<class T, class U>
-requires std::is_trivial_v<T>
-GSH_INTERNAL_INLINE constexpr void MemoryCopy(T* GSH_INTERNAL_RESTRICT dst, U* GSH_INTERNAL_RESTRICT src, u32 len) {
+template<class T, class U> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr void MemoryCopy(T* GSH_INTERNAL_RESTRICT dst, U* GSH_INTERNAL_RESTRICT src, u32 len) {
   if(std::is_constant_evaluated()) {
     struct mem1 {
       c8 buf[sizeof(T)] = {};

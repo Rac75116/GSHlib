@@ -178,9 +178,7 @@ constexpr u32 CountPrimes(u64 N) {
     if(smooth[p]) continue;
     for(u64 i = p * p; i <= v; i += 2 * p) smooth[i] = true;
     smooth[p] = true;
-    const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](u64 inv_j) -> u64 {
-      return (u128(inv_j) * invp) >> 64;
-    };
+    const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](u64 inv_j) -> u64 { return (u128(inv_j) * invp) >> 64; };
     u32 ns = 0;
     u32 k = 0;
     GSH_INTERNAL_UNROLL(16)
@@ -215,9 +213,7 @@ constexpr u32 CountPrimes(u64 N) {
   for(u32 k = 1; k < s; ++k) ret -= larges[k];
   for(u32 k1 = 1; k1 < s; ++k1) {
     const u64 p = roughs[k1];
-    const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](u64 inv_j) -> u64 {
-      return (u128(inv_j) * invp) >> 64;
-    };
+    const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](u64 inv_j) -> u64 { return (u128(inv_j) * invp) >> 64; };
     const u32 k2_max = smalls[(divide_p(invs[k1]) - 1) / 2] - pc;
     if(k2_max <= k1) break;
     for(u32 k2 = k1 + 1; k2 <= k2_max; ++k2) ret += smalls[(divide_p(invs[k2]) - 1) / 2];
@@ -335,9 +331,7 @@ inline u64* FactorizeSub64(u64 n, u64* res) noexcept {
       for(u32 i = 0; i != (1 << 16); ++i) {
         if(IsPrime16::calc(i)) TinyPrimes[cnt++] = i;
       }
-      for(u32 i = 0; i != 6542; ++i) {
-        InvPrimes[i] = 0xffffffffffffffff / TinyPrimes[i] + 1;
-      }
+      for(u32 i = 0; i != 6542; ++i) { InvPrimes[i] = 0xffffffffffffffff / TinyPrimes[i] + 1; }
     }
     auto check = [&](u64 idx, u64 m) {
       if(m * n < m) {

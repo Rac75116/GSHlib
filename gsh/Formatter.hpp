@@ -25,12 +25,10 @@ struct u4dig_pad;
 struct u8dig_pad;
 struct u16dig_pad;
 } // namespace io
-template<class T>
-class Formatter;
+template<class T> class Formatter;
 namespace internal {
 #ifndef GSH_USE_COMPILE_TIME_CALCULATION
-template<bool Flag>
-auto InttoStr = [] {
+template<bool Flag> auto InttoStr = [] {
   struct {
     c8* table;
   } res;
@@ -54,8 +52,7 @@ auto InttoStr = [] {
   return res;
 }();
 #else
-template<bool Flag>
-constexpr auto InttoStr = [] {
+template<bool Flag> constexpr auto InttoStr = [] {
   struct {
     c8 table[40004] = {};
   } res;
@@ -77,8 +74,7 @@ constexpr auto InttoStr = [] {
   return res;
 }();
 #endif
-template<bool Flag = false, class Stream>
-constexpr void Formatu16(Stream&& stream, u16 n) {
+template<bool Flag = false, class Stream> constexpr void Formatu16(Stream&& stream, u16 n) {
   auto *cur = stream.current(), *p = cur;
   auto copy1 = [&](u16 x) {
     if constexpr(Flag) {
@@ -101,8 +97,7 @@ constexpr void Formatu16(Stream&& stream, u16 n) {
   }
   stream.skip(p - cur);
 }
-template<bool Flag = false, class Stream>
-constexpr void Formatu32(Stream&& stream, u32 n) {
+template<bool Flag = false, class Stream> constexpr void Formatu32(Stream&& stream, u32 n) {
   auto *cur = stream.current(), *p = cur;
   auto copy1 = [&](u32 x) {
     if constexpr(Flag) {
@@ -131,8 +126,7 @@ constexpr void Formatu32(Stream&& stream, u32 n) {
   }
   stream.skip(p - cur);
 }
-template<bool Flag = false, class Stream>
-constexpr void Formatu64(Stream&& stream, u64 n) {
+template<bool Flag = false, class Stream> constexpr void Formatu64(Stream&& stream, u64 n) {
   auto *cur = stream.current(), *p = cur;
   auto copy1 = [&](u64 x) {
     if constexpr(Flag) {
@@ -169,8 +163,7 @@ constexpr void Formatu64(Stream&& stream, u64 n) {
   }
   stream.skip(p - cur);
 }
-template<bool Flag = false, class Stream>
-constexpr void Formatu128(Stream&& stream, u128 n) {
+template<bool Flag = false, class Stream> constexpr void Formatu128(Stream&& stream, u128 n) {
   if(u64(n >> 64) == 0) {
     Formatu64<Flag>(std::forward<Stream>(stream), n);
     return;
@@ -219,8 +212,7 @@ constexpr void Formatu128(Stream&& stream, u128 n) {
   }
   stream.skip(p - cur);
 }
-template<bool Flag = false, class Stream>
-constexpr void Formatu4dig(Stream&& stream, u16 x) {
+template<bool Flag = false, class Stream> constexpr void Formatu4dig(Stream&& stream, u16 x) {
   if constexpr(Flag) {
     MemoryCopy(stream.current(), InttoStr<Flag>.table + 4 * x, 4);
     stream.skip(4);
@@ -230,8 +222,7 @@ constexpr void Formatu4dig(Stream&& stream, u16 x) {
     stream.skip(4 - off);
   }
 }
-template<bool Flag = false, class Stream>
-constexpr void Formatu8dig(Stream&& stream, u32 n) {
+template<bool Flag = false, class Stream> constexpr void Formatu8dig(Stream&& stream, u32 n) {
   auto *cur = stream.current(), *p = cur;
   auto copy1 = [&](u32 x) {
     if constexpr(Flag) {
@@ -254,8 +245,7 @@ constexpr void Formatu8dig(Stream&& stream, u32 n) {
   }
   stream.skip(p - cur);
 }
-template<bool Flag = false, class Stream>
-constexpr void Formatu16dig(Stream&& stream, u64 n) {
+template<bool Flag = false, class Stream> constexpr void Formatu16dig(Stream&& stream, u64 n) {
   auto *cur = stream.current(), *p = cur;
   auto copy1 = [&](u64 x) {
     if constexpr(Flag) {
@@ -292,214 +282,170 @@ constexpr void Formatu16dig(Stream&& stream, u64 n) {
   stream.skip(p - cur);
 }
 } // namespace internal
-template<>
-class Formatter<u16> {
+template<> class Formatter<u16> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u16 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
     stream.reload(8);
     internal::Formatu16(stream, n);
   }
 };
-template<>
-class Formatter<i16> {
+template<> class Formatter<i16> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, i16 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, i16 n) const {
     stream.reload(8);
     *stream.current() = '-';
     stream.skip(n < 0);
     internal::Formatu16(stream, n < 0 ? -n : n);
   }
 };
-template<>
-class Formatter<u32> {
+template<> class Formatter<u32> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u32 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
     stream.reload(16);
     internal::Formatu32(stream, n);
   }
 };
-template<>
-class Formatter<i32> {
+template<> class Formatter<i32> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, i32 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, i32 n) const {
     stream.reload(16);
     *stream.current() = '-';
     stream.skip(n < 0);
     internal::Formatu32(stream, n < 0 ? -n : n);
   }
 };
-template<>
-class Formatter<u64> {
+template<> class Formatter<u64> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u64 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
     stream.reload(32);
     internal::Formatu64(stream, n);
   }
 };
-template<>
-class Formatter<i64> {
+template<> class Formatter<i64> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, i64 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, i64 n) const {
     stream.reload(32);
     *stream.current() = '-';
     stream.skip(n < 0);
     internal::Formatu64(stream, n < 0 ? -n : n);
   }
 };
-template<>
-class Formatter<u128> {
+template<> class Formatter<u128> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u128 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u128 n) const {
     stream.reload(64);
     internal::Formatu128(stream, n);
   }
 };
-template<>
-class Formatter<i128> {
+template<> class Formatter<i128> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, i128 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, i128 n) const {
     stream.reload(64);
     *stream.current() = '-';
     stream.skip(n < 0);
     internal::Formatu128(stream, n < 0 ? -n : n);
   }
 };
-template<>
-class Formatter<io::u4dig> {
+template<> class Formatter<io::u4dig> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u16 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
     stream.reload(4);
     internal::Formatu4dig(stream, n);
   }
 };
-template<>
-class Formatter<io::i4dig> {
+template<> class Formatter<io::i4dig> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, i16 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, i16 n) const {
     stream.reload(5);
     *stream.current() = '-';
     stream.skip(n < 0);
     internal::Formatu4dig(stream, static_cast<u16>(n < 0 ? -n : n));
   }
 };
-template<>
-class Formatter<io::u8dig> {
+template<> class Formatter<io::u8dig> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u32 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
     stream.reload(8);
     internal::Formatu8dig(stream, n);
   }
 };
-template<>
-class Formatter<io::i8dig> {
+template<> class Formatter<io::i8dig> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, i32 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, i32 n) const {
     stream.reload(9);
     *stream.current() = '-';
     stream.skip(n < 0);
     internal::Formatu8dig(stream, static_cast<u32>(n < 0 ? -n : n));
   }
 };
-template<>
-class Formatter<io::u16dig> {
+template<> class Formatter<io::u16dig> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u64 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
     stream.reload(16);
     internal::Formatu16dig(stream, n);
   }
 };
-template<>
-class Formatter<io::i16dig> {
+template<> class Formatter<io::i16dig> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, i64 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, i64 n) const {
     stream.reload(17);
     *stream.current() = '-';
     stream.skip(n < 0);
     internal::Formatu16dig(stream, static_cast<u64>(n < 0 ? -n : n));
   }
 };
-template<>
-class Formatter<io::u16_pad> {
+template<> class Formatter<io::u16_pad> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u16 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
     stream.reload(8);
     internal::Formatu16<true>(stream, n);
   }
 };
-template<>
-class Formatter<io::u32_pad> {
+template<> class Formatter<io::u32_pad> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u32 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
     stream.reload(16);
     internal::Formatu32<true>(stream, n);
   }
 };
-template<>
-class Formatter<io::u64_pad> {
+template<> class Formatter<io::u64_pad> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u64 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
     stream.reload(32);
     internal::Formatu64<true>(stream, n);
   }
 };
-template<>
-class Formatter<io::u128_pad> {
+template<> class Formatter<io::u128_pad> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u128 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u128 n) const {
     stream.reload(64);
     internal::Formatu128<true>(stream, n);
   }
 };
-template<>
-class Formatter<io::u4dig_pad> {
+template<> class Formatter<io::u4dig_pad> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u16 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u16 n) const {
     stream.reload(4);
     internal::Formatu4dig<true>(stream, n);
   }
 };
-template<>
-class Formatter<io::u8dig_pad> {
+template<> class Formatter<io::u8dig_pad> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u32 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u32 n) const {
     stream.reload(8);
     internal::Formatu8dig<true>(stream, n);
   }
 };
-template<>
-class Formatter<io::u16dig_pad> {
+template<> class Formatter<io::u16dig_pad> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, u64 n) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, u64 n) const {
     stream.reload(16);
     internal::Formatu16dig<true>(stream, n);
   }
 };
-template<>
-class Formatter<c8> {
+template<> class Formatter<c8> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, c8 c) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, c8 c) const {
     stream.reload(1);
     *stream.current() = c;
     stream.skip(1);
@@ -507,20 +453,16 @@ public:
 };
 namespace io {
 enum class FormatterOption : std::underlying_type_t<std::chars_format> {};
-constexpr FormatterOption operator|(FormatterOption a, FormatterOption b) noexcept {
-  return static_cast<FormatterOption>(static_cast<std::underlying_type_t<FormatterOption>>(a) | static_cast<std::underlying_type_t<FormatterOption>>(b));
-}
+constexpr FormatterOption operator|(FormatterOption a, FormatterOption b) noexcept { return static_cast<FormatterOption>(static_cast<std::underlying_type_t<FormatterOption>>(a) | static_cast<std::underlying_type_t<FormatterOption>>(b)); }
 [[maybe_unused]] constexpr auto Fixed = static_cast<FormatterOption>(std::chars_format::fixed);
 [[maybe_unused]] constexpr auto General = static_cast<FormatterOption>(std::chars_format::general);
 [[maybe_unused]] constexpr auto Hex = static_cast<FormatterOption>(std::chars_format::hex);
 [[maybe_unused]] constexpr auto Scientific = static_cast<FormatterOption>(std::chars_format::scientific);
 } // namespace io
 namespace internal {
-template<class T>
-class FloatFormatter {
+template<class T> class FloatFormatter {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, T f, io::FormatterOption fmt = io::Fixed, i32 precision = 12) {
+  template<class Stream> constexpr void operator()(Stream&& stream, T f, io::FormatterOption fmt = io::Fixed, i32 precision = 12) {
     stream.reload(32);
     auto [ptr, err] = std::to_chars(stream.current(), stream.current() + stream.avail(), f, static_cast<std::chars_format>(fmt), precision);
     if(err != std::errc{}) [[unlikely]] {
@@ -534,59 +476,42 @@ public:
   }
 };
 } // namespace internal
-template<>
-class Formatter<float> : public internal::FloatFormatter<float> {};
-template<>
-class Formatter<double> : public internal::FloatFormatter<double> {};
-template<>
-class Formatter<long double> : public internal::FloatFormatter<long double> {};
+template<> class Formatter<float> : public internal::FloatFormatter<float> {};
+template<> class Formatter<double> : public internal::FloatFormatter<double> {};
+template<> class Formatter<long double> : public internal::FloatFormatter<long double> {};
 #ifdef __STDCPP_FLOAT16_T__
-template<>
-class Formatter<std::float16_t> : public internal::FloatFormatter<std::float16_t> {};
+template<> class Formatter<std::float16_t> : public internal::FloatFormatter<std::float16_t> {};
 #endif
 #ifdef __STDCPP_FLOAT32_T__
-template<>
-class Formatter<std::float32_t> : public internal::FloatFormatter<std::float32_t> {};
+template<> class Formatter<std::float32_t> : public internal::FloatFormatter<std::float32_t> {};
 #endif
 #ifdef __STDCPP_FLOAT64_T__
-template<>
-class Formatter<std::float64_t> : public internal::FloatFormatter<std::float64_t> {};
+template<> class Formatter<std::float64_t> : public internal::FloatFormatter<std::float64_t> {};
 #endif
 #ifdef __STDCPP_FLOAT128_T__
-template<>
-class Formatter<std::float128_t> : public internal::FloatFormatter<std::float128_t> {};
+template<> class Formatter<std::float128_t> : public internal::FloatFormatter<std::float128_t> {};
 #endif
 #ifdef __STDCPP_BFLOAT16_T__
-template<>
-class Formatter<std::bfloat16_t> : public internal::FloatFormatter<std::bfloat16_t> {};
+template<> class Formatter<std::bfloat16_t> : public internal::FloatFormatter<std::bfloat16_t> {};
 #endif
 #ifdef __SIZEOF_FLOAT128__
-template<>
-class Formatter<__float128> : public internal::FloatFormatter<__float128> {};
+template<> class Formatter<__float128> : public internal::FloatFormatter<__float128> {};
 #endif
-template<>
-class Formatter<InvalidFloat16Tag> {};
-template<>
-class Formatter<InvalidFloat128Tag> {};
-template<>
-class Formatter<InvalidBfloat16Tag> {};
-template<>
-class Formatter<bool> {
+template<> class Formatter<InvalidFloat16Tag> {};
+template<> class Formatter<InvalidFloat128Tag> {};
+template<> class Formatter<InvalidBfloat16Tag> {};
+template<> class Formatter<bool> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, bool b) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, bool b) const {
     stream.reload(1);
     *stream.current() = '0' + b;
     stream.skip(1);
   }
 };
-template<>
-class Formatter<const c8*> {
+template<> class Formatter<const c8*> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, const c8* s) const { operator()(stream, s, StrLen(s)); }
-  template<class Stream>
-  constexpr void operator()(Stream&& stream, const c8* s, u32 len) const {
+  template<class Stream> constexpr void operator()(Stream&& stream, const c8* s) const { operator()(stream, s, StrLen(s)); }
+  template<class Stream> constexpr void operator()(Stream&& stream, const c8* s, u32 len) const {
     u32 avail = stream.avail();
     if(avail >= len) [[likely]] {
       MemoryCopy(stream.current(), s, len);
@@ -608,21 +533,16 @@ public:
     }
   }
 };
-template<>
-class Formatter<c8*> : public Formatter<const c8*> {};
+template<> class Formatter<c8*> : public Formatter<const c8*> {};
 class NoOutTag {};
 constexpr NoOutTag NoOut;
-template<>
-class Formatter<NoOutTag> {
+template<> class Formatter<NoOutTag> {
 public:
-  template<class Stream>
-  constexpr void operator()(Stream&&, NoOutTag) const {}
+  template<class Stream> constexpr void operator()(Stream&&, NoOutTag) const {}
 };
 template<class R> concept FormatableRange = std::ranges::forward_range<R> && requires { sizeof(Formatter<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
-template<FormatableRange R>
-class Formatter<R> {
-  template<class Stream, class T, class U>
-  constexpr void print(Stream&& stream, T&& r, U&& sep) const {
+template<FormatableRange R> class Formatter<R> {
+  template<class Stream, class T, class U> constexpr void print(Stream&& stream, T&& r, U&& sep) const {
     auto first = std::ranges::begin(r);
     auto last = std::ranges::end(r);
     if(!(first != last)) return;
@@ -636,45 +556,27 @@ class Formatter<R> {
     }
   }
 public:
-  template<class Stream, class T>
-  requires std::same_as<std::decay_t<T>, R>
-  constexpr void operator()(Stream&& stream, T&& r) const {
-    print(std::forward<Stream>(stream), std::forward<T>(r), ' ');
-  }
-  template<class Stream, class T, class U>
-  requires std::same_as<std::decay_t<T>, R>
-  constexpr void operator()(Stream&& stream, T&& r, U&& sep) const {
-    print(std::forward<Stream>(stream), std::forward<T>(r), std::forward<U>(sep));
-  }
+  template<class Stream, class T> requires std::same_as<std::decay_t<T>, R> constexpr void operator()(Stream&& stream, T&& r) const { print(std::forward<Stream>(stream), std::forward<T>(r), ' '); }
+  template<class Stream, class T, class U> requires std::same_as<std::decay_t<T>, R> constexpr void operator()(Stream&& stream, T&& r, U&& sep) const { print(std::forward<Stream>(stream), std::forward<T>(r), std::forward<U>(sep)); }
 };
 namespace internal {
-template<class T, class U>
-constexpr bool FormatableTupleImpl = false;
-template<class T, std::size_t... I>
-constexpr bool FormatableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Formatter<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
+template<class T, class U> constexpr bool FormatableTupleImpl = false;
+template<class T, std::size_t... I> constexpr bool FormatableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Formatter<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
 } // namespace internal
 template<class T> concept FormatableTuple = requires { std::tuple_size<T>::value; } && internal::FormatableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
-template<FormatableTuple T>
-requires (!FormatableRange<T>)
-class Formatter<T> {
-  template<u32 I, class Stream, class U, class Sep>
-  constexpr void print_element(Stream&& stream, U&& x, Sep&& sep) const {
+template<FormatableTuple T> requires (!FormatableRange<T>) class Formatter<T> {
+  template<u32 I, class Stream, class U, class Sep> constexpr void print_element(Stream&& stream, U&& x, Sep&& sep) const {
     using std::get;
     using element_type = std::decay_t<std::tuple_element_t<I, T>>;
     if constexpr(requires { x.template get<I>(); }) Formatter<element_type>()(stream, x.template get<I>());
     else Formatter<element_type>()(stream, get<I>(x));
     if constexpr(I < std::tuple_size_v<T> - 1) Formatter<std::decay_t<Sep>>()(stream, sep);
   }
-  template<class Stream, class U, class Sep>
-  constexpr void print(Stream&& stream, U&& x, Sep&& sep) const {
-    [&]<u32... I>(std::integer_sequence<u32, I...>) {
-      (..., print_element<I>(stream, x, sep));
-    }(std::make_integer_sequence<u32, std::tuple_size_v<T>>());
+  template<class Stream, class U, class Sep> constexpr void print(Stream&& stream, U&& x, Sep&& sep) const {
+    [&]<u32... I>(std::integer_sequence<u32, I...>) { (..., print_element<I>(stream, x, sep)); }(std::make_integer_sequence<u32, std::tuple_size_v<T>>());
   }
 public:
-  template<class Stream, class U>
-  constexpr void operator()(Stream&& stream, U&& x) const { print(std::forward<Stream>(stream), std::forward<U>(x), ' '); }
-  template<class Stream, class U, class Sep>
-  constexpr void operator()(Stream&& stream, U&& x, Sep&& sep) const { print(std::forward<Stream>(stream), std::forward<U>(x), std::forward<Sep>(sep)); }
+  template<class Stream, class U> constexpr void operator()(Stream&& stream, U&& x) const { print(std::forward<Stream>(stream), std::forward<U>(x), ' '); }
+  template<class Stream, class U, class Sep> constexpr void operator()(Stream&& stream, U&& x, Sep&& sep) const { print(std::forward<Stream>(stream), std::forward<U>(x), std::forward<Sep>(sep)); }
 };
 } // namespace gsh

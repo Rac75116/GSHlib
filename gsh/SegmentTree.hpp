@@ -9,84 +9,37 @@
 #include <limits>
 namespace gsh {
 namespace internal {
-template<class Op, class Id> concept IsValidSegmentSpec =
-std::invocable<Id> && requires(Op op, const std::invoke_result_t<Id>& a, const std::invoke_result_t<Id>& b) {
-  {
-    op(a, b)
-  } -> std::convertible_to<std::remove_cvref_t<std::invoke_result_t<Id>>>;
+template<class Op, class Id> concept IsValidSegmentSpec = std::invocable<Id> && requires(Op op, const std::invoke_result_t<Id>& a, const std::invoke_result_t<Id>& b) {
+  { op(a, b) } -> std::convertible_to<std::remove_cvref_t<std::invoke_result_t<Id>>>;
 };
 template<class Spec> concept IsSegmentSpecImplemented = requires(Spec spec) {
   typename Spec::value_type;
-  {
-    spec.op(std::declval<typename Spec::value_type>(),
-    std::declval<typename Spec::value_type>())
-  } -> std::same_as<typename Spec::value_type>;
+  { spec.op(std::declval<typename Spec::value_type>(), std::declval<typename Spec::value_type>()) } -> std::same_as<typename Spec::value_type>;
   { spec.e() } -> std::same_as<typename Spec::value_type>;
 };
 } // namespace internal
-template<class Op, class Id>
-requires internal::IsValidSegmentSpec<Op, Id>
-class SegmentSpec {
+template<class Op, class Id> requires internal::IsValidSegmentSpec<Op, Id> class SegmentSpec {
   [[no_unique_address]] mutable Op op_func;
   [[no_unique_address]] mutable Id id_func;
 public:
   using value_type = std::remove_cvref_t<std::invoke_result_t<Id>>;
   constexpr SegmentSpec() = default;
   constexpr SegmentSpec(Op op, Id id) : op_func(op), id_func(id) {}
-  constexpr value_type op(const value_type& a, const value_type& b) const
-  noexcept(noexcept(std::is_nothrow_invocable_v<Op, const value_type&,
-  const value_type&>)) {
-    return static_cast<value_type>(std::invoke(op_func, a, b));
-  }
-  constexpr value_type e() const
-  noexcept(noexcept(std::is_nothrow_invocable_v<Id>)) {
-    return static_cast<value_type>(std::invoke(id_func));
-  }
+  constexpr value_type op(const value_type& a, const value_type& b) const noexcept(noexcept(std::is_nothrow_invocable_v<Op, const value_type&, const value_type&>)) { return static_cast<value_type>(std::invoke(op_func, a, b)); }
+  constexpr value_type e() const noexcept(noexcept(std::is_nothrow_invocable_v<Id>)) { return static_cast<value_type>(std::invoke(id_func)); }
 };
 namespace segment_specs {
-template<class T>
-class RangePlus : public decltype(SegmentSpec(
-                  gsh::Plus(), []() -> T { return static_cast<T>(0); })){};
-template<class T>
-class RangeMultiplies
-: public decltype(SegmentSpec(gsh::Multiplies(),
-  []() -> T { return static_cast<T>(1); })){};
-template<class T>
-class RangeOr
-: public decltype(SegmentSpec([](const T& a, const T& b) { return a | b; },
-  []() -> T { return static_cast<T>(0); })){};
-template<class T>
-class RangeAnd
-: public decltype(SegmentSpec([](const T& a, const T& b) { return a & b; },
-  []() -> T { return ~static_cast<T>(0); })){};
-template<class T>
-class RangeMin : public decltype(SegmentSpec(
-                 [](const T& a, const T& b) { return std::min(a, b); },
-                 []() -> T { return std::numeric_limits<T>::max(); })){};
-template<class T>
-class RangeMax : public decltype(SegmentSpec(
-                 [](const T& a, const T& b) { return std::max(a, b); },
-                 []() -> T { return std::numeric_limits<T>::min(); })){};
-template<class T>
-class RangeGCD : public decltype(SegmentSpec(
-                 [](const T& a, const T& b) { return gsh::GCD(a, b); },
-                 []() -> T { return static_cast<T>(0); })){};
-template<class T>
-class RangeLCM : public decltype(SegmentSpec(
-                 [](const T& a, const T& b) { return gsh::LCM(a, b); },
-                 []() -> T { return static_cast<T>(1); })){};
-template<class T>
-class RangeComposite
-: public decltype(SegmentSpec(
-  [](const std::pair<T, T>& a, const std::pair<T, T>& b) {
-    return std::pair{a.first * b.first, a.second * b.first + b.second};
-  },
-  []() { return std::pair{static_cast<T>(1), static_cast<T>(0)}; })){};
+template<class T> class RangePlus : public decltype(SegmentSpec(gsh::Plus(), []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeMultiplies : public decltype(SegmentSpec(gsh::Multiplies(), []() -> T { return static_cast<T>(1); })){};
+template<class T> class RangeOr : public decltype(SegmentSpec([](const T& a, const T& b) { return a | b; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAnd : public decltype(SegmentSpec([](const T& a, const T& b) { return a & b; }, []() -> T { return ~static_cast<T>(0); })){};
+template<class T> class RangeMin : public decltype(SegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); })){};
+template<class T> class RangeMax : public decltype(SegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); })){};
+template<class T> class RangeGCD : public decltype(SegmentSpec([](const T& a, const T& b) { return gsh::GCD(a, b); }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeLCM : public decltype(SegmentSpec([](const T& a, const T& b) { return gsh::LCM(a, b); }, []() -> T { return static_cast<T>(1); })){};
+template<class T> class RangeComposite : public decltype(SegmentSpec([](const std::pair<T, T>& a, const std::pair<T, T>& b) { return std::pair{a.first * b.first, a.second * b.first + b.second}; }, []() { return std::pair{static_cast<T>(1), static_cast<T>(0)}; })){};
 } // namespace segment_specs
-template<class Spec>
-requires internal::IsSegmentSpecImplemented<Spec>
-class SegmentTree
-: public ViewInterface<SegmentTree<Spec>, typename Spec::value_type> {
+template<class Spec> requires internal::IsSegmentSpecImplemented<Spec> class SegmentTree : public ViewInterface<SegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
 public:
   using value_type = typename Spec::value_type;
@@ -103,27 +56,17 @@ public:
     sz = n > 0 ? std::bit_ceil(n) : 0;
     if(n > 0) tree.assign(2 * sz, spec.e());
   }
-  template<class InputIt>
-  requires std::forward_iterator<InputIt>
-  constexpr SegmentTree(InputIt first, InputIt last, Spec spec = Spec())
-  : spec(spec), n(std::ranges::distance(first, last)) {
+  template<class InputIt> requires std::forward_iterator<InputIt> constexpr SegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec), n(std::ranges::distance(first, last)) {
     sz = n > 0 ? std::bit_ceil(n) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       auto it = first;
       for(size_type i = 0; i < n; ++i, ++it) tree[sz + i] = *it;
-      for(size_type i = sz - 1; i >= 1; --i)
-        tree[i] = spec.op(tree[2 * i], tree[2 * i + 1]);
+      for(size_type i = sz - 1; i >= 1; --i) tree[i] = spec.op(tree[2 * i], tree[2 * i + 1]);
     }
   }
-  constexpr SegmentTree(size_type n, const value_type& value,
-  Spec spec = Spec())
-  : spec(spec) {
-    assign(n, value);
-  }
-  constexpr SegmentTree(std::initializer_list<value_type> init,
-  Spec spec = Spec())
-  : SegmentTree(init.begin(), init.end(), spec) {}
+  constexpr SegmentTree(size_type n, const value_type& value, Spec spec = Spec()) : spec(spec) { assign(n, value); }
+  constexpr SegmentTree(std::initializer_list<value_type> init, Spec spec = Spec()) : SegmentTree(init.begin(), init.end(), spec) {}
   constexpr SegmentTree& operator=(std::initializer_list<value_type> il) {
     assign(il);
     return *this;
@@ -147,17 +90,14 @@ public:
     tmp.resize(n, c);
     assign(tmp.begin(), tmp.end());
   }
-  template<class InputIt>
-  requires std::forward_iterator<InputIt>
-  constexpr void assign(InputIt first, InputIt last) {
+  template<class InputIt> requires std::forward_iterator<InputIt> constexpr void assign(InputIt first, InputIt last) {
     n = std::ranges::distance(first, last);
     sz = n > 0 ? std::bit_ceil(n) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       auto it = first;
       for(size_type i = 0; i < n; ++i, ++it) tree[sz + i] = *it;
-      for(size_type i = sz - 1; i >= 1; --i)
-        tree[i] = spec.op(tree[2 * i], tree[2 * i + 1]);
+      for(size_type i = sz - 1; i >= 1; --i) tree[i] = spec.op(tree[2 * i], tree[2 * i + 1]);
     } else {
       tree.clear();
     }
@@ -168,15 +108,12 @@ public:
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       for(size_type i = 0; i < n; ++i) tree[sz + i] = u;
-      for(size_type i = sz - 1; i >= 1; --i)
-        tree[i] = spec.op(tree[2 * i], tree[2 * i + 1]);
+      for(size_type i = sz - 1; i >= 1; --i) tree[i] = spec.op(tree[2 * i], tree[2 * i + 1]);
     } else {
       tree.clear();
     }
   }
-  constexpr void assign(std::initializer_list<value_type> il) {
-    assign(il.begin(), il.end());
-  }
+  constexpr void assign(std::initializer_list<value_type> il) { assign(il.begin(), il.end()); }
   constexpr void swap(SegmentTree& r) {
     using std::swap;
     swap(spec, r.spec);
@@ -186,9 +123,7 @@ public:
   }
   constexpr value_type prod(size_type l, size_type r) const {
 #ifndef NDEBUG
-    if(l > r || r > n)
-      throw Exception("SegmentTree::prod: invalid range [", l, ", ", r,
-      ") with size ", n);
+    if(l > r || r > n) throw Exception("SegmentTree::prod: invalid range [", l, ", ", r, ") with size ", n);
 #endif
     value_type sml = spec.e(), smr = spec.e();
     l += sz;
@@ -204,9 +139,7 @@ public:
   constexpr value_type all_prod() const { return n > 0 ? tree[1] : spec.e(); }
   constexpr void set(size_type i, const value_type& x) {
 #ifndef NDEBUG
-    if(i >= n)
-      throw Exception("SegmentTree::set: index ", i, " is out of range [0, ", n,
-      ")");
+    if(i >= n) throw Exception("SegmentTree::set: index ", i, " is out of range [0, ", n, ")");
 #endif
     i += sz;
     tree[i] = x;
@@ -214,24 +147,17 @@ public:
   }
   constexpr const value_type& operator[](size_type i) const {
 #ifndef NDEBUG
-    if(i >= n)
-      throw Exception("SegmentTree::operator[]: index ", i,
-      " is out of range [0, ", n, ")");
+    if(i >= n) throw Exception("SegmentTree::operator[]: index ", i, " is out of range [0, ", n, ")");
 #endif
     return tree[sz + i];
   }
   constexpr const value_type& get(size_type i) const { return (*this)[i]; }
   // Returns the maximum r (l <= r <= n) such that f(prod(l, r)) is true.
   // Constraint: f(spec.e()) must be true.
-  template<class F>
-  constexpr size_type max_right(size_type l, F f) const {
+  template<class F> constexpr size_type max_right(size_type l, F f) const {
 #ifndef NDEBUG
-    if(l > n)
-      throw Exception("SegmentTree::max_right: index ", l,
-      " is out of range [0, ", n, "]");
-    if(!std::invoke(f, spec.e()))
-      throw Exception(
-      "SegmentTree::max_right: predicate must be true for identity");
+    if(l > n) throw Exception("SegmentTree::max_right: index ", l, " is out of range [0, ", n, "]");
+    if(!std::invoke(f, spec.e())) throw Exception("SegmentTree::max_right: predicate must be true for identity");
 #endif
     if(l == n) return n;
     value_type sm = spec.e();
@@ -255,15 +181,10 @@ public:
   }
   // Returns the minimum l (0 <= l <= r) such that f(prod(l, r)) is true.
   // Constraint: f(spec.e()) must be true.
-  template<class F>
-  constexpr size_type min_left(size_type r, F f) const {
+  template<class F> constexpr size_type min_left(size_type r, F f) const {
 #ifndef NDEBUG
-    if(r > n)
-      throw Exception("SegmentTree::min_left: index ", r,
-      " is out of range [0, ", n, "]");
-    if(!std::invoke(f, spec.e()))
-      throw Exception(
-      "SegmentTree::min_left: predicate must be true for identity");
+    if(r > n) throw Exception("SegmentTree::min_left: index ", r, " is out of range [0, ", n, "]");
+    if(!std::invoke(f, spec.e())) throw Exception("SegmentTree::min_left: predicate must be true for identity");
 #endif
     if(r == 0) return 0;
     value_type sm = spec.e();

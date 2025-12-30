@@ -5,16 +5,8 @@
 #include <fcntl.h>
 #include <unistd.h> // read, write
 namespace gsh {
-enum class OpenMode { ReadOnly = O_RDONLY,
-  WriteOnly = O_WRONLY,
-  ReadWrite = O_RDWR,
-  Append = O_APPEND,
-  Create = O_CREAT,
-  Trunc = O_TRUNC,
-  Binary = O_BINARY };
-constexpr OpenMode operator|(OpenMode a, OpenMode b) noexcept {
-  return static_cast<OpenMode>(static_cast<i32>(a) | static_cast<i32>(b));
-}
+enum class OpenMode { ReadOnly = O_RDONLY, WriteOnly = O_WRONLY, ReadWrite = O_RDWR, Append = O_APPEND, Create = O_CREAT, Trunc = O_TRUNC, Binary = O_BINARY };
+constexpr OpenMode operator|(OpenMode a, OpenMode b) noexcept { return static_cast<OpenMode>(static_cast<i32>(a) | static_cast<i32>(b)); }
 class FileDescriptor {
   i32 fd;
   OpenMode mode;

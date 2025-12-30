@@ -7,8 +7,7 @@
 #include <type_traits>
 #include <utility>
 namespace gsh {
-template<class W = void>
-class Edge {
+template<class W = void> class Edge {
   u32 t = 0;
   W w{};
 public:
@@ -19,8 +18,7 @@ public:
   constexpr const W& weight() const noexcept { return w; }
   constexpr operator u32() const noexcept { return t; }
 };
-template<>
-class Edge<void> {
+template<> class Edge<void> {
   u32 t = 0;
 public:
   constexpr Edge(u32 _t) noexcept : t(_t) {}
@@ -33,34 +31,28 @@ public:
 };
 } // namespace gsh
 namespace std {
-template<class W>
-class tuple_size<gsh::Edge<W>> : integral_constant<size_t, 2> {};
-template<class W>
-class tuple_element<0, gsh::Edge<W>> {
+template<class W> class tuple_size<gsh::Edge<W>> : integral_constant<size_t, 2> {};
+template<class W> class tuple_element<0, gsh::Edge<W>> {
   using type = gsh::u32;
 };
 } // namespace std
 namespace gsh {
-template<std::size_t M, class W>
-auto get(const Edge<W>& e) {
+template<std::size_t M, class W> auto get(const Edge<W>& e) {
   static_assert(M <= 1, "gsh::get(gsh::Edge) / The index is out of range.");
   if constexpr(M == 0) return e.to();
   else return e.weight();
 }
-template<std::size_t M, class W>
-auto get(Edge<W>& e) {
+template<std::size_t M, class W> auto get(Edge<W>& e) {
   static_assert(M <= 1, "gsh::get(gsh::Edge) / The index is out of range.");
   if constexpr(M == 0) return e.to();
   else return e.weight();
 }
 // gsh::graph_format::(DOK, LIL, COO, CRS, Matrix, Grid, Generative, Functional)
 namespace graph_format {
-template<class W>
-class CRS {
+template<class W> class CRS {
   Vec<std::pair<Edge<W>, u32>> storage;
   Arr<u32> tail;
-  template<bool IsConst>
-  class adjacency_list {
+  template<bool IsConst> class adjacency_list {
     using storage_ptr_type = std::conditional_t<IsConst, typename decltype(storage)::const_iterator, typename decltype(storage)::iterator>;
     storage_ptr_type storage_ptr;
     u32 idx;

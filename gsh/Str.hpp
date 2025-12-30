@@ -203,33 +203,19 @@ template<class CharT, class Alloc> constexpr StrImpl<CharT, Alloc> operator+(Str
   lhs.push_back(rhs);
   return std::move(lhs);
 }
-template<class CharT, class Alloc> constexpr bool operator==(const StrImpl<CharT, Alloc>& a, const StrImpl<CharT, Alloc>& b) noexcept {
-  return static_cast<const std::basic_string<CharT>&>(a) == static_cast<const std::basic_string<CharT>&>(b);
-}
-template<class CharT, class Alloc> constexpr bool operator==(const StrImpl<CharT, Alloc>& a, const CharT* b) {
-  return static_cast<const std::basic_string<CharT>&>(a) == b;
-}
-template<class CharT, class Alloc> constexpr bool operator==(const CharT* a, const StrImpl<CharT, Alloc>& b) {
-  return a == static_cast<const std::basic_string<CharT>&>(b);
-}
-template<class CharT, class Alloc> constexpr auto operator<=>(const StrImpl<CharT, Alloc>& lhs, const StrImpl<CharT, Alloc>& rhs) noexcept {
-  return static_cast<const std::basic_string<CharT>&>(lhs) <=> static_cast<const std::basic_string<CharT>&>(rhs);
-}
-template<class CharT, class Alloc> constexpr auto operator<=>(const StrImpl<CharT, Alloc>& lhs, const CharT* rhs) {
-  return static_cast<const std::basic_string<CharT>&>(lhs) <=> std::basic_string_view<CharT>(rhs);
-}
-template<class CharT, class Alloc> constexpr void swap(StrImpl<CharT, Alloc>& x, StrImpl<CharT, Alloc>& y) noexcept(noexcept(x.swap(y))) {
-  x.swap(y);
-}
+template<class CharT, class Alloc> constexpr bool operator==(const StrImpl<CharT, Alloc>& a, const StrImpl<CharT, Alloc>& b) noexcept { return static_cast<const std::basic_string<CharT>&>(a) == static_cast<const std::basic_string<CharT>&>(b); }
+template<class CharT, class Alloc> constexpr bool operator==(const StrImpl<CharT, Alloc>& a, const CharT* b) { return static_cast<const std::basic_string<CharT>&>(a) == b; }
+template<class CharT, class Alloc> constexpr bool operator==(const CharT* a, const StrImpl<CharT, Alloc>& b) { return a == static_cast<const std::basic_string<CharT>&>(b); }
+template<class CharT, class Alloc> constexpr auto operator<=>(const StrImpl<CharT, Alloc>& lhs, const StrImpl<CharT, Alloc>& rhs) noexcept { return static_cast<const std::basic_string<CharT>&>(lhs) <=> static_cast<const std::basic_string<CharT>&>(rhs); }
+template<class CharT, class Alloc> constexpr auto operator<=>(const StrImpl<CharT, Alloc>& lhs, const CharT* rhs) { return static_cast<const std::basic_string<CharT>&>(lhs) <=> std::basic_string_view<CharT>(rhs); }
+template<class CharT, class Alloc> constexpr void swap(StrImpl<CharT, Alloc>& x, StrImpl<CharT, Alloc>& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 template<class CharT, class Alloc, class Predicate> constexpr typename StrImpl<CharT, Alloc>::size_type erase_if(StrImpl<CharT, Alloc>& c, Predicate pred) {
   auto it = std::remove_if(c.begin(), c.end(), pred);
   auto res = std::distance(it, c.end());
   c.erase(it, c.end());
   return res;
 }
-template<class CharT> constexpr void swap(StrViewImpl<CharT>& x, StrViewImpl<CharT>& y) noexcept(noexcept(x.swap(y))) {
-  x.swap(y);
-}
+template<class CharT> constexpr void swap(StrViewImpl<CharT>& x, StrViewImpl<CharT>& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 template<class InputIterator, class Allocator = std::allocator<typename std::iterator_traits<InputIterator>::value_type>> StrImpl(InputIterator, InputIterator, Allocator = Allocator()) -> StrImpl<typename std::iterator_traits<InputIterator>::value_type, Allocator>;
 template<class CharT, class Allocator = std::allocator<CharT>> explicit StrImpl(StrViewImpl<CharT>, const Allocator& = Allocator()) -> StrImpl<CharT, Allocator>;
 template<class CharT, class Allocator = std::allocator<CharT>> StrImpl(StrViewImpl<CharT>, typename StrViewImpl<CharT>::size_type, typename StrViewImpl<CharT>::size_type, const Allocator& = Allocator()) -> StrImpl<CharT, Allocator>;
@@ -316,11 +302,7 @@ template<> class Formatter<Str> {
 public:
   template<class Stream> constexpr void operator()(Stream&& stream, const Str& str) const { Formatter<StrView>{}(stream, StrView(str.data(), str.size())); }
 };
-template<class... Args>
-requires ((std::same_as<Args, c8> && ...) && sizeof...(Args) >= 1)
-constexpr Str UniteChars(Args... c) {
-  return Str{c...};
-}
+template<class... Args> requires ((std::same_as<Args, c8> && ...) && sizeof...(Args) >= 1) constexpr Str UniteChars(Args... c) { return Str{c...}; }
 template<std::integral T> constexpr Str NumToStr(const T& val, const i32 base = 10) {
   char buf[sizeof(T) * 8];
   char* last = std::to_chars(buf, buf + sizeof(T) * 8, val, base).ptr;
@@ -329,20 +311,14 @@ template<std::integral T> constexpr Str NumToStr(const T& val, const i32 base = 
 template<std::floating_point T> constexpr Str NumToStr(const T& val, const i32 precision = 10) {
   char buf[64];
   auto result = std::to_chars(buf, buf + 64, val, std::chars_format::fixed, precision);
-  if(result.ec != std::errc()) {
-    throw Exception("gsh::ToStr / Conversion error in floating point to string.");
-  }
+  if(result.ec != std::errc()) { throw Exception("gsh::ToStr / Conversion error in floating point to string."); }
   return Str(buf, result.ptr);
 }
 template<class T> constexpr T StrToNum(const StrView& str, const i32 base = 10) {
   T res{};
   auto result = std::from_chars(str.data(), str.data() + str.size(), res, base);
-  if(result.ec != std::errc() || result.ptr != str.data() + str.size()) {
-    throw Exception("gsh::FromStr / Conversion error in string to number.");
-  }
+  if(result.ec != std::errc() || result.ptr != str.data() + str.size()) { throw Exception("gsh::FromStr / Conversion error in string to number."); }
   return res;
 }
-template<class T> constexpr T StrToNum(const Str& str, const i32 base = 10) {
-  return StrToNum<T>(StrView(str), base);
-}
+template<class T> constexpr T StrToNum(const Str& str, const i32 base = 10) { return StrToNum<T>(StrView(str), base); }
 } // namespace gsh

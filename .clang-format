@@ -56,7 +56,7 @@ BreakFunctionDefinitionParameters: false
 BreakInheritanceList: BeforeColon
 BreakStringLiterals: false
 BreakTemplateDeclarations: No
-ColumnLimit: 0 
+ColumnLimit: 100000
 CompactNamespaces: true 
 ConstructorInitializerIndentWidth: 0 
 ContinuationIndentWidth: 0 

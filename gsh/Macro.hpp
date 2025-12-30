@@ -21,8 +21,7 @@
 #define GSH_INTERNAL_REP2(n, m) std::views::iota(static_cast<std::common_type_t<std::decay_t<decltype(n)>, std::decay_t<decltype(m)>>>(n), static_cast<std::common_type_t<std::decay_t<decltype(n)>, std::decay_t<decltype(m)>>>(m))
 #define REP(varname, ...) for([[maybe_unused]] const auto& varname : GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_REP2, GSH_INTERNAL_REP1)(__VA_ARGS__))
 #define RREP(varname, ...) for([[maybe_unused]] const auto& varname : GSH_INTERNAL_SELECT3(__VA_ARGS__, GSH_INTERNAL_REP2, GSH_INTERNAL_REP1)(__VA_ARGS__) | std::views::reverse)
-namespace gsh {
-namespace internal {
+namespace gsh { namespace internal {
 template<class T> class InputAdapter {
   T& ref;
   template<class... Args> class with_options {
@@ -32,9 +31,7 @@ template<class T> class InputAdapter {
     constexpr with_options(T& r, Args&&... a) : ref(r), args(std::forward<Args>(a)...) {}
   public:
     template<class U> constexpr operator U() const {
-      return [&]<std::size_t... I>(std::index_sequence<I...>) {
-        return ref.template read<U>().option(std::get<I>(args)...).val();
-      }(std::make_index_sequence<sizeof...(Args)>{});
+      return [&]<std::size_t... I>(std::index_sequence<I...>) { return ref.template read<U>().option(std::get<I>(args)...).val(); }(std::make_index_sequence<sizeof...(Args)>{});
     }
   };
 public:

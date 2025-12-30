@@ -24,19 +24,13 @@ constexpr u32 CharLength64(u64 x) {
   i32 clz = std::countl_zero(x);
   return lower_bound_table[clz] + static_cast<u32>(pow10[clz] <= x);
 }
-template<class... Bounds>
-requires (sizeof...(Bounds) != 0 && sizeof...(Bounds) % 2 == 0)
-class InRange {
+template<class... Bounds> requires (sizeof...(Bounds) != 0 && sizeof...(Bounds) % 2 == 0) class InRange {
   std::tuple<Bounds...> bounds;
 public:
   constexpr InRange(Bounds&&... bounds) : bounds(std::forward<Bounds>(bounds)...) {}
-  template<class... Args>
-  requires (sizeof...(Args) == sizeof...(Bounds) / 2)
-  constexpr bool operator()(Args&&... args) {
+  template<class... Args> requires (sizeof...(Args) == sizeof...(Bounds) / 2) constexpr bool operator()(Args&&... args) {
     return [&]<u32... I>(std::integer_sequence<u32, I...>) {
-      auto det = [&]<u32 Idx>(std::integral_constant<u32, Idx>, auto&& val) {
-        return std::get<2 * Idx>(bounds) <= val && val < std::get<2 * Idx + 1>(bounds);
-      };
+      auto det = [&]<u32 Idx>(std::integral_constant<u32, Idx>, auto&& val) { return std::get<2 * Idx>(bounds) <= val && val < std::get<2 * Idx + 1>(bounds); };
       return (det(std::integral_constant<u32, I>(), std::forward<Args>(args)) && ...);
     }(std::make_integer_sequence<u32, sizeof...(Args)>());
   }
@@ -112,9 +106,7 @@ template<class T, class U> constexpr T ModPow(const T& x, u64 e, const U& mod) {
   }
   return res;
 }
-template<class T, class U> constexpr auto DivCeil(const T& a, const U& b) {
-  return (a + b - 1) / b;
-}
+template<class T, class U> constexpr auto DivCeil(const T& a, const U& b) { return (a + b - 1) / b; }
 template<class T> constexpr T Factorial(const T& n) {
   T res = n;
   T cnt = {};
@@ -151,17 +143,11 @@ template<class T, class U> constexpr std::common_type_t<T, U> GCD(T x, U y) {
   }
 }
 // Find the greatest common divisor of multiple numbers.
-template<class T, class... Args> constexpr auto GCD(T x, Args... y) {
-  return GCD(x, GCD(y...));
-}
+template<class T, class... Args> constexpr auto GCD(T x, Args... y) { return GCD(x, GCD(y...)); }
 // Find the least common multiple as in std::lcm.
-template<class T, class U> constexpr auto LCM(T x, U y) {
-  return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y);
-}
+template<class T, class U> constexpr auto LCM(T x, U y) { return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y); }
 // Find the least common multiple of multiple numbers.
-template<class T, class... Args> constexpr auto LCM(T x, Args... y) {
-  return LCM(x, LCM(y...));
-}
+template<class T, class... Args> constexpr auto LCM(T x, Args... y) { return LCM(x, LCM(y...)); }
 namespace internal {
 template<class R, class Proj> constexpr auto GCDImpl(R&& r, Proj&& proj) {
   auto itr = std::ranges::begin(r);
@@ -297,9 +283,7 @@ default : return 1;
   }
 };
 } // namespace internal
-constexpr u64 KthRoot(u64 n, u64 k) {
-  return internal::KthRootImpl<0>::calc2(n, k);
-}
+constexpr u64 KthRoot(u64 n, u64 k) { return internal::KthRootImpl<0>::calc2(n, k); }
 // calc ∑ floor((a × i + b) / m) (0 <= i < n)
 constexpr u64 LinearFloorSum(u32 n, u32 m, u32 a, u32 b) {
   u64 res = 0;
@@ -514,10 +498,6 @@ public:
 using BinCoeffTable32 = internal::BinCoeffTable<internal::DynamicModint32Impl>;
 using BinCoeffTable64 = internal::BinCoeffTable<internal::DynamicModint64Impl>;
 template<u64 mod = 998244353> using BinCoeffTableStaticMod = internal::BinCoeffTable<internal::StaticModintImpl<mod>>;
-template<class T> constexpr T ToRad(const T& deg) {
-  return deg * static_cast<T>(3.14159265358979323846) / static_cast<T>(180);
-}
-template<class T> constexpr T ToDeg(const T& rad) {
-  return rad * static_cast<T>(180) / static_cast<T>(3.14159265358979323846);
-}
+template<class T> constexpr T ToRad(const T& deg) { return deg * static_cast<T>(3.14159265358979323846) / static_cast<T>(180); }
+template<class T> constexpr T ToDeg(const T& rad) { return rad * static_cast<T>(180) / static_cast<T>(3.14159265358979323846); }
 } // namespace gsh

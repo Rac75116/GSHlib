@@ -7,17 +7,13 @@
 #include <immintrin.h>
 #include <utility>
 namespace gsh {
-template<class K, class V>
-using KeyValuePair = std::pair<const K, V>;
+template<class K, class V> using KeyValuePair = std::pair<const K, V>;
 namespace internal {
-template<class T>
-struct DefMappedType {
+template<class T> struct DefMappedType {
   using mapped_type = T;
 };
-template<>
-struct DefMappedType<void> {};
-template<class Key, class Value, class Hasher, class Pred, class Alloc, bool Multi>
-class HashTable : public ViewInterface<HashTable<Key, Value, Hasher, Pred, Alloc, Multi>, std::conditional_t<std::is_void_v<Value>, Key, KeyValuePair<Key, Value>>>, public DefMappedType<Value> {
+template<> struct DefMappedType<void> {};
+template<class Key, class Value, class Hasher, class Pred, class Alloc, bool Multi> class HashTable : public ViewInterface<HashTable<Key, Value, Hasher, Pred, Alloc, Multi>, std::conditional_t<std::is_void_v<Value>, Key, KeyValuePair<Key, Value>>>, public DefMappedType<Value> {
   using traits = std::allocator_traits<Alloc>;
   constexpr static bool is_set = std::is_void_v<Value>;
 public:
@@ -79,9 +75,7 @@ private:
       hash_allocator_traits::construct(hash_alloc, new_hash + i, std::move_if_noexcept(hash[i]));
     }
     if constexpr(!std::is_trivially_destructible_v<value_type>) {
-      for(u32 i = 0; i < elem_size; i++) {
-        value_allocator_traits::destroy(value_alloc, elem + i);
-      }
+      for(u32 i = 0; i < elem_size; i++) { value_allocator_traits::destroy(value_alloc, elem + i); }
     }
     value_allocator_traits::deallocate(value_alloc, elem, elem_capacity);
     hash_allocator_traits::deallocate(hash_alloc, hash, elem_capacity);
@@ -95,9 +89,7 @@ private:
       const u8 s = static_cast<u8>(h & 0x7f) | 0x80;
       const size_type b = (h >> 7) & (bucket_size - 1);
       auto mask = _mm256_movemask_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i_u*>(sig + b)));
-      if(mask == 0xffff) {
-        return false;
-      }
+      if(mask == 0xffff) { return false; }
       const u32 inv = ~mask;
       Assume(inv != 0);
       const auto bit = std::countr_zero(inv);
@@ -113,16 +105,12 @@ private:
       const size_type new_bucket_cap = bucket_capacity * 2;
       sig = sig_allocator_traits::allocate(sig_alloc, new_bucket_cap + 31);
       index = index_allocator_traits::allocate(index_alloc, new_bucket_cap + 31);
-      for(u32 i = 0; i < new_bucket_cap + 31; i++) {
-        sig[i] = 0;
-      }
+      for(u32 i = 0; i < new_bucket_cap + 31; i++) { sig[i] = 0; }
       bucket_capacity = new_bucket_cap;
       bucket_size = new_bucket_cap;
     } else {
       bucket_size *= 2;
-      for(u32 i = 0; i < bucket_size + 31; i++) {
-        sig[i] = 0;
-      }
+      for(u32 i = 0; i < bucket_size + 31; i++) { sig[i] = 0; }
     }
     return construct_sig_index();
   }
@@ -134,16 +122,12 @@ private:
       const size_type new_bucket_cap = std::bit_ceil(new_bucket_size);
       sig = sig_allocator_traits::allocate(sig_alloc, new_bucket_cap + 31);
       index = index_allocator_traits::allocate(index_alloc, new_bucket_cap + 31);
-      for(u32 i = 0; i < new_bucket_cap + 31; i++) {
-        sig[i] = 0;
-      }
+      for(u32 i = 0; i < new_bucket_cap + 31; i++) { sig[i] = 0; }
       bucket_capacity = new_bucket_cap;
       bucket_size = new_bucket_cap;
     } else {
       bucket_size = std::bit_ceil(new_bucket_size);
-      for(u32 i = 0; i < bucket_size + 31; i++) {
-        sig[i] = 0;
-      }
+      for(u32 i = 0; i < bucket_size + 31; i++) { sig[i] = 0; }
     }
     return construct_sig_index();
   }
@@ -159,12 +143,9 @@ private:
     hash = hash_allocator_traits::allocate(hash_alloc, elem_cap);
     sig = sig_allocator_traits::allocate(sig_alloc, bucket_cap + 31);
     index = index_allocator_traits::allocate(index_alloc, bucket_cap + 31);
-    for(u32 i = 0; i < bucket_cap + 31; i++) {
-      sig[i] = 0;
-    }
+    for(u32 i = 0; i < bucket_cap + 31; i++) { sig[i] = 0; }
   }
-  template<class K>
-  constexpr size_type find_impl(const K& k) const {
+  template<class K> constexpr size_type find_impl(const K& k) const {
     const hashed_type h = hash_f(k);
     const size_type b = (h >> 7) & (bucket_size - 1);
     const u8 s = static_cast<u8>(h & 0x7f) | 0x80;
@@ -177,8 +158,7 @@ private:
     }
     return 0xffffffff;
   }
-  template<class K>
-  constexpr std::pair<size_type, bool> insert_impl(const K& v, const hashed_type h) {
+  template<class K> constexpr std::pair<size_type, bool> insert_impl(const K& v, const hashed_type h) {
     const u8 s = static_cast<u8>(h & 0x7f) | 0x80;
     while(true) {
       const size_type b = (h >> 7) & (bucket_size - 1);
@@ -202,8 +182,7 @@ private:
 public:
   constexpr HashTable() : HashTable(default_bucket_size, hasher(), key_equal(), allocator_type()) {}
   constexpr explicit HashTable(size_type n, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : hash_f(hf), key_eq_f(eql), hash_alloc(a), value_alloc(a), sig_alloc(a), index_alloc(a) { initialize_buckets(n); }
-  template<class InputIterator>
-  constexpr HashTable(InputIterator first, InputIterator last, size_type n = default_bucket_size, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : HashTable(std::max(n, std::ranges::distance(first, last)), hf, eql, a) { insert(first, last); }
+  template<class InputIterator> constexpr HashTable(InputIterator first, InputIterator last, size_type n = default_bucket_size, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : HashTable(std::max(n, std::ranges::distance(first, last)), hf, eql, a) { insert(first, last); }
   constexpr HashTable(const HashTable& v) : HashTable(v, allocator_type()) {}
   constexpr HashTable(HashTable&& rv) noexcept : hash_f(std::move(rv.hash_f)), key_eq_f(std::move(rv.key_eq_f)), hash_alloc(std::move(rv.hash_alloc)), value_alloc(std::move(rv.value_alloc)), sig_alloc(std::move(rv.sig_alloc)), index_alloc(std::move(rv.index_alloc)), elem(rv.elem), hash(rv.hash), sig(rv.sig), index(rv.index), elem_size(rv.elem_size), elem_capacity(rv.elem_capacity), bucket_size(rv.bucket_size), bucket_capacity(rv.bucket_capacity) {
     rv.elem = nullptr;
@@ -221,18 +200,14 @@ public:
   constexpr HashTable(std::initializer_list<value_type> il, size_type n = default_bucket_size, const hasher& hf = hasher(), const key_equal& eql = key_equal(), const allocator_type& a = allocator_type()) : HashTable(il.begin(), il.end(), n, hf, eql, a) {}
   constexpr HashTable(size_type n, const allocator_type& a) : HashTable(n, hasher(), key_equal(), a) {}
   constexpr HashTable(size_type n, const hasher& hf, const allocator_type& a) : HashTable(n, hf, key_equal(), a) {}
-  template<class InputIterator>
-  constexpr HashTable(InputIterator f, InputIterator l, size_type n, const allocator_type& a) : HashTable(f, l, n, hasher(), key_equal(), a) {}
-  template<class InputIterator>
-  constexpr HashTable(InputIterator f, InputIterator l, size_type n, const hasher& hf, const allocator_type& a) : HashTable(f, l, n, hf, key_equal(), a) {}
+  template<class InputIterator> constexpr HashTable(InputIterator f, InputIterator l, size_type n, const allocator_type& a) : HashTable(f, l, n, hasher(), key_equal(), a) {}
+  template<class InputIterator> constexpr HashTable(InputIterator f, InputIterator l, size_type n, const hasher& hf, const allocator_type& a) : HashTable(f, l, n, hf, key_equal(), a) {}
   constexpr HashTable(std::initializer_list<value_type> il, size_type n, const allocator_type& a) : HashTable(il, n, hasher(), key_equal(), a) {}
   constexpr HashTable(std::initializer_list<value_type> il, size_type n, const hasher& hf, const allocator_type& a) : HashTable(il, n, hf, key_equal(), a) {}
   constexpr ~HashTable() noexcept {
     if(elem_capacity != 0) {
       if constexpr(!std::is_trivially_destructible_v<value_type>) {
-        for(u32 i = 0; i < elem_size; i++) {
-          value_allocator_traits::destroy(value_alloc, elem + i);
-        }
+        for(u32 i = 0; i < elem_size; i++) { value_allocator_traits::destroy(value_alloc, elem + i); }
       }
       value_allocator_traits::deallocate(value_alloc, elem, elem_capacity);
       hash_allocator_traits::deallocate(hash_alloc, hash, elem_capacity);
@@ -263,11 +238,8 @@ public:
   constexpr const_iterator cbegin() const noexcept { return elem; }
   constexpr const_iterator cend() const noexcept { return elem + elem_size; }
   constexpr allocator_type get_allocator() const noexcept;
-  template<class... Args>
-  constexpr std::pair<iterator, bool> emplace(Args&&... args) {
-    if(elem_size == elem_capacity) {
-      construct_elem_hash(elem_capacity * 2);
-    }
+  template<class... Args> constexpr std::pair<iterator, bool> emplace(Args&&... args) {
+    if(elem_size == elem_capacity) { construct_elem_hash(elem_capacity * 2); }
     value_allocator_traits::construct(value_alloc, elem + elem_size, std::forward<Args>(args)...);
     const auto& k = get_key(elem[elem_size]);
     const hashed_type h = calc_hash(k);
@@ -279,22 +251,17 @@ public:
       elem_size++;
       return {elem + (elem_size - 1), true};
     } else {
-      if constexpr(!std::is_trivially_destructible_v<value_type>) {
-        value_allocator_traits::destroy(value_alloc, elem + elem_size);
-      }
+      if constexpr(!std::is_trivially_destructible_v<value_type>) { value_allocator_traits::destroy(value_alloc, elem + elem_size); }
       return {elem + pos, false};
     }
   }
-  template<class... Args>
-  constexpr iterator emplace_hint([[maybe_unused]] const_iterator position, Args&&... args) { return emplace(std::forward<Args>(args)...).first; }
+  template<class... Args> constexpr iterator emplace_hint([[maybe_unused]] const_iterator position, Args&&... args) { return emplace(std::forward<Args>(args)...).first; }
   constexpr std::pair<iterator, bool> insert(const value_type& v) {
     const auto& k = get_key(v);
     const hashed_type h = calc_hash(k);
     const auto [pos, f] = insert_impl(k, h);
     if(f) {
-      if(elem_size == elem_capacity) {
-        construct_elem_hash(elem_capacity * 2);
-      }
+      if(elem_size == elem_capacity) { construct_elem_hash(elem_capacity * 2); }
       value_allocator_traits::construct(value_alloc, elem + elem_size, v);
       hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
       sig[pos] = static_cast<u8>(h & 0x7f) | 0x80;
@@ -310,9 +277,7 @@ public:
     const hashed_type h = calc_hash(k);
     const auto [pos, f] = insert_impl(k, h);
     if(f) {
-      if(elem_size == elem_capacity) {
-        construct_elem_hash(elem_capacity * 2);
-      }
+      if(elem_size == elem_capacity) { construct_elem_hash(elem_capacity * 2); }
       value_allocator_traits::construct(value_alloc, elem + elem_size, std::move(v));
       hash_allocator_traits::construct(hash_alloc, hash + elem_size, h);
       sig[pos] = static_cast<u8>(h & 0x7f) | 0x80;
@@ -325,31 +290,14 @@ public:
   }
   constexpr iterator insert([[maybe_unused]] const_iterator position, const value_type& v) { return insert(v).first; }
   constexpr iterator insert([[maybe_unused]] const_iterator position, value_type&& v) { return insert(std::move(v)).first; }
-  template<class InputIterator>
-  constexpr void insert(InputIterator first, InputIterator last);
+  template<class InputIterator> constexpr void insert(InputIterator first, InputIterator last);
   constexpr void insert(std::initializer_list<value_type> il) { insert(il.begin(), il.end()); }
-  template<class M>
-  requires (!is_set && !Multi)
-  constexpr std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& obj);
-  template<class M>
-  requires (!is_set && !Multi)
-  constexpr std::pair<iterator, bool> insert_or_assign(key_type&& key, M&& obj);
-  template<class M>
-  requires (!is_set && !Multi)
-  constexpr iterator insert_or_assign([[maybe_unused]] const_iterator hint, const key_type& k, M&& obj) {
-    return insert_or_assign(k, std::forward<M>(obj)).first;
-  }
-  template<class M>
-  requires (!is_set && !Multi)
-  constexpr iterator insert_or_assign([[maybe_unused]] const_iterator hint, key_type&& k, M&& obj) {
-    return insert_or_assign(std::move(k), std::forward<M>(obj)).first;
-  }
+  template<class M> requires (!is_set && !Multi) constexpr std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& obj);
+  template<class M> requires (!is_set && !Multi) constexpr std::pair<iterator, bool> insert_or_assign(key_type&& key, M&& obj);
+  template<class M> requires (!is_set && !Multi) constexpr iterator insert_or_assign([[maybe_unused]] const_iterator hint, const key_type& k, M&& obj) { return insert_or_assign(k, std::forward<M>(obj)).first; }
+  template<class M> requires (!is_set && !Multi) constexpr iterator insert_or_assign([[maybe_unused]] const_iterator hint, key_type&& k, M&& obj) { return insert_or_assign(std::move(k), std::forward<M>(obj)).first; }
   constexpr iterator erase(iterator position);
-  constexpr iterator erase(const_iterator position)
-  requires (!is_set)
-  {
-    return erase(const_cast<iterator>(position));
-  }
+  constexpr iterator erase(const_iterator position) requires (!is_set) { return erase(const_cast<iterator>(position)); }
   constexpr size_type erase(const key_type& k);
   constexpr iterator erase(const_iterator first, const_iterator last);
   constexpr void clear() noexcept;
@@ -366,61 +314,40 @@ public:
     if(i == 0xffffffff) return end();
     return elem + i;
   }
-  template<class K>
-  requires is_hs_tp && is_eq_tp
-  constexpr iterator find(const K& k) {
+  template<class K> requires is_hs_tp && is_eq_tp constexpr iterator find(const K& k) {
     const size_type i = find_impl(k);
     if(i == 0xffffffff) return end();
     return elem + i;
   }
-  template<class K>
-  requires is_hs_tp && is_eq_tp
-  constexpr const_iterator find(const K& k) const {
+  template<class K> requires is_hs_tp && is_eq_tp constexpr const_iterator find(const K& k) const {
     const size_type i = find_impl(k);
     if(i == 0xffffffff) return end();
     return elem + i;
   }
   constexpr size_type count(const key_type& x) const;
-  template<class K>
-  requires is_hs_tp && is_eq_tp
-  constexpr size_type count(const K& k) const;
+  template<class K> requires is_hs_tp && is_eq_tp constexpr size_type count(const K& k) const;
   constexpr bool contains(const key_type& x) const {
     const size_type i = find_impl(x);
     return i != 0xffffffff;
   }
-  template<class K>
-  requires is_hs_tp && is_eq_tp
-  constexpr bool contains(const K& k) const {
+  template<class K> requires is_hs_tp && is_eq_tp constexpr bool contains(const K& k) const {
     const size_type i = find_impl(k);
     return i != 0xffffffff;
   }
   constexpr void rehash(size_type n) {
-    if(!rehash_impl(n)) {
-      while(!rehash_impl());
-    }
+    if(!rehash_impl(n)) { while(!rehash_impl()); }
   }
   constexpr void reserve(size_type n) {
-    if(n > elem_capacity) {
-      construct_elem_hash(std::bit_ceil(n));
-    }
+    if(n > elem_capacity) { construct_elem_hash(std::bit_ceil(n)); }
     const size_type required_bucket_size = n * 4;
-    if(!rehash_impl(required_bucket_size)) {
-      while(!rehash_impl());
-    }
+    if(!rehash_impl(required_bucket_size)) { while(!rehash_impl()); }
   }
-  constexpr auto& operator[](const key_type& key)
-  requires (!is_set && !Multi);
-  constexpr auto& operator[](key_type&& key)
-  requires (!is_set && !Multi);
+  constexpr auto& operator[](const key_type& key) requires (!is_set && !Multi);
+  constexpr auto& operator[](key_type&& key) requires (!is_set && !Multi);
 };
 } // namespace internal
-
-template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<Key>>
-using HashSet = internal::HashTable<Key, void, Hasher, Pred, Alloc, false>;
-template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<Key>>
-using HashMultiset = internal::HashTable<Key, void, Hasher, Pred, Alloc, true>;
-template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<KeyValuePair<Key, Value>>>
-using HashMap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, false>;
-template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<KeyValuePair<Key, Value>>>
-using HashMultimap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, true>;
+template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<Key>> using HashSet = internal::HashTable<Key, void, Hasher, Pred, Alloc, false>;
+template<class Key, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<Key>> using HashMultiset = internal::HashTable<Key, void, Hasher, Pred, Alloc, true>;
+template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<KeyValuePair<Key, Value>>> using HashMap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, false>;
+template<class Key, class Value, class Hasher = Hash, class Pred = EqualTo, class Alloc = std::allocator<KeyValuePair<Key, Value>>> using HashMultimap = internal::HashTable<Key, Value, Hasher, Pred, Alloc, true>;
 } // namespace gsh

@@ -41,12 +41,8 @@ template<class Stream> constexpr u32 Parseu8dig(Stream&& stream) {
   stream.skip(tmp + 1);
   return v;
 }
-template<class Stream> constexpr u8 Parseu8(Stream&& stream) {
-  return Parseu4dig(stream);
-}
-template<class Stream> constexpr u16 Parseu16(Stream&& stream) {
-  return Parseu8dig(stream);
-}
+template<class Stream> constexpr u8 Parseu8(Stream&& stream) { return Parseu4dig(stream); }
+template<class Stream> constexpr u16 Parseu16(Stream&& stream) { return Parseu8dig(stream); }
 template<class Stream> constexpr u32 Parseu32(Stream&& stream) {
   u32 res = 0;
   u64 buf[2];
@@ -385,9 +381,7 @@ public:
     const c8* cur = stream.current();
     c8* end = nullptr;
     float res = std::strtof(cur, &end);
-    if(errno) {
-      throw Exception("gsh::Parser<float>::operator() / Failed to parse.");
-    }
+    if(errno) { throw Exception("gsh::Parser<float>::operator() / Failed to parse."); }
     stream.skip(end - cur + 1);
     return res;
   }
@@ -399,9 +393,7 @@ public:
     const c8* cur = stream.current();
     c8* end = nullptr;
     double res = std::strtod(cur, &end);
-    if(errno) {
-      throw Exception("gsh::Parser<double>::operator() / Failed to parse.");
-    }
+    if(errno) { throw Exception("gsh::Parser<double>::operator() / Failed to parse."); }
     stream.skip(end - cur + 1);
     return res;
   }
@@ -413,9 +405,7 @@ public:
     const c8* cur = stream.current();
     c8* end = nullptr;
     long double res = std::strtold(cur, &end);
-    if(errno) {
-      throw Exception("gsh::Parser<long double>::operator() / Failed to parse.");
-    }
+    if(errno) { throw Exception("gsh::Parser<long double>::operator() / Failed to parse."); }
     stream.skip(end - cur + 1);
     return res;
   }
@@ -437,9 +427,7 @@ template<class T, class P, class Stream, class... Args> struct ParsingIterator {
   GSH_INTERNAL_INLINE constexpr ParsingIterator& operator++() noexcept { return ++n, *this; }
   GSH_INTERNAL_INLINE constexpr ParsingIterator operator++(int) noexcept { return {n++, *ref, *stream, *args}; }
   GSH_INTERNAL_INLINE constexpr T operator*() const {
-    return [this]<u32... I>(std::integer_sequence<u32, I...>) -> T {
-      return (*ref)(*stream, std::get<I>(*args)...);
-    }(std::make_integer_sequence<u32, sizeof...(Args)>());
+    return [this]<u32... I>(std::integer_sequence<u32, I...>) -> T { return (*ref)(*stream, std::get<I>(*args)...); }(std::make_integer_sequence<u32, sizeof...(Args)>());
   }
 };
 } // namespace internal

@@ -50,9 +50,7 @@ public:
   }
   constexpr u32 max_group_size() const noexcept {
     i32 res = 1;
-    for(u32 i = 0; i != size(); ++i) {
-      res = -derived().parent[i] < res ? res : -derived().parent[i];
-    }
+    for(u32 i = 0; i != size(); ++i) { res = -derived().parent[i] < res ? res : -derived().parent[i]; }
     return res;
   }
   constexpr u32 count_groups() const noexcept { return derived().cnt; }

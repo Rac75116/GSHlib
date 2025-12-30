@@ -4,8 +4,7 @@
 #include "Util.hpp"
 #include "Vec.hpp"
 namespace gsh {
-template<class T, class Comp = Less, class Alloc = std::allocator<T>>
-class Heap {
+template<class T, class Comp = Less, class Alloc = std::allocator<T>> class Heap {
   Vec<T, Alloc> data;
   [[no_unique_address]] Comp comp_func;
   u32 mx = 0;
@@ -22,10 +21,8 @@ public:
   constexpr Heap() noexcept {}
   constexpr explicit Heap(const Comp& comp, const Alloc& alloc = Alloc()) : data(alloc), comp_func(comp) {}
   constexpr explicit Heap(const Alloc& alloc) : data(alloc) {}
-  template<class InputIterator>
-  constexpr Heap(InputIterator first, InputIterator last, const Comp& comp = Comp(), const Alloc& alloc = Alloc()) : data(first, last, alloc), comp_func(comp) { make_heap(); }
-  template<class InputIterator>
-  Heap(InputIterator first, InputIterator last, const Alloc& alloc) : data(first, last, alloc) { make_heap(); }
+  template<class InputIterator> constexpr Heap(InputIterator first, InputIterator last, const Comp& comp = Comp(), const Alloc& alloc = Alloc()) : data(first, last, alloc), comp_func(comp) { make_heap(); }
+  template<class InputIterator> Heap(InputIterator first, InputIterator last, const Alloc& alloc) : data(first, last, alloc) { make_heap(); }
   constexpr Heap(const Heap& x) = default;
   constexpr Heap(Heap&& y) noexcept = default;
   constexpr Heap(const Heap& x, const Alloc& alloc) : data(x.data, alloc), comp_func(x.comp_func), mx(x.mx) {}
@@ -45,8 +42,7 @@ private:
       mx = 1 + std::invoke(comp_func, data[1], data[2]);
     else mx = data.size() == 2;
   }
-  template<bool Min, bool SetMax>
-  GSH_INTERNAL_INLINE constexpr void push_down(u32 idx) noexcept(nothrow_op) {
+  template<bool Min, bool SetMax> GSH_INTERNAL_INLINE constexpr void push_down(u32 idx) noexcept(nothrow_op) {
     u32 lim = (data.size() + 1) / 4 - 1;
     auto comp = [&](auto&& a, auto&& b) GSH_INTERNAL_INLINE {
       if constexpr(Min) return static_cast<bool>(std::invoke(comp_func, a, b));
@@ -292,17 +288,13 @@ public:
     data.clear();
     mx = 0;
   }
-  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent>
-  constexpr void assign(Iter first, Sent last) {
+  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) {
     data.assign(std::forward<Iter>(first), std::forward<Sent>(last));
     make_heap();
   }
-  template<class F>
-  constexpr void assign(F&& f) {
+  template<class F> constexpr void assign(F&& f) {
     data.clear();
-    auto push = [&](auto&& x) {
-      data.push_back(std::forward<decltype(x)>(x));
-    };
+    auto push = [&](auto&& x) { data.push_back(std::forward<decltype(x)>(x)); };
     std::invoke(f, push);
     make_heap();
   }
@@ -320,8 +312,7 @@ public:
     data.push_back(std::move(x));
     push_up();
   }
-  template<class... Args>
-  constexpr void emplace(Args&&... args) {
+  template<class... Args> constexpr void emplace(Args&&... args) {
     data.emplace_back(std::forward<Args>(args)...);
     push_up();
   }

@@ -21,9 +21,7 @@ template<class Spec> concept IsLazySegmentSpecImplemented = requires(Spec spec) 
   { spec.id() } -> std::same_as<typename Spec::operator_type>;
 };
 } // namespace internal
-template<class Op, class E, class Mapping, class Composition, class Id>
-requires internal::IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id>
-class LazySegmentSpec {
+template<class Op, class E, class Mapping, class Composition, class Id> requires internal::IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
   [[no_unique_address]] mutable Op op_func;
   [[no_unique_address]] mutable E e_func;
   [[no_unique_address]] mutable Mapping mapping_func;
@@ -41,17 +39,11 @@ public:
   constexpr operator_type id() const { return static_cast<operator_type>(std::invoke(id_func)); }
 };
 namespace segment_specs {
-template<class T>
-class RangeAddRangeMin : public decltype(LazySegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
-template<class T>
-class RangeAddRangeMax : public decltype(LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
-template<class T>
-class RangeAddRangeSum
-: public decltype(LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{x.first + f * static_cast<T>(x.second), x.second}; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAddRangeMin : public decltype(LazySegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAddRangeMax : public decltype(LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAddRangeSum : public decltype(LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{x.first + f * static_cast<T>(x.second), x.second}; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
 } // namespace segment_specs
-template<class Spec>
-requires internal::IsLazySegmentSpecImplemented<Spec>
-class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
+template<class Spec> requires internal::IsLazySegmentSpecImplemented<Spec> class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
 public:
   using value_type = typename Spec::value_type;
@@ -85,10 +77,7 @@ public:
       lazy.assign(sz, spec.id());
     }
   }
-  template<class InputIt>
-  requires std::forward_iterator<InputIt>
-  constexpr LazySegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec),
-                                                                               n(std::ranges::distance(first, last)) {
+  template<class InputIt> requires std::forward_iterator<InputIt> constexpr LazySegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec), n(std::ranges::distance(first, last)) {
     sz = n > 0 ? std::bit_ceil(n) : 0;
     log = std::countr_zero(sz);
     if(n > 0) {
@@ -125,9 +114,7 @@ public:
     tmp.resize(n, c);
     assign(tmp.begin(), tmp.end());
   }
-  template<class InputIt>
-  requires std::forward_iterator<InputIt>
-  constexpr void assign(InputIt first, InputIt last) {
+  template<class InputIt> requires std::forward_iterator<InputIt> constexpr void assign(InputIt first, InputIt last) {
     n = std::ranges::distance(first, last);
     sz = n > 0 ? std::bit_ceil(n) : 0;
     log = std::countr_zero(sz);
@@ -241,8 +228,7 @@ public:
       if(((r >> i) << i) != r) update((r - 1) >> i);
     }
   }
-  template<class F>
-  constexpr size_type max_right(size_type l, F f) {
+  template<class F> constexpr size_type max_right(size_type l, F f) {
 #ifndef NDEBUG
     if(l > n) throw Exception("LazySegmentTree::max_right: index ", l, " is out of range [0, ", n, "]");
     if(!std::invoke(f, spec.e())) throw Exception("LazySegmentTree::max_right: predicate must be true for identity");
@@ -269,8 +255,7 @@ public:
     } while((l & -l) != l);
     return n;
   }
-  template<class F>
-  constexpr size_type min_left(size_type r, F f) {
+  template<class F> constexpr size_type min_left(size_type r, F f) {
 #ifndef NDEBUG
     if(r > n) throw Exception("LazySegmentTree::min_left: index ", r, " is out of range [0, ", n, "]");
     if(!std::invoke(f, spec.e())) throw Exception("LazySegmentTree::min_left: predicate must be true for identity");

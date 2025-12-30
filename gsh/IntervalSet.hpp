@@ -3,8 +3,7 @@
 #include "Vec.hpp"
 #include <set>
 namespace gsh {
-template<class T>
-class IntervalSet : public ViewInterface<IntervalSet<T>, std::pair<T, T>> {
+template<class T> class IntervalSet : public ViewInterface<IntervalSet<T>, std::pair<T, T>> {
 public:
   using value_type = std::pair<T, T>; // [first, second)
   using key_type = value_type;
@@ -59,9 +58,7 @@ public:
         auto b = prev_it->second;
         s_.erase(prev_it);
         ++erased_cnt;
-        if(a < l) {
-          s_.emplace(a, l);
-        }
+        if(a < l) { s_.emplace(a, l); }
         if(r < b) {
           s_.emplace(r, b);
           return erased_cnt;

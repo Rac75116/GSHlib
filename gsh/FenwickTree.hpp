@@ -7,8 +7,7 @@
 #include <iterator>
 #include <type_traits>
 namespace gsh {
-template<class T, class Alloc = std::allocator<T>>
-class RangeSumQuery {
+template<class T, class Alloc = std::allocator<T>> class RangeSumQuery {
 protected:
   Arr<T, Alloc> bit;
 public:
@@ -24,8 +23,7 @@ public:
   constexpr explicit RangeSumQuery(const Alloc& alloc) noexcept : bit(alloc) {}
   constexpr explicit RangeSumQuery(u32 n, const Alloc& alloc = Alloc()) : bit(n, alloc) {}
   constexpr RangeSumQuery(u32 n, const T& value, const Alloc& alloc = Alloc()) : bit(alloc) { assign(n, value); }
-  template<class InputIter>
-  constexpr RangeSumQuery(InputIter first, InputIter last, const Alloc& alloc = Alloc()) : bit(alloc) { assign(first, last); }
+  template<class InputIter> constexpr RangeSumQuery(InputIter first, InputIter last, const Alloc& alloc = Alloc()) : bit(alloc) { assign(first, last); }
   constexpr RangeSumQuery(const RangeSumQuery&) = default;
   constexpr RangeSumQuery(RangeSumQuery&&) noexcept = default;
   constexpr RangeSumQuery(const RangeSumQuery& x, const Alloc& alloc) : bit(x.bit, alloc) {}
@@ -59,8 +57,7 @@ public:
     if(n >= size()) throw Exception("gsh::RangeSumQuery::at / Index is out of range.");
     return operator[](n);
   }
-  template<class InputIterator>
-  constexpr void assign(InputIterator first, InputIterator last) {
+  template<class InputIterator> constexpr void assign(InputIterator first, InputIterator last) {
     bit.assign(first, last);
     u32 n = bit.size();
     if(n == 0) return;
@@ -130,10 +127,6 @@ public:
     return res;
   }
 };
-template<class U, class Alloc>
-constexpr void swap(RangeSumQuery<U, Alloc>& x, RangeSumQuery<U, Alloc>& y) noexcept(noexcept(x.swap(y))) {
-  x.swap(y);
-}
-template<class InputIterator, class Alloc = std::allocator<typename std::iterator_traits<InputIterator>::value_type>>
-RangeSumQuery(InputIterator, InputIterator, Alloc = Alloc()) -> RangeSumQuery<typename std::iterator_traits<InputIterator>::value_type, Alloc>;
+template<class U, class Alloc> constexpr void swap(RangeSumQuery<U, Alloc>& x, RangeSumQuery<U, Alloc>& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
+template<class InputIterator, class Alloc = std::allocator<typename std::iterator_traits<InputIterator>::value_type>> RangeSumQuery(InputIterator, InputIterator, Alloc = Alloc()) -> RangeSumQuery<typename std::iterator_traits<InputIterator>::value_type, Alloc>;
 } // namespace gsh

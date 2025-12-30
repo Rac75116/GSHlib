@@ -23,8 +23,7 @@ class Exception {
       while(i--) *(cur++) = buf[i];
     }
   }
-  template<class T, class... Args>
-  void generate_message(T x, Args... args) {
+  template<class T, class... Args> void generate_message(T x, Args... args) {
     write(x);
     if constexpr(sizeof...(Args) > 0) generate_message(args...);
   }
@@ -40,8 +39,7 @@ public:
       if(what_arg[i] == '\0') break;
     }
   }
-  template<class... Args>
-  explicit Exception(Args... args) noexcept {
+  template<class... Args> explicit Exception(Args... args) noexcept {
     generate_message(args...);
     *cur = '\0';
   }

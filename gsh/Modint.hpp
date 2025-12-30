@@ -299,9 +299,7 @@ public:
     return static_cast<u64>(x) * y % mod_;
   }
 };
-template<u32 mod_>
-requires (std::has_single_bit(mod_))
-class StaticModint32Impl<mod_> : public ModintImpl<StaticModint32Impl<mod_>, u32> {
+template<u32 mod_> requires (std::has_single_bit(mod_)) class StaticModint32Impl<mod_> : public ModintImpl<StaticModint32Impl<mod_>, u32> {
 public:
   constexpr StaticModint32Impl() noexcept {}
   constexpr u32 mod() const noexcept { return mod_; }
@@ -313,9 +311,7 @@ public:
     return (x * y) & (mod_ - 1);
   }
 };
-template<u32 mod_>
-requires (std::has_single_bit(mod_ + 1))
-class StaticModint32Impl<mod_> : public ModintImpl<StaticModint32Impl<mod_>, u32> {
+template<u32 mod_> requires (std::has_single_bit(mod_ + 1)) class StaticModint32Impl<mod_> : public ModintImpl<StaticModint32Impl<mod_>, u32> {
   constexpr static i32 p = std::countr_zero(mod_ + 1);
 public:
   constexpr StaticModint32Impl() noexcept {}
@@ -351,9 +347,7 @@ public:
     return e ? d : f;
   }
 };
-template<u64 mod_>
-requires (std::has_single_bit(mod_))
-class StaticModint64Impl<mod_> : public ModintImpl<StaticModint64Impl<mod_>, u64> {
+template<u64 mod_> requires (std::has_single_bit(mod_)) class StaticModint64Impl<mod_> : public ModintImpl<StaticModint64Impl<mod_>, u64> {
 public:
   constexpr StaticModint64Impl() noexcept {}
   constexpr u64 mod() const noexcept { return mod_; }
@@ -365,9 +359,7 @@ public:
     return (x * y) & (mod_ - 1);
   }
 };
-template<u64 mod_>
-requires (std::has_single_bit(mod_ + 1))
-class StaticModint64Impl<mod_> : public ModintImpl<StaticModint64Impl<mod_>, u64> {
+template<u64 mod_> requires (std::has_single_bit(mod_ + 1)) class StaticModint64Impl<mod_> : public ModintImpl<StaticModint64Impl<mod_>, u64> {
   constexpr static i32 p = std::countr_zero(mod_ + 1);
 public:
   constexpr StaticModint64Impl() noexcept {}
@@ -401,27 +393,19 @@ public:
   constexpr u64 mul(u64 x, u64 y) const noexcept {
     Assume(x < mod_ && y < mod_);
     auto [a, b] = Mulu128(x, y);
-    if(b >= mod_) [[unlikely]] {
-      b -= mod_;
-    }
+    if(b >= mod_) [[unlikely]] { b -= mod_; }
     u64 c = a & 0xffffffffull, d = a >> 32;
     u64 f = (c << 32) - c;
     u64 g = b + f;
-    if(mod_ - b <= f) {
-      g -= mod_;
-    }
-    if(g < d) [[unlikely]] {
-      g += mod_;
-    }
+    if(mod_ - b <= f) { g -= mod_; }
+    if(g < d) [[unlikely]] { g += mod_; }
     return g - d;
   }
 };
 template<u64 mod_> struct SwitchStaticModint {
   using type = StaticModint64Impl<mod_>;
 };
-template<u64 mod_>
-requires (mod_ <= 0xffffffff)
-struct SwitchStaticModint<mod_> {
+template<u64 mod_> requires (mod_ <= 0xffffffff) struct SwitchStaticModint<mod_> {
   using type = StaticModint32Impl<mod_>;
 };
 template<u64 mod_> using StaticModintImpl = typename SwitchStaticModint<mod_>::type;

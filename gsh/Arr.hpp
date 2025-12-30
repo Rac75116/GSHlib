@@ -62,8 +62,7 @@ public:
     len = n;
     for(size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
   }
-  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent>
-  constexpr Arr(Iter first, Sent last, const allocator_type& a = Alloc()) : alloc(a) {
+  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Arr(Iter first, Sent last, const allocator_type& a = Alloc()) : alloc(a) {
     const size_type n = std::ranges::distance(first, last);
     if(n == 0) [[unlikely]]
       return;
@@ -236,8 +235,7 @@ public:
   constexpr const_reference front() const noexcept { return *ptr; }
   constexpr reference back() noexcept { return *(ptr + len - 1); }
   constexpr const_reference back() const noexcept { return *(ptr + len - 1); }
-  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent>
-  constexpr void assign(Iter first, Sent last) {
+  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) {
     const size_type n = std::ranges::distance(first, last);
     if(n == 0) {
       clear();
@@ -315,8 +313,7 @@ public:
   friend constexpr auto operator<=>(const Arr& x, const Arr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
   friend constexpr void swap(Arr& x, Arr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<std::input_iterator InputIter, class Alloc = std::allocator<typename std::iterator_traits<InputIter>::value_type>>
-Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
+template<std::input_iterator InputIter, class Alloc = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Arr(InputIter, InputIter, Alloc = Alloc()) -> Arr<typename std::iterator_traits<InputIter>::value_type, Alloc>;
 template<class T, u32 N> requires std::same_as<T, std::remove_cv_t<T>> class StaticArr : public ViewInterface<StaticArr<T, N>, T> {
   union {
     T elems[(N == 0 ? 1 : N)];
@@ -335,22 +332,18 @@ public:
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
   constexpr StaticArr() noexcept(noexcept(value_type{})) : elems{} {}
   constexpr StaticArr(ArrNoInitTag) noexcept {}
-  template<class U, class... Args>
-  constexpr StaticArr(ArrInitTag<U>, Args&&... args) : elems{static_cast<U>(std::forward<Args>(args))...} {
+  template<class U, class... Args> constexpr StaticArr(ArrInitTag<U>, Args&&... args) : elems{static_cast<U>(std::forward<Args>(args))...} {
     static_assert(std::same_as<T, U>, "gsh::StaticArr::StaticArr / The type specified in " "gsh::ArrInitTag is different from value_type.");
     static_assert(sizeof...(Args) == N, "gsh::StaticArr::StaticArr / The number of arguments is " "greater than the length of the array.");
   }
-  template<class... Args>
-  constexpr StaticArr(ArrInitTag<void>, Args&&... args) : elems{static_cast<T>(std::forward<Args>(args))...} { static_assert(sizeof...(Args) <= N, "gsh::StaticArr::StaticArr / The number of arguments is " "greater than the length of the array."); }
+  template<class... Args> constexpr StaticArr(ArrInitTag<void>, Args&&... args) : elems{static_cast<T>(std::forward<Args>(args))...} { static_assert(sizeof...(Args) <= N, "gsh::StaticArr::StaticArr / The number of arguments is " "greater than the length of the array."); }
   constexpr explicit StaticArr(const value_type& value) {
     for(u32 i = 0; i != N; ++i) std::construct_at(elems + i, value);
   }
-  template<std::input_iterator InputIter>
-  constexpr explicit StaticArr(InputIter first) {
+  template<std::input_iterator InputIter> constexpr explicit StaticArr(InputIter first) {
     for(u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
   }
-  template<std::input_iterator InputIter>
-  constexpr StaticArr(InputIter first, InputIter last) {
+  template<std::input_iterator InputIter> constexpr StaticArr(InputIter first, InputIter last) {
     const u32 n = std::distance(first, last);
     if(n != N) throw gsh::Exception("gsh::StaticArr::StaticArr / The size of the given " "range differs from the size of the array.");
     for(u32 i = 0; i != N; ++first, ++i) std::construct_at(elems + i, *first);
@@ -439,12 +432,10 @@ public:
   constexpr const_reference front() const noexcept { return elems[0]; }
   constexpr reference back() noexcept { return elems[N - 1]; }
   constexpr const_reference back() const noexcept { return elems[N - 1]; }
-  template<std::input_iterator InputIter>
-  constexpr void assign(InputIter first) {
+  template<std::input_iterator InputIter> constexpr void assign(InputIter first) {
     for(u32 i = 0; i != N; ++first, ++i) elems[i] = *first;
   }
-  template<std::input_iterator InputIter>
-  constexpr void assign(InputIter first, const InputIter last) {
+  template<std::input_iterator InputIter> constexpr void assign(InputIter first, const InputIter last) {
     const u32 n = std::distance(first, last);
     if(n != N) throw gsh::Exception("gsh::StaticArr::assign / The size of the given " "range differs from the size of the array.");
     for(u32 i = 0; i != N; ++first, ++i) elems[i] = *first;
@@ -469,31 +460,25 @@ public:
   friend constexpr auto operator<=>(const StaticArr& x, const StaticArr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
   friend constexpr void swap(StaticArr& x, StaticArr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
-template<class U, class... Args>
-StaticArr(ArrInitTag<U>, Args...) -> StaticArr<std::conditional_t<std::is_void_v<U>, std::common_type_t<Args...>, U>, sizeof...(Args)>;
+template<class U, class... Args> StaticArr(ArrInitTag<U>, Args...) -> StaticArr<std::conditional_t<std::is_void_v<U>, std::common_type_t<Args...>, U>, sizeof...(Args)>;
 } // namespace gsh
 namespace std {
-template<class T, gsh::u32 N>
-struct tuple_size<gsh::StaticArr<T, N>> : integral_constant<size_t, N> {};
-template<std::size_t M, class T, gsh::u32 N>
-struct tuple_element<M, gsh::StaticArr<T, N>> {
+template<class T, gsh::u32 N> struct tuple_size<gsh::StaticArr<T, N>> : integral_constant<size_t, N> {};
+template<std::size_t M, class T, gsh::u32 N> struct tuple_element<M, gsh::StaticArr<T, N>> {
   static_assert(M < N, "std::tuple_element<gsh::StaticArr<T, N>> / The index is out of range.");
   using type = T;
 };
 } // namespace std
 namespace gsh {
-template<std::size_t M, class T, u32 N>
-const T& get(const StaticArr<T, N>& a) {
+template<std::size_t M, class T, u32 N> const T& get(const StaticArr<T, N>& a) {
   static_assert(M < N, "gsh::get(gsh::StaticArr<T, N>) / The index is out of range.");
   return a[M];
 }
-template<std::size_t M, class T, u32 N>
-T& get(StaticArr<T, N>& a) {
+template<std::size_t M, class T, u32 N> T& get(StaticArr<T, N>& a) {
   static_assert(M < N, "gsh::get(gsh::StaticArr<T, N>) / The index is out of range.");
   return a[M];
 }
-template<std::size_t M, class T, u32 N>
-T&& get(StaticArr<T, N>&& a) {
+template<std::size_t M, class T, u32 N> T&& get(StaticArr<T, N>&& a) {
   static_assert(M < N, "gsh::get(gsh::StaticArr<T, N>) / The index is out of range.");
   return std::move(a[M]);
 }

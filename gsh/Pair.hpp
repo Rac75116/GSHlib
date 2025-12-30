@@ -2,9 +2,7 @@
 #include "gsh/TypeDef.hpp"
 #include <type_traits>
 #include <utility>
-namespace gsh {
-template<class Key, class Value> struct KeyValuePair;
-}
+namespace gsh { template<class Key, class Value> struct KeyValuePair; }
 namespace std {
 template<class Key, class Value> class tuple_size<gsh::KeyValuePair<Key, Value>> {
 public:
@@ -48,39 +46,21 @@ template<size_t I, class Key, class Value> constexpr decltype(auto) get(const gs
   if constexpr(std::is_void_v<Key> || I == 1) return static_cast<const std::decay_t<decltype(p)>::value_type&&>(p.value);
   else return static_cast<const std::decay_t<decltype(p)>::key_type&&>(p.key);
 }
-template<class Key, class Value> constexpr auto& get(gsh::KeyValuePair<Key, Value>& p) {
-  return p.key;
-}
-template<class Key, class Value> constexpr auto& get(const gsh::KeyValuePair<Key, Value>& p) {
-  return p.key;
-}
-template<class Key, class Value> constexpr decltype(auto) get(gsh::KeyValuePair<Key, Value>&& p) {
-  return static_cast<std::decay_t<decltype(p)>::key_type&&>(p.key);
-}
-template<class Key, class Value> constexpr decltype(auto) get(const gsh::KeyValuePair<Key, Value>&& p) {
-  return static_cast<const std::decay_t<decltype(p)>::key_type&&>(p.key);
-}
-template<class Value, class Key> constexpr auto& get(gsh::KeyValuePair<Key, Value>& p) {
-  return p.value;
-}
-template<class Value, class Key> constexpr auto& get(const gsh::KeyValuePair<Key, Value>& p) {
-  return p.value;
-}
-template<class Value, class Key> constexpr decltype(auto) get(gsh::KeyValuePair<Key, Value>&& p) {
-  return static_cast<typename std::decay_t<decltype(p)>::value_type&&>(p.value);
-}
-template<class Value, class Key> constexpr decltype(auto) get(const gsh::KeyValuePair<Key, Value>&& p) {
-  return static_cast<const std::decay_t<decltype(p)>::value_type&&>(p.value);
-}
+template<class Key, class Value> constexpr auto& get(gsh::KeyValuePair<Key, Value>& p) { return p.key; }
+template<class Key, class Value> constexpr auto& get(const gsh::KeyValuePair<Key, Value>& p) { return p.key; }
+template<class Key, class Value> constexpr decltype(auto) get(gsh::KeyValuePair<Key, Value>&& p) { return static_cast<std::decay_t<decltype(p)>::key_type&&>(p.key); }
+template<class Key, class Value> constexpr decltype(auto) get(const gsh::KeyValuePair<Key, Value>&& p) { return static_cast<const std::decay_t<decltype(p)>::key_type&&>(p.key); }
+template<class Value, class Key> constexpr auto& get(gsh::KeyValuePair<Key, Value>& p) { return p.value; }
+template<class Value, class Key> constexpr auto& get(const gsh::KeyValuePair<Key, Value>& p) { return p.value; }
+template<class Value, class Key> constexpr decltype(auto) get(gsh::KeyValuePair<Key, Value>&& p) { return static_cast<typename std::decay_t<decltype(p)>::value_type&&>(p.value); }
+template<class Value, class Key> constexpr decltype(auto) get(const gsh::KeyValuePair<Key, Value>&& p) { return static_cast<const std::decay_t<decltype(p)>::value_type&&>(p.value); }
 namespace internal {
 template<class T> void TestImplicitConstructor(T);
 template<class T> concept IsImplicitlyDefaultConstructible = requires { TestImplicitConstructor<const T&>({}); };
-template<class T, class U> constexpr auto SynthThreeWay(const T& t, const U& u)
-requires requires {
+template<class T, class U> constexpr auto SynthThreeWay(const T& t, const U& u) requires requires {
   static_cast<bool>(t < u);
   static_cast<bool>(u < t);
-}
-{
+} {
   if constexpr(std::three_way_comparable_with<T, U>) {
     return t <=> u;
   } else {
@@ -215,7 +195,5 @@ public:
 };
 } // namespace gsh
 namespace std {
-template<class Key, class Value> constexpr void swap(gsh::KeyValuePair<Key, Value>& p, gsh::KeyValuePair<Key, Value>& q) noexcept(noexcept(p.swap(q))) {
-  p.swap(q);
-}
+template<class Key, class Value> constexpr void swap(gsh::KeyValuePair<Key, Value>& p, gsh::KeyValuePair<Key, Value>& q) noexcept(noexcept(p.swap(q))) { p.swap(q); }
 } // namespace std

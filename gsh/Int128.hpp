@@ -9,9 +9,7 @@ GSH_INTERNAL_INLINE constexpr std::pair<u64, u64> Mulu128(u64 muler, u64 mulnd) 
   __uint128_t tmp = static_cast<__uint128_t>(muler) * mulnd;
   return {tmp >> 64, tmp};
 }
-GSH_INTERNAL_INLINE constexpr u64 Mulu128High(u64 muler, u64 mulnd) noexcept {
-  return static_cast<u64>((static_cast<__uint128_t>(muler) * mulnd) >> 64);
-}
+GSH_INTERNAL_INLINE constexpr u64 Mulu128High(u64 muler, u64 mulnd) noexcept { return static_cast<u64>((static_cast<__uint128_t>(muler) * mulnd) >> 64); }
 GSH_INTERNAL_INLINE constexpr std::pair<u64, u64> Divu128(u64 high, u64 low, u64 div) noexcept {
   if constexpr(sizeof(void*) == 8) {
     if(!std::is_constant_evaluated()) {

@@ -15,11 +15,10 @@ namespace gsh {
 namespace internal {
 template<class Spec> concept IsMergeSortTreeSpecImplemented = requires(Spec spec) {
   typename Spec::value_type;
-  std::declval<Subrange<typename Spec::value_type>>();
   // Spec may be stateful or stateless.
   // Optional hooks (enabled if present):
-  //   - on_build_begin(node_cnt)
-  //   - build_node(node_index, sorted_subrange)
+  //   - on_build_begin(level, len)
+  //   - build_node(level, start, sorted_subrange)
   //   - on_build_end()
   //   - aux(node_index)
   //   - comp(value, value)
@@ -62,10 +61,10 @@ public:
   using difference_type = i32;
 private:
   using range_type = decltype(Subrange(std::declval<const value_type*>(), std::declval<const value_type*>()));
-  constexpr static bool spec_has_on_build_begin = requires { spec.on_build_begin(0u); };
-  constexpr static bool spec_has_build_node = requires { spec.build_node(0u, std::declval<range_type>()); };
+  constexpr static bool spec_has_on_build_begin = requires { spec.on_build_begin(0u, 0u); };
+  constexpr static bool spec_has_build_node = requires { spec.build_node(0u, 0u, std::declval<range_type>()); };
   constexpr static bool spec_has_on_build_end = requires { spec.on_build_end(); };
-  constexpr static bool spec_has_aux = requires { spec.aux(0u); };
+  constexpr static bool spec_has_aux = requires { spec.aux(0u, 0u); };
   u32 n;
   Vec<value_type> seq;
   GSH_INTERNAL_INLINE constexpr bool comp(const value_type& a, const value_type& b) const {
@@ -75,21 +74,19 @@ private:
     if constexpr(spec_has_comp) return spec.comp(a, b);
     else return Less()(a, b);
   }
-  template<class Iter, class Sent> constexpr void build(Iter iter, Sent sent) {
-    n = std::ranges::distance(iter, sent);
-    if(n == 0) return;
-    u32 dep = std::bit_width(n - 1) + 1;
-    seq.resize(n * dep);
-    if constexpr(spec_has_on_build_begin) {
-      u32 node_cnt = 0;
-      for(u32 i = 0; i != dep; ++i) node_cnt += (n + (1u << i) - 1) >> i;
-      seq.on_build_begin(node_cnt);
+  template<class Iter> constexpr void build(Iter iter, Iter sent) {
+    n = static_cast<u32>(std::ranges::distance(iter, sent));
+    if(n == 0) {
+      clear();
+      return;
     }
+    u32 dep = static_cast<u32>(std::bit_width(n - 1u) + 1u);
+    seq.resize(n * dep);
+    if constexpr(spec_has_on_build_begin) spec.on_build_begin(dep, n);
     for(u32 i = 0; i != n; ++i) {
       seq[i] = *(iter++);
-      if constexpr(spec_has_build_node) spec.build_node(i, range_type(seq.data() + i, seq.data() + i + 1));
+      if constexpr(spec_has_build_node) spec.build_node(0, i, range_type(seq.data() + i, seq.data() + i + 1));
     }
-    u32 node_idx = n;
     for(u32 i = 0; i != dep - 1; ++i) {
       for(u32 j = 0; j < n; j += (2u << i)) {
         u32 len1 = 1u << i;
@@ -106,8 +103,7 @@ private:
         }
         while(a != idx2) seq[c++] = seq[a++];
         while(b != idx3) seq[c++] = seq[b++];
-        if constexpr(spec_has_build_node) spec.build_node(node_idx, range_type(seq.data() + idx4, seq.data() + c));
-        ++node_idx;
+        if constexpr(spec_has_build_node) spec.build_node(i + 1, j >> (i + 1), range_type(seq.data() + idx4, seq.data() + c));
       }
     }
     if constexpr(spec_has_on_build_end) spec.on_build_end();
@@ -115,23 +111,79 @@ private:
 public:
   constexpr MergeSortTree() = default;
   constexpr explicit MergeSortTree(Spec spec) : spec(spec) {}
-  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr MergeSortTree(Iter iter, Sent sent, Spec spec = Spec()) : spec(spec) { build(iter, sent); }
+  template<std::forward_iterator Iter> constexpr MergeSortTree(Iter iter, Iter sent, Spec spec = Spec()) : spec(spec) { build(iter, sent); }
   constexpr MergeSortTree(std::initializer_list<value_type> init, Spec spec = Spec()) : MergeSortTree(init.begin(), init.end(), spec) {}
-  template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter iter, Sent sent) { build(iter, sent); }
+  template<std::forward_iterator Iter> constexpr void assign(Iter iter, Iter sent) { build(iter, sent); }
   template<class Comp = Less> constexpr void assign(std::initializer_list<value_type> init) { assign(init.begin(), init.end()); }
-  constexpr void clear();
-  constexpr bool empty() const;
-  constexpr u32 size() const;
-  template<class F> constexpr void visit(u32 l, u32 r, F&& f) const {
+  constexpr void clear() {
+    n = 0;
+    seq.clear();
+    if constexpr(spec_has_on_build_begin) spec.on_build_begin(0u);
+  }
+  constexpr bool empty() const { return n == 0; }
+  constexpr u32 size() const { return n; }
+  template<class F> constexpr void visit(u32 l, u32 r, F f) const {
 #ifndef NDEBUG
     if(l > r || r > n) throw Exception("MergeSortTree::visit: invalid range [", l, ", ", r, ") with size ", n);
 #endif
-    // std::invoke(f, sorted_range, aux) or std::invoke(f, sorted_range)
+    if(l == r) return;
+    while(l < r) {
+      const u32 rem = r - l;
+      u32 len = static_cast<u32>(std::bit_floor(rem));
+      if(l != 0) {
+        const u32 lowbit = l & (~l + 1u);
+        if(lowbit < len) len = lowbit;
+      }
+      const u32 level = static_cast<u32>(std::countr_zero(len));
+      const u32 base = n * level + l;
+      const range_type sorted(seq.data() + base, seq.data() + base + len);
+      if constexpr(spec_has_aux && std::invocable<F, range_type, decltype(spec.aux(0u, 0u))>) std::invoke(f, sorted, spec.aux(level, l >> level));
+      else std::invoke(f, sorted);
+      l += len;
+    }
   }
-  constexpr u32 count_less_or_equal(u32 l, u32 r, const value_type& value) const;
-  constexpr u32 count_less_than(u32 l, u32 r, const value_type& value) const;
-  constexpr u32 count_greater_or_equal(u32 l, u32 r, const value_type& value) const;
-  constexpr u32 count_greater_then(u32 l, u32 r, const value_type& value) const;
-  constexpr u32 count_equal(u32 l, u32 r, const value_type& value) const;
+  constexpr u32 count_less_or_equal(u32 l, u32 r, const value_type& value) const {
+    u32 ans = 0;
+    visit(l, r, [&](const range_type sorted) {
+      const auto it = sorted.upper_bound(value);
+      ans += static_cast<u32>(std::ranges::distance(sorted.begin(), it));
+    });
+    return ans;
+  }
+  constexpr u32 count_less_than(u32 l, u32 r, const value_type& value) const {
+    u32 ans = 0;
+    visit(l, r, [&](const range_type sorted) {
+      const auto it = sorted.lower_bound(value);
+      ans += static_cast<u32>(std::ranges::distance(sorted.begin(), it));
+    });
+    return ans;
+  }
+  constexpr u32 count_greater_or_equal(u32 l, u32 r, const value_type& value) const {
+    u32 ans = 0;
+    visit(l, r, [&](const range_type sorted) {
+      const auto it = sorted.lower_bound(value);
+      const u32 less = static_cast<u32>(std::ranges::distance(sorted.begin(), it));
+      ans += static_cast<u32>(sorted.size()) - less;
+    });
+    return ans;
+  }
+  constexpr u32 count_greater_then(u32 l, u32 r, const value_type& value) const {
+    u32 ans = 0;
+    visit(l, r, [&](const range_type sorted) {
+      const auto it = sorted.upper_bound(value);
+      const u32 leq = static_cast<u32>(std::ranges::distance(sorted.begin(), it));
+      ans += static_cast<u32>(sorted.size()) - leq;
+    });
+    return ans;
+  }
+  constexpr u32 count_equal(u32 l, u32 r, const value_type& value) const {
+    u32 ans = 0;
+    visit(l, r, [&](const range_type sorted) {
+      const auto it1 = sorted.lower_bound(value);
+      const auto it2 = sorted.upper_bound(value);
+      ans += static_cast<u32>(std::ranges::distance(it1, it2));
+    });
+    return ans;
+  }
 };
 } // namespace gsh

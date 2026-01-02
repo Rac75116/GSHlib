@@ -20,8 +20,7 @@ template<class Spec> concept IsLazySegmentSpecImplemented = requires(Spec spec) 
   { spec.composition(std::declval<typename Spec::operator_type>(), std::declval<typename Spec::operator_type>()) } -> std::same_as<typename Spec::operator_type>;
   { spec.id() } -> std::same_as<typename Spec::operator_type>;
 };
-} // namespace internal
-template<class Op, class E, class Mapping, class Composition, class Id> requires internal::IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
+template<class Op, class E, class Mapping, class Composition, class Id> requires IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
   [[no_unique_address]] mutable Op op_func;
   [[no_unique_address]] mutable E e_func;
   [[no_unique_address]] mutable Mapping mapping_func;
@@ -38,10 +37,13 @@ public:
   constexpr operator_type composition(const operator_type& f, const operator_type& g) const { return static_cast<operator_type>(std::invoke(composition_func, f, g)); }
   constexpr operator_type id() const { return static_cast<operator_type>(std::invoke(id_func)); }
 };
+}
+template<class Op, class E, class Mapping, class Composition, class Id> constexpr internal::LazySegmentSpec<Op, E, Mapping, Composition, Id> MakeLazySegmentSpec() { return {}; }
+template<class Op, class E, class Mapping, class Composition, class Id> constexpr internal::LazySegmentSpec<Op, E, Mapping, Composition, Id> MakeLazySegmentSpec(Op op, E e, Mapping mapping, Composition composition, Id id) { return {op, e, mapping, composition, id}; }
 namespace segment_specs {
-template<class T> class RangeAddRangeMin : public decltype(LazySegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
-template<class T> class RangeAddRangeMax : public decltype(LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
-template<class T> class RangeAddRangeSum : public decltype(LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{x.first + f * static_cast<T>(x.second), x.second}; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAddRangeMin : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAddRangeMax : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAddRangeSum : public decltype(internal::LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{x.first + f * static_cast<T>(x.second), x.second}; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
 } // namespace segment_specs
 template<class Spec> requires internal::IsLazySegmentSpecImplemented<Spec> class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;

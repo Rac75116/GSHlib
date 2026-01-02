@@ -66,7 +66,7 @@ private:
   constexpr static bool spec_has_build_node = requires { spec.build_node(0u, std::declval<range_type>()); };
   constexpr static bool spec_has_on_build_end = requires { spec.on_build_end(); };
   constexpr static bool spec_has_aux = requires { spec.aux(0u); };
-  size_type n;
+  u32 n;
   Vec<value_type> seq;
   GSH_INTERNAL_INLINE constexpr bool comp(const value_type& a, const value_type& b) const {
     constexpr bool spec_has_comp = requires {
@@ -121,11 +121,17 @@ public:
   template<class Comp = Less> constexpr void assign(std::initializer_list<value_type> init) { assign(init.begin(), init.end()); }
   constexpr void clear();
   constexpr bool empty() const;
-  constexpr size_type size() const;
-  template<class F> constexpr void visit(size_type l, size_type r, F&& f) const {
+  constexpr u32 size() const;
+  template<class F> constexpr void visit(u32 l, u32 r, F&& f) const {
 #ifndef NDEBUG
     if(l > r || r > n) throw Exception("MergeSortTree::visit: invalid range [", l, ", ", r, ") with size ", n);
 #endif
+    // std::invoke(f, sorted_range, aux) or std::invoke(f, sorted_range)
   }
+  constexpr u32 count_less_or_equal(u32 l, u32 r, const value_type& value) const;
+  constexpr u32 count_less_than(u32 l, u32 r, const value_type& value) const;
+  constexpr u32 count_greater_or_equal(u32 l, u32 r, const value_type& value) const;
+  constexpr u32 count_greater_then(u32 l, u32 r, const value_type& value) const;
+  constexpr u32 count_equal(u32 l, u32 r, const value_type& value) const;
 };
 } // namespace gsh

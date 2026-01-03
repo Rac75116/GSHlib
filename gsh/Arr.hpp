@@ -108,9 +108,9 @@ public:
   constexpr const_iterator begin() const noexcept { return elems; }
   constexpr iterator end() noexcept { return elems + N; }
   constexpr const_iterator end() const noexcept { return elems + N; }
-  constexpr u32 size() const noexcept { return N; }
-  constexpr u32 max_size() const noexcept { return N; }
-  [[nodiscard]] constexpr bool empty() const noexcept { return N != 0; }
+  constexpr static u32 size() noexcept { return N; }
+  constexpr static u32 max_size() noexcept { return N; }
+  [[nodiscard]] constexpr static bool empty() noexcept { return N != 0; }
   constexpr T* data() noexcept { return elems; }
   constexpr const T* data() const noexcept { return elems; }
   template<std::input_iterator InputIter> constexpr void assign(InputIter first) {
@@ -129,16 +129,6 @@ public:
     using std::swap;
     for(u32 i = 0; i != N; ++i) swap(elems[i], x.elems[i]);
   }
-  friend constexpr bool operator==(const StaticArr& x, const StaticArr& y) {
-    bool res = true;
-    for(u32 i = 0; i != N;) {
-      const bool f = x.elems[i] == y.elems[i];
-      res &= f;
-      i = f ? i + 1 : N;
-    }
-    return res;
-  }
-  friend constexpr auto operator<=>(const StaticArr& x, const StaticArr& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
   friend constexpr void swap(StaticArr& x, StaticArr& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
 } // namespace gsh

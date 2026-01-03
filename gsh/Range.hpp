@@ -4,14 +4,10 @@
 #include "TypeDef.hpp"
 #include "internal/ArrVecFwd.hpp"
 #include "internal/Operation.hpp"
+#include <algorithm>
 #include <cctype>
-#include <concepts>
-#include <iterator>
 #include <ranges>
 #include <set>
-#include <tuple>
-#include <type_traits>
-#include <utility>
 namespace gsh {
 enum class RangeKind { Sized, Unsized };
 namespace internal {
@@ -326,6 +322,8 @@ public:
     return tmp;
   }
 };
+template<std::ranges::forward_range T, std::ranges::forward_range U> requires (std::derived_from<T, ViewInterface<T, typename T::value_type>> || std::derived_from<U, ViewInterface<U, typename U::value_type>>) auto operator<=>(const T& a, const U& b) { return std::lexicographical_compare_three_way(std::ranges::begin(a), std::ranges::end(a), std::ranges::begin(b), std::ranges::end(b)); }
+template<std::ranges::forward_range T, std::ranges::forward_range U> requires (std::derived_from<T, ViewInterface<T, typename T::value_type>> || std::derived_from<U, ViewInterface<U, typename U::value_type>>) auto operator==(const T& a, const U& b) { return std::ranges::equal(std::ranges::begin(a), std::ranges::end(a), std::ranges::begin(b), std::ranges::end(b)); }
 namespace internal {
 template<class T, class U> concept difference_from = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 template<class From, class To> concept convertible_to_non_slicing = std::convertible_to<From, To> && !(std::is_pointer_v<std::decay_t<From>> && std::is_pointer_v<std::decay_t<To>> && !std::convertible_to<std::remove_pointer_t<std::decay_t<From>> (*)[], std::remove_pointer_t<std::decay_t<To>> (*)[]>);

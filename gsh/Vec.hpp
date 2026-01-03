@@ -5,11 +5,6 @@
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include "internal/UtilMacro.hpp"
-#include <algorithm>
-#include <initializer_list>
-#include <iterator>
-#include <type_traits>
-#include <utility>
 namespace gsh {
 template<class T, class Alloc = std::allocator<T>> requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)class Vec : public ViewInterface<Vec<T, Alloc>, T> {
   using traits = std::allocator_traits<Alloc>;
@@ -280,17 +275,6 @@ public:
   }
   constexpr void abandon() noexcept { ptr = nullptr, len = 0, cap = 0; }
   constexpr allocator_type get_allocator() const noexcept { return alloc; }
-  friend constexpr bool operator==(const Vec& x, const Vec& y) {
-    if(x.len != y.len) return false;
-    bool res = true;
-    for(u32 i = 0; i != x.len;) {
-      const bool f = *(x.ptr + i) == *(y.ptr + i);
-      res &= f;
-      i = f ? i + 1 : x.len;
-    }
-    return res;
-  }
-  friend constexpr auto operator<=>(const Vec& x, const Vec& y) { return std::lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end()); }
   friend constexpr void swap(Vec& x, Vec& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };
 template<std::input_iterator InputIter, class Alloc = std::allocator<typename std::iterator_traits<InputIter>::value_type>> Vec(InputIter, InputIter, Alloc = Alloc()) -> Vec<typename std::iterator_traits<InputIter>::value_type, Alloc>;

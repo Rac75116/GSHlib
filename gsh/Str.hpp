@@ -145,6 +145,10 @@ public:
   constexpr StrViewImpl(const CharT* str, std::size_t len) : base(str, len) {}
   template<class It, class End> constexpr StrViewImpl(It begin, End end) : base(begin, end) {}
   template<class R> constexpr explicit StrViewImpl(R&& r) : base(std::forward<R>(r)) {}
+  constexpr auto begin() { return base::begin(); }
+  constexpr auto begin() const { return base::begin(); }
+  constexpr auto end() { return base::end(); }
+  constexpr auto end() const { return base::end(); }
   template<class... Args> constexpr auto find(Args&&... args) const { return view::find(std::forward<Args>(args)...); }
   template<class... Args> constexpr auto rfind(Args&&... args) const { return view::rfind(std::forward<Args>(args)...); }
   template<class... Args> constexpr auto copy(Args&&... args) const { return view::copy(std::forward<Args>(args)...); }

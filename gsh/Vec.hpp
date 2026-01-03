@@ -14,46 +14,39 @@ namespace gsh {
 template<class T, class Alloc = std::allocator<T>> requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)class Vec : public ViewInterface<Vec<T, Alloc>, T> {
   using traits = std::allocator_traits<Alloc>;
 public:
-  using reference = T&;
-  using const_reference = const T&;
   using iterator = T*;
   using const_iterator = const T*;
-  using size_type = u32;
-  using difference_type = i32;
-  using value_type = T;
-  using allocator_type = Alloc;
-  using pointer = typename traits::pointer;
-  using const_pointer = typename traits::const_pointer;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+  using allocator_type = Alloc;
 private:
   [[no_unique_address]] allocator_type alloc;
-  pointer ptr = nullptr;
-  size_type len = 0, cap = 0;
+  T* ptr = nullptr;
+  u32 len = 0, cap = 0;
 public:
   constexpr Vec() noexcept(noexcept(Alloc())) {}
   constexpr explicit Vec(const allocator_type& a) noexcept : alloc(a) {}
-  constexpr explicit Vec(size_type n, const Alloc& a = Alloc()) : alloc(a) {
+  constexpr explicit Vec(u32 n, const Alloc& a = Alloc()) : alloc(a) {
     if(n == 0) [[unlikely]]
       return;
     ptr = traits::allocate(alloc, n);
     len = n, cap = n;
-    for(size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
+    for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
   }
-  constexpr explicit Vec(const size_type n, const value_type& value, const allocator_type& a = Alloc()) : alloc(a) {
+  constexpr explicit Vec(const u32 n, const T& value, const allocator_type& a = Alloc()) : alloc(a) {
     if(n == 0) [[unlikely]]
       return;
     ptr = traits::allocate(alloc, n);
     len = n, cap = n;
-    for(size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
+    for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + i, value);
   }
   template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr Vec(Iter first, Sent last, const allocator_type& a = Alloc()) : alloc(a) {
-    const size_type n = std::ranges::distance(first, last);
+    const u32 n = std::ranges::distance(first, last);
     if(n == 0) [[unlikely]]
       return;
     ptr = traits::allocate(alloc, n);
     len = n, cap = n;
-    size_type i = 0;
+    u32 i = 0;
     for(; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
   }
   constexpr Vec(const Vec& x) : Vec(x, traits::select_on_container_copy_construction(x.alloc)) {}
@@ -62,7 +55,7 @@ public:
     if(len == 0) [[unlikely]]
       return;
     ptr = traits::allocate(alloc, cap);
-    for(size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
+    for(u32 i = 0; i != len; ++i) traits::construct(alloc, ptr + i, *(x.ptr + i));
   }
   constexpr Vec(Vec&& x, const allocator_type& a) : alloc(a) {
     if(traits::is_always_equal || x.get_allocator() == a) {
@@ -73,21 +66,21 @@ public:
         return;
       len = x.len, cap = x.cap;
       ptr = traits::allocate(alloc, len);
-      for(size_type i = 0; i != len; ++i) traits::construct(alloc, ptr + i, std::move(*(x.ptr + i)));
+      for(u32 i = 0; i != len; ++i) traits::construct(alloc, ptr + i, std::move(*(x.ptr + i)));
       traits::deallocate(x.alloc, x.ptr, x.cap);
       x.ptr = nullptr, x.len = 0, x.cap = 0;
     }
   }
-  constexpr Vec(std::initializer_list<value_type> il, const allocator_type& a = Alloc()) : Vec(il.begin(), il.end(), a) {}
+  constexpr Vec(std::initializer_list<T> il, const allocator_type& a = Alloc()) : Vec(il.begin(), il.end(), a) {}
   constexpr ~Vec() {
     if(cap != 0) {
-      for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
       traits::deallocate(alloc, ptr, cap);
     }
   }
   constexpr Vec& operator=(const Vec& x) {
     if(&x == this) return *this;
-    for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+    for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
     if(traits::propagate_on_container_copy_assignment::value || cap < x.len) {
       if(cap != 0) traits::deallocate(alloc, ptr, cap);
       if constexpr(traits::propagate_on_container_copy_assignment::value) alloc = x.alloc;
@@ -95,13 +88,13 @@ public:
       ptr = traits::allocate(alloc, cap);
     }
     len = x.len;
-    for(size_type i = 0; i != len; ++i) *(ptr + i) = *(x.ptr + i);
+    for(u32 i = 0; i != len; ++i) *(ptr + i) = *(x.ptr + i);
     return *this;
   }
   constexpr Vec& operator=(Vec&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
     if(&x == this) return *this;
     if(cap != 0) {
-      for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
       traits::deallocate(alloc, ptr, cap);
     }
     if constexpr(traits::propagate_on_container_move_assignment::value) alloc = std::move(x.alloc);
@@ -109,7 +102,7 @@ public:
     x.ptr = nullptr, x.len = 0, x.cap = 0;
     return *this;
   }
-  constexpr Vec& operator=(std::initializer_list<value_type> init) {
+  constexpr Vec& operator=(std::initializer_list<T> init) {
     assign(init.begin(), init.end());
     return *this;
   }
@@ -117,65 +110,57 @@ public:
   constexpr const_iterator begin() const noexcept { return ptr; }
   constexpr iterator end() noexcept { return ptr + len; }
   constexpr const_iterator end() const noexcept { return ptr + len; }
-  constexpr const_iterator cbegin() const noexcept { return ptr; }
-  constexpr const_iterator cend() const noexcept { return ptr + len; }
-  constexpr reverse_iterator rbegin() noexcept { return reverse_iterator(ptr + len); }
-  constexpr const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(ptr + len); }
-  constexpr reverse_iterator rend() noexcept { return reverse_iterator(ptr); }
-  constexpr const_reverse_iterator rend() const noexcept { return const_reverse_iterator(ptr); }
-  constexpr const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(ptr + len); }
-  constexpr const_reverse_iterator crend() const noexcept { return const_reverse_iterator(ptr); }
-  constexpr size_type size() const noexcept { return len; }
-  constexpr size_type max_size() const noexcept {
+  constexpr u32 size() const noexcept { return len; }
+  constexpr u32 max_size() const noexcept {
     const auto tmp = traits::max_size(alloc);
     return tmp < 2147483647 ? tmp : 2147483647;
   }
-  constexpr void resize(const size_type sz) {
+  constexpr void resize(const u32 sz) {
     if(cap < sz) {
-      const pointer new_ptr = traits::allocate(alloc, sz);
+      T* new_ptr = traits::allocate(alloc, sz);
       if(cap != 0) {
-        for(size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-        for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
+        for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         traits::deallocate(alloc, ptr, cap);
       }
       ptr = new_ptr;
-      for(size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
+      for(u32 i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
       len = sz, cap = sz;
     } else if(len < sz) {
-      for(size_type i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
+      for(u32 i = len; i != sz; ++i) traits::construct(alloc, ptr + i);
       len = sz;
     } else {
-      for(size_type i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
       len = sz;
     }
   }
-  constexpr void resize(const size_type sz, const value_type& c) {
+  constexpr void resize(const u32 sz, const T& c) {
     if(cap < sz) {
-      const pointer new_ptr = traits::allocate(sz);
+      T* new_ptr = traits::allocate(alloc, sz);
       if(cap != 0) {
-        for(size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-        for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
+        for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         traits::deallocate(alloc, ptr, cap);
       }
       ptr = new_ptr;
-      for(size_type i = len; i != sz; ++i) traits::construct(alloc, *(ptr + i), c);
+      for(u32 i = len; i != sz; ++i) traits::construct(alloc, ptr + i, c);
       len = sz, cap = sz;
     } else if(len < sz) {
-      for(size_type i = len; i != sz; ++i) traits::construct(alloc, *(ptr + i), c);
+      for(u32 i = len; i != sz; ++i) traits::construct(alloc, ptr + i, c);
       len = sz;
     } else {
-      for(size_type i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = sz; i != len; ++i) traits::destroy(alloc, ptr + i);
       len = sz;
     }
   }
-  constexpr size_type capacity() const noexcept { return cap; }
+  constexpr u32 capacity() const noexcept { return cap; }
   [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
-  constexpr void reserve(const size_type n) {
+  constexpr void reserve(const u32 n) {
     if(n > cap) {
-      const pointer new_ptr = traits::allocate(alloc, n);
+      T* new_ptr = traits::allocate(alloc, n);
       if(cap != 0) {
-        for(size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-        for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
+        for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         traits::deallocate(alloc, ptr, cap);
       }
       ptr = new_ptr, cap = n;
@@ -188,96 +173,58 @@ public:
       return;
     }
     if(len != cap) {
-      const pointer new_ptr = traits::allocate(alloc, len);
-      for(size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
-      for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      T* new_ptr = traits::allocate(alloc, len);
+      for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
       traits::deallocate(alloc, ptr, cap);
       ptr = new_ptr, cap = len;
     }
   }
-  GSH_INTERNAL_INLINE constexpr reference operator[](const size_type n) {
-#ifndef NDEBUG
-    if(n >= len) [[unlikely]]
-      throw gsh::Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
-#endif
-    Assume(n < len);
-    return *(ptr + n);
-  }
-  GSH_INTERNAL_INLINE constexpr const_reference operator[](const size_type n) const {
-#ifndef NDEBUG
-    if(n >= len) [[unlikely]]
-      throw gsh::Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
-#endif
-    Assume(n < len);
-    return *(ptr + n);
-  }
-  GSH_INTERNAL_INLINE constexpr reference at(const size_type n) {
-    if(n >= len) [[unlikely]]
-      throw gsh::Exception("gsh::Vec::at / The index is out of range. ( n=", n, ", size=", len, " )");
-    return *(ptr + n);
-  }
-  GSH_INTERNAL_INLINE constexpr const_reference at(const size_type n) const {
-    if(n >= len) [[unlikely]]
-      throw gsh::Exception("gsh::Vec::at / The index is out of range. ( n=", n, ", size=", len, " )");
-    return *(ptr + n);
-  }
-  GSH_INTERNAL_INLINE constexpr reference at_unchecked(const size_type n) noexcept {
-    Assume(n < len);
-    return *(ptr + n);
-  }
-  GSH_INTERNAL_INLINE constexpr const_reference at_unchecked(const size_type n) const noexcept {
-    Assume(n < len);
-    return *(ptr + n);
-  }
-  constexpr pointer data() noexcept { return ptr; }
-  constexpr const_pointer data() const noexcept { return ptr; }
-  constexpr reference front() noexcept { return *ptr; }
-  constexpr const_reference front() const noexcept { return *ptr; }
-  constexpr reference back() noexcept { return *(ptr + len - 1); }
-  constexpr const_reference back() const noexcept { return *(ptr + len - 1); }
+  constexpr T* data() noexcept { return ptr; }
+  constexpr const T* data() const noexcept { return ptr; }
   template<std::forward_iterator Iter, std::sentinel_for<Iter> Sent> constexpr void assign(Iter first, Sent last) {
-    const size_type n = std::ranges::distance(first, last);
+    const u32 n = std::ranges::distance(first, last);
     if(n > cap) {
-      for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
       traits::deallocate(alloc, ptr, cap);
       ptr = traits::allocate(alloc, n);
       cap = n;
-      for(size_type i = 0; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
+      for(u32 i = 0; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
     } else if(n > len) {
-      size_type i = 0;
+      u32 i = 0;
       for(; i != len; ++first, ++i) *(ptr + i) = *first;
       for(; i != n; ++first, ++i) traits::construct(alloc, ptr + i, *first);
     } else {
-      for(size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
-      for(size_type i = 0; i != n; ++first, ++i) *(ptr + i) = *first;
+      for(u32 i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = 0; i != n; ++first, ++i) *(ptr + i) = *first;
     }
     len = n;
   }
-  constexpr void assign(const size_type n, const value_type& t) {
+  constexpr void assign(const u32 n, const T& t) {
     if(n > cap) {
-      for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
       traits::deallocate(alloc, ptr, cap);
       ptr = traits::allocate(alloc, n);
       cap = n;
-      for(size_type i = 0; i != n; ++i) traits::construct(alloc, ptr + i, t);
+      for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + i, t);
     } else if(n > len) {
-      size_type i = 0;
+      u32 i = 0;
       for(; i != len; ++i) *(ptr + i) = t;
       for(; i != n; ++i) traits::construct(alloc, ptr + i, t);
     } else {
-      for(size_type i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
-      for(size_type i = 0; i != n; ++i) *(ptr + i) = t;
+      for(u32 i = n; i != len; ++i) traits::destroy(alloc, ptr + i);
+      for(u32 i = 0; i != n; ++i) *(ptr + i) = t;
     }
     len = n;
   }
-  constexpr void assign(std::initializer_list<value_type> il) { assign(il.begin(), il.end()); }
+  constexpr void assign(std::initializer_list<T> il) { assign(il.begin(), il.end()); }
 private:
   constexpr void extend_one() {
     if(len == cap) {
-      const pointer new_ptr = traits::allocate(alloc, cap * 2 + 8);
+      T* new_ptr = traits::allocate(alloc, cap * 2 + 8);
       if(cap != 0) {
-        for(size_type i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
-        for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+        for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+        for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         traits::deallocate(alloc, ptr, cap);
       }
       ptr = new_ptr, cap = cap * 2 + 8;
@@ -292,7 +239,7 @@ public:
     extend_one();
     traits::construct(alloc, ptr + (len++), std::move(x));
   }
-  template<class... Args> constexpr reference emplace_back(Args&&... args) {
+  template<class... Args> constexpr T& emplace_back(Args&&... args) {
     extend_one();
     traits::construct(alloc, ptr + len, std::forward<Args>(args)...);
     return *(ptr + (len++));
@@ -305,11 +252,11 @@ public:
     traits::destroy(alloc, ptr + (--len));
   }
   /*
-  constexpr iterator insert(const const_iterator position, const value_type& x);
-  constexpr iterator insert(const const_iterator position, value_type&& x);
-  constexpr iterator insert(const const_iterator position, const size_type n, const value_type& x);
+  constexpr iterator insert(const const_iterator position, const T& x);
+  constexpr iterator insert(const const_iterator position, T&& x);
+  constexpr iterator insert(const const_iterator position, const u32 n, const T& x);
   template<class InputIter> constexpr iterator insert(const const_iterator position, const InputIter first, const InputIter last);
-  constexpr iterator insert(const const_iterator position, const std::initializer_list<value_type> il);
+  constexpr iterator insert(const const_iterator position, const std::initializer_list<T> il);
   template<class... Args> constexpr iterator emplace(const_iterator position, Args&&... args);
   constexpr iterator erase(const_iterator position);
   constexpr iterator erase(const_iterator first, const_iterator last);
@@ -322,7 +269,7 @@ public:
     if constexpr(traits::propagate_on_container_swap::value) swap(alloc, x.alloc);
   }
   constexpr void clear() {
-    for(size_type i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+    for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
     len = 0;
   }
   constexpr void reset() {
@@ -336,7 +283,7 @@ public:
   friend constexpr bool operator==(const Vec& x, const Vec& y) {
     if(x.len != y.len) return false;
     bool res = true;
-    for(size_type i = 0; i != x.len;) {
+    for(u32 i = 0; i != x.len;) {
       const bool f = *(x.ptr + i) == *(y.ptr + i);
       res &= f;
       i = f ? i + 1 : x.len;

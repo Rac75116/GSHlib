@@ -1,5 +1,4 @@
 #pragma once
-#include "Arr.hpp"
 #include "Exception.hpp"
 #include "Functional.hpp"
 #include "TypeDef.hpp"
@@ -54,27 +53,27 @@ public:
     return res;
   }
   constexpr u32 count_groups() const noexcept { return derived().cnt; }
-  constexpr Arr<u32> extract(u32 n) {
+  constexpr Vec<u32> extract(u32 n) {
 #ifndef NDEBUG
     if(n >= derived().parent.size()) throw gsh::Exception("gsh::internal::UnionFindImpl::extract / The index is out of range. ( n=", n, ", size=", derived().parent.size(), " )");
 #endif
     const i32 nr = derived().root(n);
     u32 ccnt = 0;
     for(u32 i = 0; i != derived().parent.size(); ++i) ccnt += derived().root(i) == nr;
-    Arr<u32> res(ccnt);
+    Vec<u32> res(ccnt);
     for(u32 i = 0, j = 0; i != derived().parent.size(); ++i)
       if(i == static_cast<u32>(nr) || derived().parent[i] == nr) res[j++] = i;
     return res;
   }
-  constexpr Arr<Arr<u32>> groups() {
-    Arr<u32> key(derived().parent.size());
+  constexpr Vec<Vec<u32>> groups() {
+    Vec<u32> key(derived().parent.size());
     u32 cnt = 0;
     for(u32 i = 0; i != derived().parent.size(); ++i) {
       if(derived().parent[i] < 0) key[i] = cnt++;
     }
-    Arr<u32> cnt2(cnt);
+    Vec<u32> cnt2(cnt);
     for(u32 i = 0; i != derived().parent.size(); ++i) ++cnt2[key[derived().root(i)]];
-    Arr<Arr<u32>> res(cnt);
+    Vec<Vec<u32>> res(cnt);
     for(u32 i = 0; i != cnt; ++i) {
       res[i].resize(cnt2[i]);
       cnt2[i] = 0;
@@ -89,7 +88,7 @@ public:
 } // namespace internal
 class UnionFind : public internal::UnionFindImpl<UnionFind> {
   friend class internal::UnionFindImpl<UnionFind>;
-  Arr<i32> parent;
+  Vec<i32> parent;
   u32 cnt = 0;
   constexpr i32 rootimpl(i32 n) noexcept {
     if(parent[n] < 0) return n;
@@ -137,7 +136,7 @@ public:
 };
 class RollbackUnionFind : public internal::UnionFindImpl<RollbackUnionFind> {
   friend class internal::UnionFindImpl<RollbackUnionFind>;
-  Arr<i32> parent;
+  Vec<i32> parent;
   u32 cnt = 0;
   struct change {
     u32 a, b;
@@ -217,8 +216,8 @@ public:
 };
 template<class T = i64, class F = Plus, class I = Negate> class PotentializedUnionFind : public internal::UnionFindImpl<PotentializedUnionFind<T, F, I>> {
   friend class internal::UnionFindImpl<PotentializedUnionFind<T, F, I>>;
-  Arr<i32> parent;
-  Arr<T> diff;
+  Vec<i32> parent;
+  Vec<T> diff;
   u32 cnt = 0;
   [[no_unique_address]] F func{};
   [[no_unique_address]] I inv{};
@@ -314,8 +313,8 @@ public:
 };
 template<class T, class F> class MonoidalUnionFind : public internal::UnionFindImpl<MonoidalUnionFind<T, F>> {
   friend class internal::UnionFindImpl<MonoidalUnionFind<T, F>>;
-  Arr<i32> parent;
-  Arr<T> monoid;
+  Vec<i32> parent;
+  Vec<T> monoid;
   [[no_unique_address]] F func;
   u32 cnt = 0;
   constexpr i32 root(i32 n) noexcept {

@@ -224,7 +224,7 @@ public:
     });
     return ans;
   }
-  constexpr u32 count_greater_then(u32 l, u32 r, const value_type& value) const {
+  constexpr u32 count_greater_than(u32 l, u32 r, const value_type& value) const {
     u32 ans = 0;
     visit(l, r, [&](const range_type sorted) {
       const auto it = sorted.upper_bound(value, [&](const value_type& a, const value_type& b) { return comp(a, b); });

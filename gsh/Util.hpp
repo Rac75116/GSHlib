@@ -2,7 +2,7 @@
 #include "TypeDef.hpp"
 #include "internal/Operation.hpp"
 #include "internal/UtilMacro.hpp"
-#include <bit> //std::bit_cast
+#include <bit>
 #include <cstring>
 #include <type_traits>
 #include <utility>

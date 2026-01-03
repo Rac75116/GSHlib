@@ -1,6 +1,6 @@
 #pragma once
-#include "Arr.hpp"
 #include "TypeDef.hpp"
+#include "Vec.hpp"
 #include "internal/UtilMacro.hpp"
 #include <bit>
 #include <initializer_list>
@@ -9,7 +9,7 @@
 namespace gsh {
 template<class T, class Alloc = std::allocator<T>> class RangeSumQuery {
 protected:
-  Arr<T, Alloc> bit;
+  Vec<T, Alloc> bit;
 public:
   using reference = T&;
   using const_reference = const T&;
@@ -70,8 +70,8 @@ public:
   }
   constexpr void assign(u32 n, const T& u) {
     if(n == 0) return;
-    bit = Arr<value_type, Alloc>(n, get_allocator());
-    Arr<value_type, Alloc> mul(std::bit_width(n), get_allocator());
+    bit = Vec<value_type, Alloc>(n, get_allocator());
+    Vec<value_type, Alloc> mul(std::bit_width(n), get_allocator());
     mul[0] = u;
     for(u32 i = 1, sz = mul.size(); i < sz; ++i) mul[i] = mul[i - 1], mul[i] += mul[i - 1];
     for(u32 i = 0; i != n; ++i) bit[i] = mul[std::countr_zero(i + 1)];

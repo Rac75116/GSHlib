@@ -377,29 +377,10 @@ public:
   template<class U> constexpr u64 build(U x) const noexcept { return ModintImpl<StaticModint64Impl<mod_>, u64>::build(x); }
   constexpr u64 mul(u64 x, u64 y) const noexcept {
     Assume(x < mod_ && y < mod_);
-    auto [hi, lo] = Mulu128(x, y);
+    u128 m = u128(x) * y;
+    u64 hi = m >> 64, lo = m;
     u64 t = (hi << (64 - p) | lo >> p) + (lo & mod_);
     return t < mod_ ? t : t - mod_;
-  }
-};
-template<> class StaticModint64Impl<18446744069414584321u> : public ModintImpl<StaticModint64Impl<18446744069414584321u>, u64> {
-  constexpr static u64 mod_ = 18446744069414584321u;
-public:
-  constexpr StaticModint64Impl() noexcept {}
-  constexpr u64 mod() const noexcept { return mod_; }
-  constexpr u64 build(u32 x) const noexcept { return x; }
-  constexpr u64 build(u64 x) const noexcept { return x - mod_ * (x >= mod_); }
-  template<class U> constexpr u64 build(U x) const noexcept { return ModintImpl::build(x); }
-  constexpr u64 mul(u64 x, u64 y) const noexcept {
-    Assume(x < mod_ && y < mod_);
-    auto [a, b] = Mulu128(x, y);
-    if(b >= mod_) [[unlikely]] { b -= mod_; }
-    u64 c = a & 0xffffffffull, d = a >> 32;
-    u64 f = (c << 32) - c;
-    u64 g = b + f;
-    if(mod_ - b <= f) { g -= mod_; }
-    if(g < d) [[unlikely]] { g += mod_; }
-    return g - d;
   }
 };
 template<u64 mod_> struct SwitchStaticModint {

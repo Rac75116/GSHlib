@@ -437,7 +437,7 @@ public:
 namespace internal {
 template<class T> class BinCoeffTable {
   T mint;
-  Arr<typename T::value_type> fac, finv;
+  Vec<typename T::value_type, std::allocator<typename T::value_type>> fac, finv;
 public:
   using value_type = typename T::value_type;
   constexpr BinCoeffTable(u32 mx, value_type mod) : fac(mx), finv(mx) {
@@ -467,7 +467,7 @@ public:
 };
 template<IsStaticModint T> class BinCoeffTable<T> {
   [[no_unique_address]] T mint;
-  Arr<typename T::value_type> fac, finv;
+  Vec<typename T::value_type, std::allocator<typename T::value_type>> fac, finv;
 public:
   using value_type = typename T::value_type;
   constexpr BinCoeffTable(u32 mx) : fac(mx), finv(mx) {

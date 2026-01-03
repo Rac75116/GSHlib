@@ -30,27 +30,6 @@ public:
   constexpr NoFreeAllocator& operator=(const NoFreeAllocator&) = default;
   template<class U> friend constexpr bool operator==(const NoFreeAllocator&, const NoFreeAllocator<U>&) noexcept { return true; }
 };
-template<class T, u32 Align = 32> class AlignedAllocator {
-public:
-  using value_type = T;
-  using propagate_on_container_move_assignment = std::true_type;
-  using size_type = u32;
-  using difference_type = i32;
-  using is_always_equal = std::true_type;
-  constexpr AlignedAllocator() noexcept {}
-  constexpr AlignedAllocator(const AlignedAllocator&) noexcept {}
-  template<class U> constexpr AlignedAllocator(const AlignedAllocator<U>&) noexcept {}
-  [[nodiscard]] T* allocate(size_type n) { return static_cast<T*>(::operator new(sizeof(T) * n, std::align_val_t(Align))); }
-  void deallocate(T* p, [[maybe_unused]] size_type n) noexcept {
-#ifdef __cpp_sized_deallocation
-    ::operator delete(p, n, std::align_val_t(Align));
-#else
-    ::operator delete(p, std::align_val_t(Align));
-#endif
-  }
-  constexpr AlignedAllocator& operator=(const AlignedAllocator&) = default;
-  template<class U> friend constexpr bool operator==(const AlignedAllocator&, const AlignedAllocator<U>&) noexcept { return true; }
-};
 template<class T, u32 N> class PoolAllocator {
   c8* cur = buf;
   alignas(T) c8 buf[sizeof(T) * N];

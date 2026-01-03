@@ -1,10 +1,10 @@
 #pragma once
 #include "Algorithm.hpp"
-#include "Arr.hpp"
 #include "Int128.hpp"
 #include "Random.hpp"
 #include "Range.hpp"
 #include "TypeDef.hpp"
+#include "Vec.hpp"
 #include "internal/Operation.hpp"
 #include <bit>
 #include <cmath>
@@ -63,8 +63,8 @@ template<class T> constexpr Point3<T> Cross(const Point3<T>& a, const Point3<T>&
 template<class T, class U> constexpr T NormSquare(const Point3<U>& a) { return static_cast<T>(a.x) * static_cast<T>(a.x) + static_cast<T>(a.y) * static_cast<T>(a.y) + static_cast<T>(a.z) * static_cast<T>(a.z); }
 template<class T, class U> constexpr T Dot(const Point3<U>& a, const Point3<U>& b) { return static_cast<T>(a.x) * static_cast<T>(b.x) + static_cast<T>(a.y) * static_cast<T>(b.y) + static_cast<T>(a.z) * static_cast<T>(b.z); }
 template<class T, class U> constexpr Point3<T> Cross(const Point3<U>& a, const Point3<U>& b) { return {static_cast<T>(a.y) * static_cast<T>(b.z) - static_cast<T>(a.z) * static_cast<T>(b.y), static_cast<T>(a.z) * static_cast<T>(b.x) - static_cast<T>(a.x) * static_cast<T>(b.z), static_cast<T>(a.x) * static_cast<T>(b.y) - static_cast<T>(a.y) * static_cast<T>(b.x)}; }
-template<std::ranges::input_range T> requires std::same_as<std::ranges::range_value_t<T>, Point2<i32>> constexpr Arr<Point2<i32>> ArgumentSort(T&& r) {
-  Arr<u128> v(std::ranges::size(r));
+template<std::ranges::input_range T> requires std::same_as<std::ranges::range_value_t<T>, Point2<i32>> constexpr Vec<Point2<i32>> ArgumentSort(T&& r) {
+  Vec<u128> v(std::ranges::size(r));
   for(u32 i = 0; auto&& p : r) {
     auto [x, y] = p;
     u64 ord = 0;
@@ -76,24 +76,25 @@ template<std::ranges::input_range T> requires std::same_as<std::ranges::range_va
     if(x == 0 && y == 0) ord = 4ull << 61;
     else {
       constexpr u64 li = (1ull << 61) - 1;
-      auto [hi, lo] = internal::Mulu128(mn, li);
+      u128 m = u128(mn) * li;
+      u64 hi = m >> 64, lo = m;
       const u64 tmp = internal::Divu128(hi, lo, mx).first;
       ord = id << 61 | (rev ? li - tmp : tmp);
     }
     v[i++] = static_cast<u128>(std::bit_cast<u64>(p)) << 64 | ord;
   }
   v.sort({}, [](u128 x) { return static_cast<u64>(x); });
-  Arr<Point2<i32>> res(v.size());
+  Vec<Point2<i32>> res(v.size());
   for(u32 i = 0, j = v.size(); i != j; ++i) res[i] = std::bit_cast<Point2<i32>>(static_cast<u64>(v[i] >> 64));
   return res;
 }
-template<std::ranges::input_range T> requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<T>>, Point2<i32>> constexpr Arr<Point2<i32>> ConvexHull(T&& r) {
+template<std::ranges::input_range T> requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<T>>, Point2<i32>> constexpr Vec<Point2<i32>> ConvexHull(T&& r) {
   const u32 n = std::ranges::size(r);
   if(n <= 1) return r;
   u32 m = 1;
-  Arr<Point2<i32>> p(n);
+  Vec<Point2<i32>> p(n);
   {
-    Arr<u64> sorted(n);
+    Vec<u64> sorted(n);
     for(u32 i = 0; auto&& e : r) sorted[i++] = std::bit_cast<u64>(e) ^ 0x8000000080000000;
     sorted.sort();
     p[0] = std::bit_cast<Point2<i32>>(sorted[0] ^ 0x8000000080000000);
@@ -106,7 +107,7 @@ template<std::ranges::input_range T> requires std::same_as<std::remove_cvref_t<s
     p.resize(m);
     return p;
   }
-  Arr<Point2<i32>> ch(2 * m);
+  Vec<Point2<i32>> ch(2 * m);
   u32 k = 0;
   for(u32 i = 0; i < m; ch[k++] = p[i++]) {
     while(k >= 2 && Cross<i64>(ch[k - 1] - ch[k - 2], p[i] - ch[k - 2]) <= 0) --k;

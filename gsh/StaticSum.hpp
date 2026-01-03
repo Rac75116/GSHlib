@@ -1,8 +1,8 @@
 #pragma once
-#include "Arr.hpp"
+#include "Vec.hpp"
 namespace gsh {
 template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum {
-  Arr<T, Alloc> prefix_sum;
+  Vec<T, Alloc> prefix_sum;
   [[no_unique_address]] F func;
   [[no_unique_address]] I inv;
   constexpr void build() {
@@ -20,16 +20,10 @@ public:
   constexpr StaticSum() : func(), inv() {}
   constexpr StaticSum(const allocator_type& a) noexcept : prefix_sum(a) {}
   constexpr StaticSum(const F& func, const I& inv, const allocator_type& a = allocator_type()) : prefix_sum(a), func(func), inv(inv) {}
-  constexpr StaticSum(Arr<T, Alloc>&& v, const F& func = F(), const I& inv = I(), const allocator_type& a = allocator_type()) noexcept : prefix_sum(std::move(v), a), func(func), inv(inv) { build(); }
-  constexpr StaticSum(Vec<T, Alloc>&& v, const F& func = F(), const I& inv = I(), const allocator_type& a = allocator_type()) noexcept : prefix_sum(a), func(func), inv(inv) { set(std::move(v)); }
+  constexpr StaticSum(Vec<T, Alloc>&& v, const F& func = F(), const I& inv = I(), const allocator_type& a = allocator_type()) noexcept : prefix_sum(std::move(v), a), func(func), inv(inv) { build(); }
   template<std::ranges::forward_range R> constexpr StaticSum(R&& r, const F& func = F(), const I& inv = I(), const allocator_type& a = allocator_type()) : prefix_sum(std::ranges::begin(r), std::ranges::end(r), a), func(func), inv(inv) { build(); }
-  constexpr void set(Arr<T, Alloc>&& v) noexcept {
-    prefix_sum = std::move(v);
-    build();
-  }
   constexpr void set(Vec<T, Alloc>&& v) noexcept {
-    prefix_sum.assign(ArrNoInit, v.data(), v.size());
-    v.abandon();
+    prefix_sum = std::move(v);
     build();
   }
   template<std::ranges::input_range R> constexpr void set(R&& r) {
@@ -59,7 +53,7 @@ template<class R> concept Range2D = std::ranges::forward_range<R> && std::ranges
 template<class R> concept Range3D = std::ranges::forward_range<R> && Range2D<std::ranges::range_value_t<R>>;
 } // namespace internal
 template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum2D {
-  Arr<T, Alloc> prefix_sum;
+  Vec<T, Alloc> prefix_sum;
   u32 row_size = 0;
   [[no_unique_address]] F func;
   [[no_unique_address]] I inv;
@@ -86,7 +80,7 @@ public:
     }
     u32 h = std::ranges::distance(itr, sent);
     u32 w = std::ranges::size(*itr);
-    prefix_sum.assign(ArrNoInit, w * h);
+    prefix_sum.assign(w * h);
     row_size = w;
     u32 idx = 0;
     while(itr != sent) {
@@ -133,7 +127,7 @@ public:
 };
 template<internal::Range2D R, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<std::ranges::range_value_t<std::ranges::range_value_t<R>>>> StaticSum2D(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum2D<std::ranges::range_value_t<std::ranges::range_value_t<R>>, F, I, Alloc>;
 template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum3D {
-  Arr<T, Alloc> prefix_sum;
+  Vec<T, Alloc> prefix_sum;
   u32 y_size = 0;
   u32 z_size = 0;
   [[no_unique_address]] F func;
@@ -163,7 +157,7 @@ public:
     u32 h = std::ranges::distance(itr, sent);
     u32 w = std::ranges::size(*itr);
     u32 d = std::ranges::size(*std::ranges::begin(*itr));
-    prefix_sum.assign(ArrNoInit, h * w * d);
+    prefix_sum.assign(h * w * d);
     y_size = w;
     z_size = d;
     u32 idx = 0;

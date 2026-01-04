@@ -2,7 +2,17 @@
 #include "Memory.hpp"
 #include "Range.hpp"
 #include "Vec.hpp"
+#include <algorithm>
+#include <concepts>
+#include <functional>
+#include <iterator>
+#include <memory>
 #include <optional>
+#include <ranges>
+#include <set>
+#include <type_traits>
+#include <utility>
+#include <variant>
 namespace gsh {
 namespace internal {
 struct IntervalSetEmptyHook {
@@ -14,7 +24,7 @@ template<class Key, class Value = std::monostate> struct Interval {
   Key left, right;
   [[no_unique_address]] Value value;
 };
-template<class Key, class Value = std::monostate, class Comp = Less, class Alloc = SingleAllocator<Interval<Key, Value>>> class IntervalSet : public ViewInterface<IntervalSet<Key, Value, Comp, Alloc>, Interval<Key, Value>> {
+template<class Key, class Value = std::monostate, class Comp = Less, class ValueComp = EqualTo, class Alloc = SingleAllocator<Interval<Key, Value>>> class IntervalSet : public ViewInterface<IntervalSet<Key, Value, Comp, Alloc>, Interval<Key, Value>> {
 public:
   using interval_type = Interval<Key, Value>;
   using bounds_type = Interval<Key, std::monostate>;
@@ -41,6 +51,7 @@ public:
   using const_reverse_iterator = reverse_iterator;
 private:
   [[no_unique_address]] mutable Comp comp;
+  [[no_unique_address]] mutable ValueComp vcomp;
   set_type s;
   using empty_hook = internal::IntervalSetEmptyHook;
   template<class H> constexpr static bool is_empty_hook = std::is_same_v<std::remove_cvref_t<H>, internal::IntervalSetEmptyHook>;
@@ -49,18 +60,21 @@ private:
   static constexpr bool eq_(const Comp& comp, const Key& a, const Key& b) { return !std::invoke(comp, a, b) && !std::invoke(comp, b, a); }
   static constexpr const Key& min_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, b, a) ? b : a; }
   static constexpr const Key& max_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, a, b) ? b : a; }
-  template<class OnAdd> static constexpr Value make_value_(OnAdd& on_add, const Key& l, const Key& r) {
-    if constexpr(is_empty_hook<OnAdd>) {
-      return Value{};
-    } else if constexpr(requires { std::invoke(on_add, l, r); }) {
-      if constexpr(std::is_void_v<std::invoke_result_t<OnAdd&, const Key&, const Key&>>) {
-        std::invoke(on_add, l, r);
-        return Value{};
-      } else {
-        return static_cast<Value>(std::invoke(on_add, l, r));
-      }
+  constexpr bool eq_value_(const Value& a, const Value& b) const {
+    if constexpr(std::is_invocable_r_v<bool, ValueComp&, const Value&, const Value&>) {
+      return std::invoke(vcomp, a, b);
     } else {
-      static_assert(requires { std::invoke(on_add, l, r); }, "OnAdd must be invocable with (l, r)");
+      static_assert(std::is_invocable_r_v<bool, ValueComp&, const Value&, const Value&>, "ValueComp must be invocable as bool(Value, Value)");
+      return false;
+    }
+  }
+  template<class OnAdd> static constexpr void add_hook_(OnAdd& on_add, const Key& l, const Key& r, const Value& value) {
+    if constexpr(!is_empty_hook<OnAdd>) {
+      if constexpr(requires { std::invoke(on_add, l, r, value); }) {
+        std::invoke(on_add, l, r, value);
+      } else {
+        std::invoke(on_add, l, r);
+      }
     }
   }
   template<class OnDel> static constexpr void del_hook_(OnDel& on_del, const value_type& v) {
@@ -72,32 +86,36 @@ private:
       }
     }
   }
-  GSH_INTERNAL_INLINE const_iterator first_maybe_touching_(const Key& l) const {
-    auto it = s.lower_bound(l);
-    if(it != s.begin()) {
-      auto pit = std::prev(it);
-      if(le_(comp, l, pit->right)) it = pit;
-    }
-    return it;
-  }
 public:
-  IntervalSet() : comp(), s(value_compare(comp), Alloc()) {}
-  explicit IntervalSet(const Comp& comp, const Alloc& alloc = Alloc()) : comp(comp), s(value_compare(comp), alloc) {}
-  explicit IntervalSet(const Alloc& alloc) : comp(), s(value_compare(comp), alloc) {}
+  IntervalSet() : comp(), vcomp(), s(value_compare(comp), Alloc()) {}
+  explicit IntervalSet(const Comp& comp, const Alloc& alloc = Alloc()) : comp(comp), vcomp(), s(value_compare(comp), alloc) {}
+  explicit IntervalSet(const Comp& comp, const ValueComp& vcomp, const Alloc& alloc = Alloc()) : comp(comp), vcomp(vcomp), s(value_compare(comp), alloc) {}
+  explicit IntervalSet(const Alloc& alloc) : comp(), vcomp(), s(value_compare(comp), alloc) {}
+  template<class Iter> IntervalSet(Iter first, Iter last, const Comp& comp = Comp(), const ValueComp& vcomp = ValueComp(), const Alloc& alloc = Alloc()) : comp(comp), vcomp(vcomp), s(value_compare(comp), alloc) { insert_range(Subrange(first, last)); }
+  template<class Iter> IntervalSet(Iter first, Iter last, const Alloc& alloc) : IntervalSet(first, last, Comp(), ValueComp(), alloc) {}
+  IntervalSet(std::initializer_list<value_type> init, const Comp& comp = Comp(), const ValueComp& vcomp = ValueComp(), const Alloc& alloc = Alloc()) : IntervalSet(init.begin(), init.end(), comp, vcomp, alloc) {}
+  IntervalSet(std::initializer_list<value_type> init, const Alloc& alloc) : IntervalSet(init.begin(), init.end(), Comp(), ValueComp(), alloc) {}
   IntervalSet(const IntervalSet&) = default;
   IntervalSet(IntervalSet&&) = default;
-  IntervalSet(const IntervalSet& x, const Alloc& alloc) : comp(x.comp), s(x.s, alloc) {}
-  IntervalSet(IntervalSet&& x, const Alloc& alloc) : comp(std::move(x.comp)), s(std::move(x.s), alloc) {}
+  IntervalSet(const IntervalSet& x, const Alloc& alloc) : comp(x.comp), vcomp(x.vcomp), s(x.s, alloc) {}
+  IntervalSet(IntervalSet&& x, const Alloc& alloc) : comp(std::move(x.comp)), vcomp(std::move(x.vcomp)), s(std::move(x.s), alloc) {}
   IntervalSet& operator=(const IntervalSet& x) {
     if(this == &x) return *this;
     comp = x.comp;
+    vcomp = x.vcomp;
     s = x.s;
     return *this;
   }
-  IntervalSet& operator=(IntervalSet&& x) noexcept(noexcept(s = std::move(x.s)) && noexcept(comp = std::move(x.comp))) {
+  IntervalSet& operator=(IntervalSet&& x) noexcept(noexcept(s = std::move(x.s)) && noexcept(comp = std::move(x.comp)) && noexcept(vcomp = std::move(x.vcomp))) {
     if(this == &x) return *this;
     comp = std::move(x.comp);
+    vcomp = std::move(x.vcomp);
     s = std::move(x.s);
+    return *this;
+  }
+  IntervalSet& operator=(std::initializer_list<value_type> init) {
+    clear();
+    insert_range(init);
     return *this;
   }
   allocator_type get_allocator() const noexcept { return s.get_allocator(); }
@@ -113,23 +131,35 @@ public:
   u32 size() const noexcept { return s.size(); }
   u32 max_size() const noexcept { return static_cast<u32>(std::min<std::size_t>(0xffffffffu, s.max_size())); }
   void clear() noexcept { s.clear(); }
-  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(l, r, Value{}, on_add, on_del); }
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, const Value& value, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     if(!lt_(comp, l, r)) return;
+    erase(l, r, on_add, on_del);
     Key nl = l;
     Key nr = r;
-    auto it = first_maybe_touching_(l);
-    while(it != s.end() && le_(comp, it->left, nr)) {
-      nl = min_(comp, nl, it->left);
+    auto it = s.lower_bound(l);
+    if(it != s.begin()) {
+      auto pit = std::prev(it);
+      if(le_(comp, nl, pit->right) && eq_value_(pit->value, value)) {
+        nl = min_(comp, nl, pit->left);
+        nr = max_(comp, nr, pit->right);
+        del_hook_(on_del, *pit);
+        s.erase(pit);
+      }
+    }
+    it = s.lower_bound(nl);
+    while(it != s.end() && le_(comp, it->left, nr) && eq_value_(it->value, value)) {
       nr = max_(comp, nr, it->right);
       auto cur = it++;
       del_hook_(on_del, *cur);
       s.erase(cur);
     }
-    value_type v{nl, nr, make_value_(on_add, nl, nr)};
-    s.emplace_hint(it, std::move(v));
+    add_hook_(on_add, nl, nr, value);
+    s.emplace_hint(it, value_type{nl, nr, value});
   }
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const value_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(v.left, v.right, v.value, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(v.left, v.right, on_add, on_del); }
-  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(std::initializer_list<value_type> init, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) requires std::is_same_v<Value, std::monostate> { insert_range(init, on_add, on_del); }
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(std::initializer_list<value_type> init, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert_range(init, on_add, on_del); }
   template<std::ranges::input_range R, class OnAdd = empty_hook, class OnDel = empty_hook> void insert_range(R&& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     for(const auto& e : r) {
       constexpr bool is_interval = requires {
@@ -137,9 +167,13 @@ public:
         e.right;
       };
       if constexpr(is_interval) {
-        insert(static_cast<Key>(e.left), static_cast<Key>(e.right), on_add, on_del);
+        if constexpr(requires { e.value; } && std::is_convertible_v<decltype(e.value), Value>) {
+          insert(static_cast<Key>(e.left), static_cast<Key>(e.right), static_cast<Value>(e.value), on_add, on_del);
+        } else {
+          insert(static_cast<Key>(e.left), static_cast<Key>(e.right), Value{}, on_add, on_del);
+        }
       } else {
-        insert(static_cast<Key>(e.first), static_cast<Key>(e.second), on_add, on_del);
+        insert(static_cast<Key>(e.first), static_cast<Key>(e.second), Value{}, on_add, on_del);
       }
     }
   }
@@ -153,16 +187,17 @@ public:
     while(it != s.end() && lt_(comp, it->left, r)) {
       const auto a = it->left;
       const auto b = it->right;
+      const Value old_value = it->value;
       auto cur = it++;
       del_hook_(on_del, *cur);
       s.erase(cur);
       if(lt_(comp, a, l)) {
-        value_type v{a, l, make_value_(on_add, a, l)};
-        s.emplace_hint(it, std::move(v));
+        add_hook_(on_add, a, l, old_value);
+        s.emplace_hint(it, value_type{a, l, old_value});
       }
       if(lt_(comp, r, b)) {
-        value_type v{r, b, make_value_(on_add, r, b)};
-        s.emplace_hint(it, std::move(v));
+        add_hook_(on_add, r, b, old_value);
+        s.emplace_hint(it, value_type{r, b, old_value});
         break;
       }
     }
@@ -183,9 +218,10 @@ public:
       }
     }
   }
-  void swap(IntervalSet& x) noexcept(noexcept(s.swap(x.s)) && noexcept(std::swap(comp, x.comp))) {
+  void swap(IntervalSet& x) noexcept(noexcept(s.swap(x.s)) && noexcept(std::swap(comp, x.comp)) && noexcept(std::swap(vcomp, x.vcomp))) {
     using std::swap;
     swap(comp, x.comp);
+    swap(vcomp, x.vcomp);
     s.swap(x.s);
   }
   template<class C2, class OnAdd = empty_hook, class OnDel = empty_hook> void merge(IntervalSet<Key, Value, C2, Alloc>& source, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
@@ -208,17 +244,18 @@ public:
     if(it == s.end()) return;
     const auto a = it->left;
     const auto b = it->right;
+    const Value old_value = it->value;
     if(eq_(comp, a, p) || eq_(comp, b, p)) return;
     auto nxt = std::next(it);
     del_hook_(on_del, *it);
     s.erase(it);
     {
-      value_type v{a, p, make_value_(on_add, a, p)};
-      s.emplace_hint(nxt, std::move(v));
+      add_hook_(on_add, a, p, old_value);
+      s.emplace_hint(nxt, value_type{a, p, old_value});
     }
     {
-      value_type v{p, b, make_value_(on_add, p, b)};
-      s.emplace_hint(nxt, std::move(v));
+      add_hook_(on_add, p, b, old_value);
+      s.emplace_hint(nxt, value_type{p, b, old_value});
     }
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void split(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { split(l, on_add, on_del), split(r, on_add, on_del); }
@@ -321,4 +358,58 @@ public:
   key_compare key_comp() const { return comp; }
   value_compare value_comp() const { return value_compare(comp); }
 };
+template<class InputIterator, class Compare = Less, class Allocator = SingleAllocator<typename std::iterator_traits<InputIterator>::value_type>> requires requires {
+  typename std::iterator_traits<InputIterator>::value_type;
+  requires requires(const typename std::iterator_traits<InputIterator>::value_type& v) {
+    v.left;
+    v.right;
+    v.value;
+  };
+} IntervalSet(InputIterator, InputIterator, Compare = Compare(), Allocator = Allocator()) -> IntervalSet<std::remove_cvref_t<decltype(std::declval<typename std::iterator_traits<InputIterator>::value_type>().left)>, std::remove_cvref_t<decltype(std::declval<typename std::iterator_traits<InputIterator>::value_type>().value)>, Compare, EqualTo, Allocator>;
+template<class InputIterator, class Compare, class ValueCompare, class Allocator> requires requires {
+  typename std::iterator_traits<InputIterator>::value_type;
+  requires requires(const typename std::iterator_traits<InputIterator>::value_type& v) {
+    v.left;
+    v.right;
+    v.value;
+  };
+} IntervalSet(InputIterator, InputIterator, Compare, ValueCompare, Allocator) -> IntervalSet<std::remove_cvref_t<decltype(std::declval<typename std::iterator_traits<InputIterator>::value_type>().left)>, std::remove_cvref_t<decltype(std::declval<typename std::iterator_traits<InputIterator>::value_type>().value)>, Compare, ValueCompare, Allocator>;
+template<class Key, class Value = std::monostate, class Compare = Less, class Allocator = SingleAllocator<Interval<Key, Value>>> IntervalSet(std::initializer_list<Interval<Key, Value>>, Compare = Compare(), Allocator = Allocator()) -> IntervalSet<Key, Value, Compare, EqualTo, Allocator>;
+template<class Key, class Value, class Compare, class ValueCompare, class Allocator> IntervalSet(std::initializer_list<Interval<Key, Value>>, Compare, ValueCompare, Allocator) -> IntervalSet<Key, Value, Compare, ValueCompare, Allocator>;
+template<class InputIterator, class Allocator> requires requires {
+  typename std::iterator_traits<InputIterator>::value_type;
+  requires requires(const typename std::iterator_traits<InputIterator>::value_type& v) {
+    v.left;
+    v.right;
+    v.value;
+  };
+} IntervalSet(InputIterator, InputIterator, Allocator) -> IntervalSet<std::remove_cvref_t<decltype(std::declval<typename std::iterator_traits<InputIterator>::value_type>().left)>, std::remove_cvref_t<decltype(std::declval<typename std::iterator_traits<InputIterator>::value_type>().value)>, Less, EqualTo, Allocator>;
+template<class Key, class Value = std::monostate, class Allocator = SingleAllocator<Interval<Key, Value>>> IntervalSet(std::initializer_list<Interval<Key, Value>>, Allocator) -> IntervalSet<Key, Value, Less, EqualTo, Allocator>;
+template<class InputIterator, class Compare = Less, class Pair = typename std::iterator_traits<InputIterator>::value_type, class Key = std::remove_cvref_t<decltype(std::declval<Pair>().first)>, class Allocator = SingleAllocator<Interval<Key, std::monostate>>> requires requires {
+  typename std::iterator_traits<InputIterator>::value_type;
+  requires std::same_as<std::remove_cvref_t<decltype(std::declval<Pair>().first)>, std::remove_cvref_t<decltype(std::declval<Pair>().second)>>;
+  requires requires(const Pair& v) {
+    v.first;
+    v.second;
+  };
+} IntervalSet(InputIterator, InputIterator, Compare = Compare(), Allocator = Allocator()) -> IntervalSet<Key, std::monostate, Compare, EqualTo, Allocator>;
+template<class InputIterator, class Compare, class ValueCompare, class Pair = typename std::iterator_traits<InputIterator>::value_type, class Key = std::remove_cvref_t<decltype(std::declval<Pair>().first)>, class Allocator = SingleAllocator<Interval<Key, std::monostate>>> requires requires {
+  typename std::iterator_traits<InputIterator>::value_type;
+  requires std::same_as<std::remove_cvref_t<decltype(std::declval<Pair>().first)>, std::remove_cvref_t<decltype(std::declval<Pair>().second)>>;
+  requires requires(const Pair& v) {
+    v.first;
+    v.second;
+  };
+} IntervalSet(InputIterator, InputIterator, Compare, ValueCompare, Allocator) -> IntervalSet<Key, std::monostate, Compare, ValueCompare, Allocator>;
+template<class Key, class Compare = Less, class Allocator = SingleAllocator<Interval<Key, std::monostate>>> IntervalSet(std::initializer_list<std::pair<Key, Key>>, Compare = Compare(), Allocator = Allocator()) -> IntervalSet<Key, std::monostate, Compare, EqualTo, Allocator>;
+template<class Key, class Compare, class ValueCompare, class Allocator> IntervalSet(std::initializer_list<std::pair<Key, Key>>, Compare, ValueCompare, Allocator) -> IntervalSet<Key, std::monostate, Compare, ValueCompare, Allocator>;
+template<class InputIterator, class Pair = typename std::iterator_traits<InputIterator>::value_type, class Key = std::remove_cvref_t<decltype(std::declval<Pair>().first)>, class Allocator = SingleAllocator<Interval<Key, std::monostate>>> requires requires {
+  typename std::iterator_traits<InputIterator>::value_type;
+  requires std::same_as<std::remove_cvref_t<decltype(std::declval<Pair>().first)>, std::remove_cvref_t<decltype(std::declval<Pair>().second)>>;
+  requires requires(const Pair& v) {
+    v.first;
+    v.second;
+  };
+} IntervalSet(InputIterator, InputIterator, Allocator) -> IntervalSet<Key, std::monostate, Less, EqualTo, Allocator>;
+template<class Key, class Allocator = SingleAllocator<Interval<Key, std::monostate>>> IntervalSet(std::initializer_list<std::pair<Key, Key>>, Allocator) -> IntervalSet<Key, std::monostate, Less, EqualTo, Allocator>;
 } // namespace gsh

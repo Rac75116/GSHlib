@@ -13,12 +13,6 @@ struct IsPrime8 {
   constexpr static u64 flag_table[4] = {2891462833508853932u, 9223979663092122248u, 9234666804958202376u, 577166812715155618u};
   GSH_INTERNAL_INLINE constexpr static bool calc(const u8 n) noexcept { return (flag_table[n / 64] >> (n % 64)) & 1; }
 };
-struct IsPrime16 {
-  constexpr static u64 flag_table[512] = {
-#include "internal/PrimeFlag.txt"
-  };
-  GSH_INTERNAL_INLINE constexpr static bool calc(const u16 x) noexcept { return x == 2 || (x % 2 == 1 && (flag_table[x / 128] & (1ull << (x % 128 / 2)))); }
-};
 /**
  * 
  * The algorithm in this library is based on Bradley Berg's method.
@@ -150,8 +144,8 @@ struct IsPrime64 {
 } // namespace internal
 // @brief Prime number determination
 constexpr bool IsPrime(const u64 x) noexcept {
-  if(x < 65536u) {
-    return internal::IsPrime16::calc(x);
+  if(x < 256u) {
+    return internal::IsPrime8::calc(x);
   } else {
     if(x % 2 == 0 || x % 3 == 0 || x % 5 == 0 || x % 7 == 0 || x % 11 == 0 || x % 13 == 0 || x % 17 == 0 || x % 19 == 0) return false;
     if(x <= 0xffffffff) return internal::IsPrime32::calc(x);
@@ -322,7 +316,7 @@ inline u64* FactorizeSub64(u64 n, u64* res) noexcept {
     if(TinyPrimes[0] == 0) {
       u32 cnt = 0;
       for(u32 i = 0; i != (1 << 16); ++i) {
-        if(IsPrime16::calc(i)) TinyPrimes[cnt++] = i;
+        if(IsPrime(i)) TinyPrimes[cnt++] = i;
       }
       for(u32 i = 0; i != 6542; ++i) { InvPrimes[i] = 0xffffffffffffffff / TinyPrimes[i] + 1; }
     }

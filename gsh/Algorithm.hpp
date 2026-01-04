@@ -440,7 +440,7 @@ template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less>
         *last = x;
         ++last;
       } else {
-        T* loc = LowerBound(Subrange{begin, last - 1}, x, comp, proj);
+        T* loc = Subrange{begin, last - 1}.lower_bound(x, comp, proj);
         idx[i++] = loc - begin;
         *loc = x;
       }
@@ -463,7 +463,7 @@ template<std::ranges::forward_range R, class Proj = Identity, class Comp = Less>
       *last = x;
       ++last;
     } else {
-      T* loc = LowerBound(Subrange{begin, last - 1}, x, comp, proj);
+      T* loc = Subrange{begin, last - 1}.lower_bound(x, comp, proj);
       *loc = x;
     }
   }

@@ -27,31 +27,6 @@ struct u16dig_pad;
 } // namespace io
 template<class T> class Formatter;
 namespace internal {
-#ifndef GSH_USE_COMPILE_TIME_CALCULATION
-template<bool Flag> auto InttoStr = [] {
-  struct {
-    c8* table;
-  } res;
-  static c8 table[40004] = {};
-  res.table = table;
-  if constexpr(Flag) {
-    for(u32 i = 0; i != 10000; ++i) {
-      res.table[4 * i + 0] = i < 1000 ? ' ' : (i / 1000 + '0');
-      res.table[4 * i + 1] = i < 100 ? ' ' : (i / 100 % 10 + '0');
-      res.table[4 * i + 2] = i < 10 ? ' ' : (i / 10 % 10 + '0');
-      res.table[4 * i + 3] = (i % 10 + '0');
-    }
-  } else {
-    for(u32 i = 0; i != 10000; ++i) {
-      res.table[4 * i + 0] = (i / 1000 + '0');
-      res.table[4 * i + 1] = (i / 100 % 10 + '0');
-      res.table[4 * i + 2] = (i / 10 % 10 + '0');
-      res.table[4 * i + 3] = (i % 10 + '0');
-    }
-  }
-  return res;
-}();
-#else
 template<bool Flag> constexpr auto InttoStr = [] {
   struct {
     c8 table[40004] = {};
@@ -73,7 +48,6 @@ template<bool Flag> constexpr auto InttoStr = [] {
   }
   return res;
 }();
-#endif
 template<bool Flag = false, class Stream> constexpr void Formatu16(Stream&& stream, u16 n) {
   auto *cur = stream.current(), *p = cur;
   auto copy1 = [&](u16 x) {

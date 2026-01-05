@@ -213,6 +213,26 @@ public:
     len = n;
   }
   constexpr void assign(std::initializer_list<T> il) { assign(il.begin(), il.end()); }
+#ifdef NDEBUG
+  GSH_INTERNAL_INLINE
+#endif
+  constexpr T& operator[](u32 n) {
+#ifndef NDEBUG
+    if(n >= len) [[unlikely]]
+      throw Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
+#endif
+    return ptr[n];
+  };
+#ifdef NDEBUG
+  GSH_INTERNAL_INLINE
+#endif
+  constexpr const T& operator[](u32 n) const {
+#ifndef NDEBUG
+    if(n >= len) [[unlikely]]
+      throw Exception("gsh::Vec::operator[] / The index is out of range. ( n=", n, ", size=", len, " )");
+#endif
+    return ptr[n];
+  }
 private:
   constexpr void extend_one() {
     if(len == cap) {

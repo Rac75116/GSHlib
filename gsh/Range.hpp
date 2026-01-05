@@ -43,7 +43,7 @@ template<class D, class V> requires std::is_class_v<D> && std::same_as<D, std::r
       throw Exception("gsh::ViewInterface::check_index / The index is out of range. ( n=", n, ", size=", sz, " )");
   }
   GSH_INTERNAL_INLINE constexpr void check_index_on_debug(u32 n) const {
-#ifndef DEBUG
+#ifndef NDEBUG
     check_index(n);
 #else
     Assume(n < get_size());

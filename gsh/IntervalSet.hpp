@@ -56,12 +56,12 @@ private:
   set_type s;
   using empty_hook = internal::IntervalSetEmptyHook;
   template<class H> constexpr static bool is_empty_hook = std::is_same_v<std::remove_cvref_t<H>, internal::IntervalSetEmptyHook>;
-  static constexpr bool lt_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, a, b); }
-  static constexpr bool le_(const Comp& comp, const Key& a, const Key& b) { return !std::invoke(comp, b, a); }
-  static constexpr bool eq_(const Comp& comp, const Key& a, const Key& b) { return !std::invoke(comp, a, b) && !std::invoke(comp, b, a); }
-  static constexpr const Key& min_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, b, a) ? b : a; }
-  static constexpr const Key& max_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, a, b) ? b : a; }
-  constexpr bool eq_value_(const Value& a, const Value& b) const {
+  GSH_INTERNAL_INLINE static constexpr bool lt_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, a, b); }
+  GSH_INTERNAL_INLINE static constexpr bool le_(const Comp& comp, const Key& a, const Key& b) { return !std::invoke(comp, b, a); }
+  GSH_INTERNAL_INLINE static constexpr bool eq_(const Comp& comp, const Key& a, const Key& b) { return !std::invoke(comp, a, b) && !std::invoke(comp, b, a); }
+  GSH_INTERNAL_INLINE static constexpr const Key& min_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, b, a) ? b : a; }
+  GSH_INTERNAL_INLINE static constexpr const Key& max_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, a, b) ? b : a; }
+  GSH_INTERNAL_INLINE constexpr bool eq_value_(const Value& a, const Value& b) const {
     if constexpr(std::is_same_v<Value, std::monostate>) {
       return true;
     } else if constexpr(std::is_invocable_r_v<bool, ValueComp&, const Value&, const Value&>) {
@@ -71,7 +71,7 @@ private:
       return false;
     }
   }
-  template<class OnAdd> static constexpr void add_hook_(OnAdd& on_add, const Key& l, const Key& r, const Value& value) {
+  template<class OnAdd> GSH_INTERNAL_INLINE static constexpr void add_hook_(OnAdd& on_add, const Key& l, const Key& r, const Value& value) {
     if constexpr(!is_empty_hook<OnAdd>) {
       if constexpr(requires { std::invoke(on_add, l, r, value); }) {
         std::invoke(on_add, l, r, value);
@@ -80,7 +80,7 @@ private:
       }
     }
   }
-  template<class OnDel> static constexpr void del_hook_(OnDel& on_del, const value_type& v) {
+  template<class OnDel> GSH_INTERNAL_INLINE static constexpr void del_hook_(OnDel& on_del, const value_type& v) {
     if constexpr(!is_empty_hook<OnDel>) {
       if constexpr(requires { std::invoke(on_del, v.left, v.right, v.value); }) {
         std::invoke(on_del, v.left, v.right, v.value);
@@ -92,21 +92,21 @@ private:
   struct shard_slot {
     bool has = false;
     alignas(value_type) unsigned char buf[sizeof(value_type)];
-    value_type* ptr() { return std::launder(reinterpret_cast<value_type*>(buf)); }
-    const value_type* ptr() const { return std::launder(reinterpret_cast<const value_type*>(buf)); }
-    void reset() {
+    GSH_INTERNAL_INLINE value_type* ptr() { return std::launder(reinterpret_cast<value_type*>(buf)); }
+    GSH_INTERNAL_INLINE const value_type* ptr() const { return std::launder(reinterpret_cast<const value_type*>(buf)); }
+    GSH_INTERNAL_INLINE void reset() {
       if(has) {
         ptr()->~value_type();
         has = false;
       }
     }
-    void emplace(const Key& l, const Key& r, const Value& v) {
+    GSH_INTERNAL_INLINE void emplace(const Key& l, const Key& r, const Value& v) {
       reset();
       ::new((void*)buf) value_type(l, r, v);
       has = true;
     }
-    value_type& get() { return *ptr(); }
-    const value_type& get() const { return *ptr(); }
+    GSH_INTERNAL_INLINE value_type& get() { return *ptr(); }
+    GSH_INTERNAL_INLINE const value_type& get() const { return *ptr(); }
     ~shard_slot() { reset(); }
   };
 public:
@@ -308,10 +308,6 @@ public:
       add_hook_(on_add, p, b, old_value);
       s.emplace_hint(nxt, value_type{p, b, old_value});
     }
-  }
-  template<class OnAdd = empty_hook, class OnDel = empty_hook> void split(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
-    split(v.left, on_add, on_del);
-    split(v.right, on_add, on_del);
   }
   template<class K, class F = Plus> void slide(const K& k, F func = F()) {
     Vec<value_type> v;

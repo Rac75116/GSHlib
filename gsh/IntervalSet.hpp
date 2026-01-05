@@ -24,7 +24,7 @@ template<class Key, class Value = std::monostate> struct Interval {
   Key left, right;
   [[no_unique_address]] Value value;
 };
-template<class Key, class Value = std::monostate, class Comp = Less, class ValueComp = EqualTo, class Alloc = SingleAllocator<Interval<Key, Value>>> class IntervalSet : public ViewInterface<IntervalSet<Key, Value, Comp, Alloc>, Interval<Key, Value>> {
+template<class Key, class Value = std::monostate, class Comp = Less, class ValueComp = EqualTo, class Alloc = SingleAllocator<Interval<Key, Value>>> class IntervalSet : public ViewInterface<IntervalSet<Key, Value, Comp, ValueComp, Alloc>, Interval<Key, Value>> {
 public:
   using interval_type = Interval<Key, Value>;
   using bounds_type = Interval<Key, std::monostate>;
@@ -131,34 +131,63 @@ public:
   u32 size() const noexcept { return s.size(); }
   u32 max_size() const noexcept { return static_cast<u32>(std::min<std::size_t>(0xffffffffu, s.max_size())); }
   void clear() noexcept { s.clear(); }
-  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(l, r, Value{}, on_add, on_del); }
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) requires std::same_as<Value, std::monostate> { insert(l, r, Value{}, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, const Value& value, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     if(!lt_(comp, l, r)) return;
-    erase(l, r, on_add, on_del);
     Key nl = l;
     Key nr = r;
     auto it = s.lower_bound(l);
     if(it != s.begin()) {
       auto pit = std::prev(it);
-      if(le_(comp, nl, pit->right) && eq_value_(pit->value, value)) {
-        nl = min_(comp, nl, pit->left);
-        nr = max_(comp, nr, pit->right);
+      if(!le_(comp, pit->right, nl)) {
+        const auto a = pit->left;
+        const auto b = pit->right;
+        const Value old_value = pit->value;
         del_hook_(on_del, *pit);
-        s.erase(pit);
+        it = s.erase(pit);
+        if(eq_value_(old_value, value)) {
+          nl = min_(comp, nl, a);
+          nr = max_(comp, nr, b);
+        } else {
+          if(lt_(comp, a, nl)) {
+            add_hook_(on_add, a, nl, old_value);
+            s.emplace_hint(it, value_type{a, nl, old_value});
+          }
+          if(lt_(comp, nr, b)) {
+            add_hook_(on_add, nr, b, old_value);
+            s.emplace_hint(it, value_type{nr, b, old_value});
+            add_hook_(on_add, nl, nr, value);
+            s.emplace_hint(it, value_type{nl, nr, value});
+            return;
+          }
+        }
       }
     }
-    it = s.lower_bound(nl);
-    while(it != s.end() && le_(comp, it->left, nr) && eq_value_(it->value, value)) {
+    while(it != s.end() && lt_(comp, it->left, nr)) {
+      const auto b = it->right;
+      const Value old_value = it->value;
+      del_hook_(on_del, *it);
+      it = s.erase(it);
+      if(eq_value_(old_value, value)) {
+        nr = max_(comp, nr, b);
+      } else {
+        if(lt_(comp, nr, b)) {
+          add_hook_(on_add, nr, b, old_value);
+          s.emplace_hint(it, value_type{nr, b, old_value});
+          break;
+        }
+      }
+    }
+    while(it != s.end() && eq_(comp, it->left, nr) && eq_value_(it->value, value)) {
       nr = max_(comp, nr, it->right);
-      auto cur = it++;
-      del_hook_(on_del, *cur);
-      s.erase(cur);
+      del_hook_(on_del, *it);
+      it = s.erase(it);
     }
     add_hook_(on_add, nl, nr, value);
     s.emplace_hint(it, value_type{nl, nr, value});
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const value_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(v.left, v.right, v.value, on_add, on_del); }
-  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(v.left, v.right, on_add, on_del); }
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) requires (!std::same_as<Value, std::monostate>) { insert(v.left, v.right, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(std::initializer_list<value_type> init, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert_range(init, on_add, on_del); }
   template<std::ranges::input_range R, class OnAdd = empty_hook, class OnDel = empty_hook> void insert_range(R&& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     for(const auto& e : r) {
@@ -188,9 +217,8 @@ public:
       const auto a = it->left;
       const auto b = it->right;
       const Value old_value = it->value;
-      auto cur = it++;
-      del_hook_(on_del, *cur);
-      s.erase(cur);
+      del_hook_(on_del, *it);
+      it = s.erase(it);
       if(lt_(comp, a, l)) {
         add_hook_(on_add, a, l, old_value);
         s.emplace_hint(it, value_type{a, l, old_value});
@@ -224,21 +252,21 @@ public:
     swap(vcomp, x.vcomp);
     s.swap(x.s);
   }
-  template<class C2, class OnAdd = empty_hook, class OnDel = empty_hook> void merge(IntervalSet<Key, Value, C2, Alloc>& source, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void merge(IntervalSet& source, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     if constexpr(std::is_same_v<Value, std::monostate> && is_empty_hook<OnAdd> && is_empty_hook<OnDel> && std::allocator_traits<Alloc>::is_always_equal::value) {
-      if(source.size() <= s.size()) {
-        insert_range(source.s);
+      if(source.size() <= size()) {
+        insert_range(source);
         source.clear();
       } else {
-        source.insert_range(s);
+        source.insert_range(*this);
         (*this) = std::move(source);
       }
     } else {
-      insert_range(source.s, on_add, on_del);
+      insert_range(source, on_add, on_del);
       source.clear();
     }
   }
-  template<class C2, class OnAdd = empty_hook, class OnDel = empty_hook> void merge(IntervalSet<Key, Value, C2, Alloc>&& source, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { merge(source, on_add, on_del); }
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void merge(IntervalSet&& source, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { merge(source, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void split(const Key& p, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     auto it = find(p);
     if(it == s.end()) return;
@@ -258,7 +286,6 @@ public:
       s.emplace_hint(nxt, value_type{p, b, old_value});
     }
   }
-  template<class OnAdd = empty_hook, class OnDel = empty_hook> void split(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { split(l, on_add, on_del), split(r, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void split(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { split(v.left, v.right, on_add, on_del); }
   template<class K, class F = Plus> void slide(const K& k, F func = F()) {
     Vec<value_type> v;

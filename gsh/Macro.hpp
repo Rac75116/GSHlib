@@ -38,16 +38,20 @@ public:
   constexpr InputAdapter(T& r) noexcept : ref(r) {}
   template<class U> constexpr operator U() const { return ref.template read<U>().val(); }
   template<class... Args> constexpr auto operator()(Args&&... args) const { return with_options<Args...>(ref, std::forward<Args>(args)...); }
-  template<class... Args> constexpr auto tied_containers(u32 n) const {
+  template<class... Args> constexpr auto tied_containers(i64 n) const {
     std::tuple<Args...> containers;
     std::tuple<Parser<typename Args::value_type>...> parsers;
     [&]<std::size_t... I>(std::index_sequence<I...>) {
       auto reserve = [&](auto& container) {
-        if constexpr(requires { container.reserve(n); }) container.reserve(n);
+        if constexpr(requires { container.reserve(static_cast<std::size_t>(n)); }) {
+          container.reserve(static_cast<std::size_t>(n));
+        } else if constexpr(requires { container.reserve(n); }) {
+          container.reserve(n);
+        }
       };
       (..., reserve(std::get<I>(containers)));
     }(std::make_index_sequence<sizeof...(Args)>());
-    for(u32 i = 0; i != n; ++i) {
+    for(i64 i = 0; i != n; ++i) {
       [&]<std::size_t... I>(std::index_sequence<I...>) {
         auto add_value = [&]<class C>(C& container, auto& parser) {
           if constexpr(requires { container.push_back(parser(ref)); }) container.push_back(parser(ref));

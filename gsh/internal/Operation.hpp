@@ -34,8 +34,8 @@ template<class D> class IteratorInterface {
   constexpr D& derived() { return *static_cast<D*>(this); }
   constexpr const D& derived() const { return *static_cast<const D*>(this); }
 public:
-  using size_type = u32;
-  using difference_type = i32;
+  using size_type = i64;
+  using difference_type = i64;
   constexpr D operator++(int) noexcept(std::is_nothrow_copy_constructible_v<D> && noexcept(++derived())) {
     D copy = derived();
     ++derived();

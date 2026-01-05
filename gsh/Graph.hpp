@@ -8,32 +8,32 @@
 #include <utility>
 namespace gsh {
 template<class W = void> class Edge {
-  u32 t = 0;
+  i64 t = 0;
   W w{};
 public:
-  constexpr Edge(u32 _t) : t(_t) {}
-  constexpr Edge(u32 _t, W _w) : t(_t), w(_w) {}
-  constexpr u32 to() const noexcept { return t; }
+  constexpr Edge(i64 _t) : t(_t) {}
+  constexpr Edge(i64 _t, W _w) : t(_t), w(_w) {}
+  constexpr i64 to() const noexcept { return t; }
   constexpr W& weight() noexcept { return w; }
   constexpr const W& weight() const noexcept { return w; }
-  constexpr operator u32() const noexcept { return t; }
+  constexpr operator i64() const noexcept { return t; }
 };
 template<> class Edge<void> {
-  u32 t = 0;
+  i64 t = 0;
 public:
-  constexpr Edge(u32 _t) noexcept : t(_t) {}
-  constexpr Edge(u32 _t, u32 _w) : t(_t) {
+  constexpr Edge(i64 _t) noexcept : t(_t) {}
+  constexpr Edge(i64 _t, i64 _w) : t(_t) {
     if(_w != 1) throw gsh::Exception("gsh::Edge<void>::Edge / The weight is not 1.");
   }
-  constexpr u32 to() const noexcept { return t; }
-  constexpr u32 weight() const noexcept { return 1; }
-  constexpr operator u32() const noexcept { return t; }
+  constexpr i64 to() const noexcept { return t; }
+  constexpr i64 weight() const noexcept { return 1; }
+  constexpr operator i64() const noexcept { return t; }
 };
 } // namespace gsh
 namespace std {
-template<class W> class tuple_size<gsh::Edge<W>> : integral_constant<size_t, 2> {};
+template<class W> class tuple_size<gsh::Edge<W>> : integral_constant<std::size_t, 2> {};
 template<class W> class tuple_element<0, gsh::Edge<W>> {
-  using type = gsh::u32;
+  using type = gsh::i64;
 };
 } // namespace std
 namespace gsh {
@@ -50,19 +50,19 @@ template<std::size_t M, class W> auto get(Edge<W>& e) {
 // gsh::graph_format::(DOK, LIL, COO, CRS, Matrix, Grid, Generative, Functional)
 namespace graph_format {
 template<class W> class CRS {
-  Vec<std::pair<Edge<W>, u32>> storage;
-  Arr<u32> tail;
+  Vec<std::pair<Edge<W>, i64>> storage;
+  Vec<i64> tail;
   template<bool IsConst> class adjacency_list {
     using storage_ptr_type = std::conditional_t<IsConst, typename decltype(storage)::const_iterator, typename decltype(storage)::iterator>;
     storage_ptr_type storage_ptr;
-    u32 idx;
+    i64 idx;
   public:
     class iterator {
       storage_ptr_type storage_ptr;
-      u32 current_idx;
-      constexpr iterator(storage_ptr_type p, u32 i) : storage_ptr(p), current_idx(i) {}
+      i64 current_idx;
+      constexpr iterator(storage_ptr_type p, i64 i) : storage_ptr(p), current_idx(i) {}
     public:
-      using difference_type = i32;
+      using difference_type = i64;
       using value_type = Edge<W>;
       using pointer = decltype(&storage_ptr->first);
       using reference = std::add_lvalue_reference<decltype(storage_ptr->first)>;
@@ -82,10 +82,10 @@ template<class W> class CRS {
     class const_iterator {
       using storage_ptr_type = decltype(storage)::const_iterator;
       storage_ptr_type storage_ptr;
-      u32 current_idx;
-      constexpr const_iterator(storage_ptr_type p, u32 i) : storage_ptr(p), current_idx(i) {}
+      i64 current_idx;
+      constexpr const_iterator(storage_ptr_type p, i64 i) : storage_ptr(p), current_idx(i) {}
     public:
-      using difference_type = i32;
+      using difference_type = i64;
       using value_type = Edge<W>;
       using pointer = const value_type*;
       using reference = const value_type&;
@@ -106,21 +106,21 @@ template<class W> class CRS {
   };
 protected:
   constexpr CRS() {}
-  constexpr CRS(u32 n) : tail(n, 0xffffffffu) {}
+  constexpr CRS(i64 n) : tail(n, -1) {}
 public:
   using graph_format = void;
-  constexpr void reserve(u32 m) { storage.reserve(m); }
-  constexpr u32 vertex_count() const noexcept { return tail.size(); }
-  constexpr u32 edge_count() const noexcept { return storage.size(); }
-  constexpr void connect(u32 from, u32 to) {
+  constexpr void reserve(i64 m) { storage.reserve(m); }
+  constexpr i64 vertex_count() const noexcept { return tail.size(); }
+  constexpr i64 edge_count() const noexcept { return storage.size(); }
+  constexpr void connect(i64 from, i64 to) {
     storage.emplace_back(std::piecewise_construct, std::tuple{to}, std::tuple{tail[from]});
     tail[from] = storage.size() - 1;
   }
-  constexpr void connect(u32 from, u32 to, const W& w) {
+  constexpr void connect(i64 from, i64 to, const W& w) {
     storage.emplace_back(std::piecewise_construct, std::tuple{to, w}, std::tuple{tail[from]});
     tail[from] = storage.size() - 1;
   }
-  constexpr void connect(u32 from, u32 to, W&& w) {
+  constexpr void connect(i64 from, i64 to, W&& w) {
     storage.emplace_back(std::piecewise_construct, std::tuple{to, std::move(w)}, std::tuple{tail[from]});
     tail[from] = storage.size() - 1;
   }

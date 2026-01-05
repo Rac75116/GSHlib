@@ -238,7 +238,7 @@ public:
         auto R = derived().mul(tmp, n), t = derived().mul(tmp, R);
         if(derived().same(t, derived().one())) return R;
         auto u = t;
-        for(u32 i = 0; i != S - 1; ++i) u = derived().mul(u, u);
+        for(i64 i = 0; i != static_cast<i64>(S) - 1; ++i) u = derived().mul(u, u);
         if(!derived().same(u, derived().one())) return derived().nan();
         const auto base = [&]() GSH_INTERNAL_INLINE {
           if(md % 3 == 2) return derived().raw(3);
@@ -246,7 +246,7 @@ public:
           if(auto x = md % 7; x == 3 || x == 5 || x == 6) return derived().raw(7);
           if(auto x = md % 11; x == 2 || x == 6 || x == 7 || x == 8 || x == 10) return derived().build(11);
           if(auto x = md % 13; x == 2 || x == 5 || x == 6 || x == 7 || x == 8 || x == 11) return derived().build(13);
-          for(const u32 x : {17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97}) {
+          for(const u64 x : {17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL, 41ULL, 43ULL, 47ULL, 53ULL, 59ULL, 61ULL, 67ULL, 71ULL, 73ULL, 79ULL, 83ULL, 89ULL, 97ULL}) {
             const auto y = derived().build(x);
             if(derived().legendre(y) == -1) return y;
           }
@@ -255,14 +255,14 @@ public:
           return z;
         }();
         const auto z = derived().pow(base, Q);
-        u32 M = S;
+        i64 M = static_cast<i64>(S);
         auto c = z;
         do {
           auto U = derived().mul(t, t);
-          u32 i = 1;
+          i64 i = 1;
           while(!derived().same(U, derived().one())) U = derived().mul(U, U), ++i;
           auto b = c;
-          for(u32 j = 0, k = M - i - 1; j != k; ++j) b = derived().mul(b, b);
+          for(i64 j = 0, k = M - i - 1; j != k; ++j) b = derived().mul(b, b);
           M = i, c = derived().mul(b, b), t = derived().mul(t, c), R = derived().mul(R, b);
         } while(!derived().same(t, derived().one()));
         return derived().abs(R);
@@ -463,7 +463,7 @@ public:
     mod_ = n;
     rs = -static_cast<u128>(n) % n;
     nr = n;
-    for(u32 i = 0; i != 6; ++i) nr *= 2 - n * nr;
+    for(i64 i = 0; i != 6; ++i) nr *= 2 - n * nr;
     np = reduce(1, rs);
   }
   constexpr u64 val(u64 x) const noexcept {

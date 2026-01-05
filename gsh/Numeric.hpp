@@ -5,6 +5,7 @@
 #include <cmath>
 #include <new>
 #include <type_traits>
+#include <utility>
 namespace gsh {
 constexpr u32 CharLength32(u32 x) {
   // clang-format off
@@ -29,10 +30,10 @@ template<class... Bounds> requires (sizeof...(Bounds) != 0 && sizeof...(Bounds) 
 public:
   constexpr InRange(Bounds&&... bounds) : bounds(std::forward<Bounds>(bounds)...) {}
   template<class... Args> requires (sizeof...(Args) == sizeof...(Bounds) / 2) constexpr bool operator()(Args&&... args) {
-    return [&]<u32... I>(std::integer_sequence<u32, I...>) {
-      auto det = [&]<u32 Idx>(std::integral_constant<u32, Idx>, auto&& val) { return std::get<2 * Idx>(bounds) <= val && val < std::get<2 * Idx + 1>(bounds); };
-      return (det(std::integral_constant<u32, I>(), std::forward<Args>(args)) && ...);
-    }(std::make_integer_sequence<u32, sizeof...(Args)>());
+    return [&]<std::size_t... I>(std::index_sequence<I...>) {
+      auto det = [&]<std::size_t Idx>(std::integral_constant<std::size_t, Idx>, auto&& val) { return std::get<2 * Idx>(bounds) <= val && val < std::get<2 * Idx + 1>(bounds); };
+      return (det(std::integral_constant<std::size_t, I>(), std::forward<Args>(args)) && ...);
+    }(std::make_index_sequence<sizeof...(Args)>());
   }
 };
 //@brief Find the largest x for which x * x <= n (https://rsk0315.hatenablog.com/entry/2023/11/07/221428)
@@ -167,7 +168,7 @@ template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj) {
 }
 } // namespace internal
 namespace internal {
-template<u32> struct KthRootImpl {
+template<i64> struct KthRootImpl {
   // clang-format off
 constexpr static u64 pw3[] = {
 1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401,10460353203,31381059609,94143178827,282429536481,847288609443,2541865828329,7625597484987,
@@ -220,10 +221,10 @@ constexpr static f64 rt3[] = {
   // clang-format on
   template<u64 K> constexpr static u64 calc(u64 n) {
     if constexpr(K == 3) {
-      const u32 t = std::bit_width(n) - 1;
+      const i64 t = static_cast<i64>(std::bit_width(n)) - 1;
       f64 x = rt3[t];
       GSH_INTERNAL_UNROLL(3)
-      for(u32 i = 0; i != 3; ++i) {
+      for(i64 i = 0; i != 3; ++i) {
         f64 h = 1.0 - n * x * x * x;
         x += x * h * ((1.0 / 3) + h * ((2.0 / 9) + h * ((14.0 / 81) + (h * ((35.0 / 243) + h * (91.0 / 729))))));
       }
@@ -390,13 +391,13 @@ template<class F> i64 FibonacciSearch(i64 left, i64 right, F&& func) {
   }
   return left + ans;
 }
-template<class F> f64 GoldenSectionSearch(f64 left, f64 right, u32 precision, F&& func) {
+template<class F> f64 GoldenSectionSearch(f64 left, f64 right, i64 precision, F&& func) {
   constexpr f64 resphi = 2.0 - 1.61803398874989484820;
   f64 x1 = left + (right - left) * resphi;
   f64 x2 = right - (right - left) * resphi;
   auto f1 = std::invoke(func, x1);
   auto f2 = std::invoke(func, x2);
-  for(u32 i = 0; i < precision; ++i) {
+  for(i64 i = 0; i < precision; ++i) {
     if(f1 < f2) {
       right = x2;
       x2 = x1;
@@ -415,22 +416,25 @@ template<class F> f64 GoldenSectionSearch(f64 left, f64 right, u32 precision, F&
 }
 class QuotientsList {
   const u64 x;
-  const u32 sq;
-  u32 m;
+  const i64 sq;
+  i64 m;
 public:
-  using value_type = u32;
-  constexpr QuotientsList(u64 n) : x(n), sq(IntSqrt64(n)) { m = (u64(sq) * sq + sq <= n ? sq : sq - 1); }
-  constexpr u32 size() const noexcept { return sq + m; }
-  constexpr u32 iota_limit() const noexcept { return sq; }
-  constexpr u32 div_limit() const noexcept { return m; }
+  using value_type = i64;
+  constexpr QuotientsList(u64 n) : x(n), sq(static_cast<i64>(IntSqrt64(n))) {
+    const u64 s = static_cast<u64>(sq);
+    m = (s * s + s <= n ? sq : sq - 1);
+  }
+  constexpr i64 size() const noexcept { return sq + m; }
+  constexpr i64 iota_limit() const noexcept { return sq; }
+  constexpr i64 div_limit() const noexcept { return m; }
   constexpr u64 val() const noexcept { return x; }
-  constexpr u64 operator[](u32 n) { return n < m ? n + 1 : x / (sq - (n - m)); }
+  constexpr u64 operator[](i64 n) { return n < m ? static_cast<u64>(n + 1) : x / static_cast<u64>(sq - (n - m)); }
   // n <= 1e18
   constexpr u64 sum() const noexcept {
     u64 res = 0;
-    for(u32 i = 1; i <= sq; ++i) res += x / i;
+    for(i64 i = 1; i <= sq; ++i) res += x / static_cast<u64>(i);
     res <<= 1;
-    res -= u64(sq) * sq;
+    res -= static_cast<u64>(sq) * static_cast<u64>(sq);
     return res;
   }
 };
@@ -440,27 +444,27 @@ template<class T> class BinCoeffTable {
   Vec<typename T::value_type, std::allocator<typename T::value_type>> fac, finv;
 public:
   using value_type = typename T::value_type;
-  constexpr BinCoeffTable(u32 mx, value_type mod) : fac(mx), finv(mx) {
-    if(mx > mod) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
+  constexpr BinCoeffTable(i64 mx, value_type mod) : fac(mx), finv(mx) {
+    if(mx > static_cast<i64>(mod)) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
     mint.set(mod);
     fac[0] = mint.raw(1), finv[0] = mint.raw(1);
     if(mx > 1) {
       fac[1] = mint.raw(1), finv[1] = mint.raw(1);
       if(mx > 2) {
         auto cnt = mint.raw(1);
-        for(u32 i = 2; i != mx; ++i) {
+        for(i64 i = 2; i != mx; ++i) {
           cnt = mint.inc(cnt);
           fac[i] = mint.mul(fac[i - 1], cnt);
         }
         finv.back() = mint.inv(fac.back());
-        for(u32 i = mx - 1; i != 2; --i) {
+        for(i64 i = mx - 1; i != 2; --i) {
           finv[i - 1] = mint.mul(finv[i], cnt);
           cnt = mint.dec(cnt);
         }
       }
     }
   }
-  constexpr value_type operator()(u32 n, u32 k) const {
+  constexpr value_type operator()(i64 n, i64 k) const {
     if(n < k) return 0;
     else return mint.val(mint.mul(mint.mul(fac[n], finv[k]), finv[n - k]));
   }
@@ -470,26 +474,26 @@ template<IsStaticModint T> class BinCoeffTable<T> {
   Vec<typename T::value_type, std::allocator<typename T::value_type>> fac, finv;
 public:
   using value_type = typename T::value_type;
-  constexpr BinCoeffTable(u32 mx) : fac(mx), finv(mx) {
-    if(mx > mint.mod()) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
+  constexpr BinCoeffTable(i64 mx) : fac(mx), finv(mx) {
+    if(mx > static_cast<i64>(mint.mod())) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
     fac[0] = mint.raw(1), finv[0] = mint.raw(1);
     if(mx > 1) {
       fac[1] = mint.raw(1), finv[1] = mint.raw(1);
       if(mx > 2) {
         auto cnt = mint.raw(1);
-        for(u32 i = 2; i != mx; ++i) {
+        for(i64 i = 2; i != mx; ++i) {
           cnt = mint.inc(cnt);
           fac[i] = mint.mul(fac[i - 1], cnt);
         }
         finv.back() = mint.inv(fac.back());
-        for(u32 i = mx - 1; i != 2; --i) {
+        for(i64 i = mx - 1; i != 2; --i) {
           finv[i - 1] = mint.mul(finv[i], cnt);
           cnt = mint.dec(cnt);
         }
       }
     }
   }
-  constexpr value_type operator()(u32 n, u32 k) const {
+  constexpr value_type operator()(i64 n, i64 k) const {
     if(n < k) return 0;
     else return mint.val(mint.mul(mint.mul(fac[n], finv[k]), finv[n - k]));
   }

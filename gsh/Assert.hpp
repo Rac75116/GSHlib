@@ -14,7 +14,7 @@ namespace gsh { namespace internal {
 #endif
   std::exit(1);
 }
-template<u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const c8* message, std::source_location loc = std::source_location::current()) {
+template<i64> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const c8* message, std::source_location loc = std::source_location::current()) {
   if(!cond) [[unlikely]] {
     if(std::is_constant_evaluated()) {
       throw 0;

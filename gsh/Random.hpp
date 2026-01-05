@@ -105,9 +105,12 @@ template<class URBG> constexpr u64 Uniform64(URBG&& g, u64 max) { return (static
 // @brief Generate 64bit uniform random numbers in [min, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr u64 Uniform64(URBG&& g, u64 min, u64 max) { return static_cast<u64>((static_cast<u128>(std::invoke(g)) * (max - min)) >> 64) + min; }
 template<std::ranges::random_access_range R, class URBG> constexpr void Shuffle(R&& r, URBG&& g) {
-  u32 sz = std::ranges::size(r);
+  const i64 sz = static_cast<i64>(std::ranges::size(r));
   auto itr = std::ranges::begin(r);
-  for(u32 i = 0; i != sz; ++i, ++itr) { std::ranges::swap(*itr, *std::ranges::next(itr, Uniform32(g, sz - i))); }
+  for(i64 i = 0; i != sz; ++i, ++itr) {
+    const auto off = static_cast<i64>(Uniform64(g, static_cast<u64>(sz - i)));
+    std::ranges::swap(*itr, *std::ranges::next(itr, off));
+  }
 }
 template<class URBG> constexpr u32 UnbiasedUniform32(URBG&& g, u32 max) {
   u32 mask = ~0u;

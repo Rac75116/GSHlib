@@ -6,6 +6,7 @@
 #include <concepts>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <new>
 #include <optional>
@@ -151,8 +152,12 @@ public:
   auto rend() const noexcept { return s.rend(); }
   auto crend() const noexcept { return s.crend(); }
   bool empty() const noexcept { return s.empty(); }
-  u32 size() const noexcept { return s.size(); }
-  u32 max_size() const noexcept { return static_cast<u32>(std::min<std::size_t>(0xffffffffu, s.max_size())); }
+  i64 size() const noexcept { return static_cast<i64>(s.size()); }
+  i64 max_size() const noexcept {
+    const auto m = s.max_size();
+    const auto lim = static_cast<decltype(m)>(std::numeric_limits<i64>::max());
+    return static_cast<i64>(m < lim ? m : lim);
+  }
   void clear() noexcept { s.clear(); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) requires std::same_as<Value, std::monostate> { insert(l, r, Value{}, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, const Value& value, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {

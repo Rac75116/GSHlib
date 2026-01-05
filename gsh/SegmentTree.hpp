@@ -45,8 +45,8 @@ template<class Spec> requires internal::IsSegmentSpecImplemented<Spec> class Seg
   [[no_unique_address]] Spec spec;
 public:
   using value_type = typename Spec::value_type;
-  using size_type = std::size_t;
-  using difference_type = std::ptrdiff_t;
+  using size_type = i64;
+  using difference_type = i64;
 private:
   size_type n;
   size_type sz;
@@ -55,11 +55,11 @@ public:
   constexpr SegmentTree() : n(0), sz(0) {}
   constexpr SegmentTree(Spec spec) : spec(spec), n(0), sz(0) {}
   constexpr SegmentTree(size_type n, Spec spec = Spec()) : spec(spec), n(n) {
-    sz = n > 0 ? std::bit_ceil(n) : 0;
+    sz = n > 0 ? static_cast<i64>(std::bit_ceil(static_cast<u64>(n))) : 0;
     if(n > 0) tree.assign(2 * sz, spec.e());
   }
-  template<class InputIt> requires std::forward_iterator<InputIt> constexpr SegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec), n(std::ranges::distance(first, last)) {
-    sz = n > 0 ? std::bit_ceil(n) : 0;
+  template<class InputIt> requires std::forward_iterator<InputIt> constexpr SegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec), n(static_cast<i64>(std::ranges::distance(first, last))) {
+    sz = n > 0 ? static_cast<i64>(std::bit_ceil(static_cast<u64>(n))) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       auto it = first;
@@ -93,8 +93,8 @@ public:
     assign(tmp.begin(), tmp.end());
   }
   template<class InputIt> requires std::forward_iterator<InputIt> constexpr void assign(InputIt first, InputIt last) {
-    n = std::ranges::distance(first, last);
-    sz = n > 0 ? std::bit_ceil(n) : 0;
+    n = static_cast<i64>(std::ranges::distance(first, last));
+    sz = n > 0 ? static_cast<i64>(std::bit_ceil(static_cast<u64>(n))) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       auto it = first;
@@ -106,7 +106,7 @@ public:
   }
   constexpr void assign(size_type n, const value_type& u) {
     this->n = n;
-    sz = n > 0 ? std::bit_ceil(n) : 0;
+    sz = n > 0 ? static_cast<i64>(std::bit_ceil(static_cast<u64>(n))) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       for(size_type i = 0; i < n; ++i) tree[sz + i] = u;

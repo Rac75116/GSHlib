@@ -36,13 +36,13 @@ template<std::input_or_output_iterator I, std::sentinel_for<I> S, RangeKind K> r
 template<class D, class V> requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>> class ViewInterface {
   constexpr D& derived() noexcept { return *static_cast<D*>(this); }
   constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
-  constexpr u32 get_size() const noexcept { return std::ranges::size(derived()); }
-  GSH_INTERNAL_INLINE constexpr void check_index(u32 n) const {
-    u32 sz = get_size();
+  constexpr i64 get_size() const noexcept { return static_cast<i64>(std::ranges::size(derived())); }
+  GSH_INTERNAL_INLINE constexpr void check_index(i64 n) const {
+    i64 sz = get_size();
     if(n >= sz) [[unlikely]]
       throw Exception("gsh::ViewInterface::check_index / The index is out of range. ( n=", n, ", size=", sz, " )");
   }
-  GSH_INTERNAL_INLINE constexpr void check_index_on_debug(u32 n) const {
+  GSH_INTERNAL_INLINE constexpr void check_index_on_debug(i64 n) const {
 #ifndef NDEBUG
     check_index(n);
 #else
@@ -58,8 +58,8 @@ public:
   using const_reference = const V&;
   using pointer = V*;
   using const_pointer = const V*;
-  using size_type = u32;
-  using difference_type = i32;
+  using size_type = i64;
+  using difference_type = i64;
   constexpr auto begin() { return std::ranges::begin(derived()); }
   constexpr auto begin() const { return std::ranges::begin(derived()); }
   constexpr auto end() { return std::ranges::end(derived()); }
@@ -76,19 +76,19 @@ public:
   constexpr const_reference front() const { return *cbegin(); }
   constexpr reference back() { return *rbegin(); }
   constexpr const_reference back() const { return *rbegin(); }
-  constexpr reference operator[](u32 n) {
+  constexpr reference operator[](i64 n) {
     check_index_on_debug(n);
     return *std::ranges::next(begin(), n);
   }
-  constexpr const_reference operator[](u32 n) const {
+  constexpr const_reference operator[](i64 n) const {
     check_index_on_debug(n);
     return *std::ranges::next(begin(), n);
   }
-  constexpr reference at(u32 n) {
+  constexpr reference at(i64 n) {
     check_index(n);
     return *std::ranges::next(begin(), n);
   }
-  constexpr const_reference at(u32 n) const {
+  constexpr const_reference at(i64 n) const {
     check_index(n);
     return *std::ranges::next(begin(), n);
   }
@@ -106,15 +106,15 @@ public:
   constexpr auto as_multiset() const { return std::multiset(begin(), end()); }
   constexpr auto as_multiset() { return std::multiset(begin(), end()); }
   constexpr auto slice() { return Subrange(begin(), end()); }
-  constexpr auto slice(u32 start) { return Subrange(std::ranges::next(begin(), start), end()); }
-  constexpr auto slice(u32 start, u32 end) { return Subrange(std::ranges::next(begin(), start), std::ranges::next(begin(), end)); }
+  constexpr auto slice(i64 start) { return Subrange(std::ranges::next(begin(), start), end()); }
+  constexpr auto slice(i64 start, i64 end) { return Subrange(std::ranges::next(begin(), start), std::ranges::next(begin(), end)); }
   constexpr auto slice() const { return Subrange(begin(), end()); }
-  constexpr auto slice(u32 start) const { return Subrange(std::ranges::next(begin(), start), end()); }
-  constexpr auto slice(u32 start, u32 end) const { return Subrange(std::ranges::next(begin(), start), std::ranges::next(begin(), end)); }
-  constexpr auto drop(u32 n) { return slice(n); }
-  constexpr auto drop(u32 n) const { return slice(n); }
-  constexpr auto take(u32 n) { return Subrange(begin(), std::ranges::next(begin(), n)); }
-  constexpr auto take(u32 n) const { return Subrange(begin(), std::ranges::next(begin(), n)); }
+  constexpr auto slice(i64 start) const { return Subrange(std::ranges::next(begin(), start), end()); }
+  constexpr auto slice(i64 start, i64 end) const { return Subrange(std::ranges::next(begin(), start), std::ranges::next(begin(), end)); }
+  constexpr auto drop(i64 n) { return slice(n); }
+  constexpr auto drop(i64 n) const { return slice(n); }
+  constexpr auto take(i64 n) { return Subrange(begin(), std::ranges::next(begin(), n)); }
+  constexpr auto take(i64 n) const { return Subrange(begin(), std::ranges::next(begin(), n)); }
   template<class T> static constexpr derived_type iota(T&& end) { return from_range(std::views::iota(std::decay_t<T>(), end)); }
   template<class T, class U> static constexpr derived_type iota(T&& start, U&& end) {
     using ct = std::common_type_t<T, U>;
@@ -123,7 +123,7 @@ public:
   template<class Proj> requires std::ranges::input_range<derived_type> constexpr void iterate(Proj&& proj = {}) {
     auto itr = begin();
     auto sent = end();
-    for(u32 idx = 0; itr != sent; ++itr, ++idx) {
+    for(i64 idx = 0; itr != sent; ++itr, ++idx) {
       if constexpr(requires { std::invoke(proj, *itr, idx, *this); }) std::invoke(proj, *itr, idx, *this);
       else if constexpr(requires { std::invoke(proj, *itr, idx); }) std::invoke(proj, *itr, idx);
       else if constexpr(requires { std::invoke(proj, *itr); }) std::invoke(proj, *itr);
@@ -133,7 +133,7 @@ public:
   template<class Proj> requires std::ranges::input_range<derived_type> constexpr void iterate(Proj&& proj = {}) const {
     auto itr = begin();
     auto sent = end();
-    for(u32 idx = 0; itr != sent; ++itr, ++idx) {
+    for(i64 idx = 0; itr != sent; ++itr, ++idx) {
       if constexpr(requires { std::invoke(proj, *itr, idx, *this); }) std::invoke(proj, *itr, idx, *this);
       else if constexpr(requires { std::invoke(proj, *itr, idx); }) std::invoke(proj, *itr, idx);
       else if constexpr(requires { std::invoke(proj, *itr); }) std::invoke(proj, *itr);
@@ -208,17 +208,17 @@ public:
       return result;
     }
   }
-  template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo> requires std::ranges::input_range<derived_type> constexpr u32 index_of(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
+  template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo> requires std::ranges::input_range<derived_type> constexpr i64 index_of(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
     const auto sent = end();
-    u32 cnt = 0;
+    i64 cnt = 0;
     for(auto itr = begin(); itr != sent; ++itr) {
       if(std::invoke(comp, x, std::invoke(proj, *itr))) return cnt;
       ++cnt;
     }
     return cnt;
   }
-  template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo> requires std::ranges::input_range<derived_type> constexpr u32 count(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
-    u32 res = 0;
+  template<class T, class Proj = Identity, std::indirect_equivalence_relation<std::projected<std::ranges::iterator_t<derived_type>, Proj>> Comp = EqualTo> requires std::ranges::input_range<derived_type> constexpr i64 count(const T& x, Comp&& comp = {}, Proj&& proj = {}) const {
+    i64 res = 0;
     for(auto&& el : derived()) res += static_cast<bool>(std::invoke(comp, x, std::invoke(proj, std::forward<decltype(el)>(el))));
     return res;
   }
@@ -257,7 +257,7 @@ public:
   };
   template<class Proj = Identity, class Comp = Less, class... Rs> requires std::ranges::random_access_range<derived_type> && (std::ranges::forward_range<Rs> && ...) constexpr void sort_with(std::tuple<Rs...> rs, Comp&& comp = {}, Proj&& proj = {}) {
 #ifndef NDEBUG
-    u32 sz = std::ranges::size(derived());
+    i64 sz = static_cast<i64>(std::ranges::size(derived()));
     auto check = [&](auto&&... r) {
       if((... || (std::ranges::size(r) != sz))) { throw Exception("gsh::ViewInterface::sort_with / The size of the range passed as an argument differs from the size of the key."); }
     };
@@ -307,18 +307,18 @@ public:
     auto itr = begin();
     auto sent = end();
     auto loc_begin = std::ranges::begin(location);
-    u32 size = std::ranges::distance(itr, sent);
+    i64 size = static_cast<i64>(std::ranges::distance(itr, sent));
     noinitarr_type tmp(size);
-    for(u32 i = 0; i != size; ++i) std::construct_at(&tmp[*(loc_begin++)], std::move(*(itr++)));
+    for(i64 i = 0; i != size; ++i) std::construct_at(&tmp[*(loc_begin++)], std::move(*(itr++)));
     itr = begin();
-    for(u32 i = 0; i != size; ++i) *(itr++) = std::move(tmp[i]);
+    for(i64 i = 0; i != size; ++i) *(itr++) = std::move(tmp[i]);
   }
   constexpr auto inverse() requires std::ranges::random_access_range<derived_type> {
     auto itr = begin();
     auto sent = end();
-    u32 size = std::ranges::distance(itr, sent);
+    i64 size = static_cast<i64>(std::ranges::distance(itr, sent));
     vec_type tmp(size);
-    for(auto i = static_cast<value_type>(0); i != size; ++i) std::construct_at(&tmp[*(itr++)], i);
+    for(i64 i = 0; i != size; ++i) std::construct_at(&tmp[*(itr++)], static_cast<value_type>(i));
     return tmp;
   }
 };
@@ -349,7 +349,7 @@ public:
   [[nodiscard]] constexpr I begin() requires (!std::copyable<I>) { return std::move(itr); }
   constexpr S end() const { return sent; }
   constexpr bool empty() const { return itr == sent; }
-  constexpr u32 size() const requires (K == RangeKind::Sized) { return static_cast<u32>(std::ranges::distance(itr, sent)); }
+  constexpr i64 size() const requires (K == RangeKind::Sized) { return static_cast<i64>(std::ranges::distance(itr, sent)); }
   constexpr I data() const requires (std::is_pointer_v<I> && std::copyable<I>) { return itr; }
   constexpr I data() const requires (std::is_pointer_v<I> && !std::copyable<I>) { return std::move(itr); }
   constexpr decltype(auto) operator[](const std::iter_difference_t<I>& n) { return *std::ranges::next(begin(), n); }

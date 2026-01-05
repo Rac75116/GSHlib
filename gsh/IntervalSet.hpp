@@ -62,7 +62,9 @@ private:
   static constexpr const Key& min_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, b, a) ? b : a; }
   static constexpr const Key& max_(const Comp& comp, const Key& a, const Key& b) { return std::invoke(comp, a, b) ? b : a; }
   constexpr bool eq_value_(const Value& a, const Value& b) const {
-    if constexpr(std::is_invocable_r_v<bool, ValueComp&, const Value&, const Value&>) {
+    if constexpr(std::is_same_v<Value, std::monostate>) {
+      return true;
+    } else if constexpr(std::is_invocable_r_v<bool, ValueComp&, const Value&, const Value&>) {
       return std::invoke(vcomp, a, b);
     } else {
       static_assert(std::is_invocable_r_v<bool, ValueComp&, const Value&, const Value&>, "ValueComp must be invocable as bool(Value, Value)");
@@ -388,16 +390,6 @@ public:
     auto it = find(p);
     if(it == s.end()) return std::nullopt;
     return *it;
-  }
-  Key mex() const {
-    auto itr = find(Key{});
-    if(itr == end()) return Key{};
-    else return itr->right;
-  }
-  Key mex(const Key& p) const {
-    auto itr = find(p);
-    if(itr == end()) return p;
-    else return itr->right;
   }
   key_compare key_comp() const { return comp; }
   value_compare value_comp() const { return value_compare(comp); }

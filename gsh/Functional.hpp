@@ -247,4 +247,14 @@ public:
   template<class T> constexpr decltype(auto) operator()(T&& t) const noexcept(noexcept(-std::forward<T>(t))) { return -std::forward<T>(t); }
   using is_transparent = void;
 };
+class True {
+public:
+  template<class... Args> constexpr static bool operator()(Args&&...) noexcept { return true; }
+  using is_transparent = void;
+};
+class False {
+public:
+  template<class... Args> constexpr static bool operator()(Args&&...) noexcept { return false; }
+  using is_transparent = void;
+};
 } // namespace gsh

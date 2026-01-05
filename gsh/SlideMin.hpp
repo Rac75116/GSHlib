@@ -4,8 +4,8 @@
 #include <utility>
 namespace gsh {
 template<class T, class Operator = Less> class SlideMin {
-  std::deque<std::pair<T, i64>> deq;
-  i64 cnt1 = 0, cnt2 = 0;
+  std::deque<std::pair<T, u32>> deq;
+  u32 cnt1 = 0, cnt2 = 0;
   [[no_unique_address]] Operator op;
 public:
   constexpr SlideMin() : op(Operator()) {}
@@ -20,7 +20,7 @@ public:
   }
   constexpr const T& get() const { return deq.front().first; }
   constexpr bool empty() const { return deq.empty(); }
-  constexpr i64 size() const { return cnt1 - cnt2; }
+  constexpr u32 size() const { return cnt1 - cnt2; }
   constexpr void clear() {
     deq.clear();
     cnt1 = cnt2 = 0;

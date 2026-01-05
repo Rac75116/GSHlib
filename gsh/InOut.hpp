@@ -6,7 +6,6 @@
 #include "Util.hpp"
 #include <cstdlib>
 #include <cstring>
-#include <limits>
 #include <tuple>
 #include <unistd.h>
 #include <utility>
@@ -62,7 +61,7 @@ public:
     }
   }
   constexpr void ignore() const {
-    [this]<std::size_t... I>(std::index_sequence<I...>) { (..., get<I>(*this)); }(std::make_index_sequence<sizeof...(Types)>());
+    [this]<u32... I>(std::integer_sequence<u32, I...>) { (..., get<I>(*this)); }(std::make_integer_sequence<u32, sizeof...(Types)>());
   }
   template<class T> constexpr operator T() const {
     static_assert(sizeof...(Types) == 1);
@@ -74,9 +73,9 @@ public:
   }
   template<class... To> requires (sizeof...(To) == 0 || sizeof...(To) == sizeof...(Types)) constexpr auto bind() const {
     if constexpr(sizeof...(To) == 0) {
-      return [this]<std::size_t... I>(std::index_sequence<I...>) { return std::tuple{get<I>(*this)...}; }(std::make_index_sequence<sizeof...(Types)>());
+      return [this]<u32... I>(std::integer_sequence<u32, I...>) { return std::tuple{get<I>(*this)...}; }(std::make_integer_sequence<u32, sizeof...(Types)>());
     } else {
-      return [this]<std::size_t... I>(std::index_sequence<I...>) { return std::tuple<To...>{static_cast<To>(get<I>(*this))...}; }(std::make_index_sequence<sizeof...(Types)>());
+      return [this]<u32... I>(std::integer_sequence<u32, I...>) { return std::tuple<To...>{static_cast<To>(get<I>(*this))...}; }(std::make_integer_sequence<u32, sizeof...(Types)>());
     }
   }
 };
@@ -89,8 +88,8 @@ public:
 } // namespace internal
 } // namespace gsh
 namespace std {
-template<class D, class... Types, class... Args> class tuple_size<gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> : public integral_constant<std::size_t, sizeof...(Types)> {};
-template<std::size_t N, class D, class... Types, class... Args> class tuple_element<N, gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> {
+template<class D, class... Types, class... Args> class tuple_size<gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> : public integral_constant<size_t, sizeof...(Types)> {};
+template<size_t N, class D, class... Types, class... Args> class tuple_element<N, gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> {
 public:
   using type = decltype(get<N>(std::declval<const gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>&>()));
 };
@@ -101,13 +100,13 @@ template<class D> class OstreamInterface {
   constexpr D& derived() { return *static_cast<D*>(this); }
 public:
   template<class Sep, class... Args> constexpr void write_sep(Sep&& sep, Args&&... args) {
-    [&]<std::size_t... I>(std::index_sequence<I...>) {
-      auto print_value = [&]<std::size_t Idx>(std::integral_constant<std::size_t, Idx>, auto&& val) {
+    [&]<u32... I>(std::integer_sequence<u32, I...>) {
+      auto print_value = [&]<u32 Idx>(std::integral_constant<u32, Idx>, auto&& val) {
         Formatter<std::decay_t<decltype(val)>>()(derived(), val);
         if constexpr(Idx != sizeof...(Args) - 1) Formatter<std::decay_t<Sep>>()(derived(), std::forward<Sep>(sep));
       };
-      (..., print_value(std::integral_constant<std::size_t, I>(), std::forward<Args>(args)));
-    }(std::make_index_sequence<sizeof...(Args)>());
+      (..., print_value(std::integral_constant<u32, I>(), std::forward<Args>(args)));
+    }(std::make_integer_sequence<u32, sizeof...(Args)>());
   }
   template<class Sep, class... Args> constexpr void writeln_sep(Sep&& sep, Args&&... args) {
     write_sep(std::forward<Sep>(sep), std::forward<Args>(args)...);
@@ -120,7 +119,7 @@ public:
   }
 };
 } // namespace internal
-template<std::size_t Bufsize = (1 << 18)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
+template<u32 Bufsize = (1 << 18)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
   i32 fd = 0;
   c8 buf[Bufsize + 1] = {};
   c8 *cur = buf, *eof = buf;
@@ -129,13 +128,13 @@ public:
   BasicReader(i32 filehandle) : fd(filehandle) {}
   BasicReader(const BasicReader& rhs) {
     fd = rhs.fd;
-    std::memcpy(buf, rhs.buf, static_cast<std::size_t>(rhs.eof - rhs.cur));
+    std::memcpy(buf, rhs.buf, rhs.eof - rhs.cur);
     cur = buf + (rhs.cur - rhs.buf);
     eof = buf + (rhs.cur - rhs.eof);
   }
   BasicReader& operator=(const BasicReader& rhs) {
     fd = rhs.fd;
-    std::memcpy(buf, rhs.buf, static_cast<std::size_t>(rhs.eof - rhs.cur));
+    std::memcpy(buf, rhs.buf, rhs.eof - rhs.cur);
     cur = buf + (rhs.cur - rhs.buf);
     eof = buf + (rhs.cur - rhs.eof);
     return *this;
@@ -148,20 +147,19 @@ public:
       return p;
     }()
     == eof) [[likely]] {
-      const i64 rem = static_cast<i64>(eof - cur);
-      const auto rem_sz = static_cast<std::size_t>(rem);
-      std::memmove(buf, cur, rem_sz);
-      *(eof = buf + rem_sz + static_cast<std::size_t>(read(fd, buf + rem_sz, static_cast<std::size_t>(Bufsize) - rem_sz))) = '\0';
+      u32 rem = eof - cur;
+      std::memmove(buf, cur, rem);
+      *(eof = buf + rem + read(fd, buf + rem, Bufsize - rem)) = '\0';
       cur = buf;
     }
   }
-  void reload(i64 len) {
+  void reload(u32 len) {
     if(avail() < len) [[unlikely]]
       reload();
   }
-  i64 avail() const { return static_cast<i64>(eof - cur); }
+  u32 avail() const { return eof - cur; }
   const c8* current() const { return cur; }
-  void skip(i64 n) { cur += n; }
+  void skip(u32 n) { cur += n; }
 };
 class StaticStrReader : public internal::IstreamInterface<StaticStrReader> {
   const c8* cur;
@@ -169,12 +167,12 @@ public:
   constexpr StaticStrReader() {}
   constexpr StaticStrReader(const c8* c) : cur(c) {}
   constexpr void reload() const {}
-  constexpr void reload(i64) const {}
-  constexpr i64 avail() const { return std::numeric_limits<i64>::max(); }
+  constexpr void reload(u32) const {}
+  constexpr u32 avail() const { return static_cast<u32>(-1); }
   constexpr const c8* current() { return cur; }
-  constexpr void skip(i64 n) { cur += n; }
+  constexpr void skip(u32 n) { cur += n; }
 };
-template<std::size_t Bufsize = (1 << 18)> class BasicWriter : public internal::OstreamInterface<BasicWriter<Bufsize>> {
+template<u32 Bufsize = (1 << 18)> class BasicWriter : public internal::OstreamInterface<BasicWriter<Bufsize>> {
   i32 fd = 1;
   c8 buf[Bufsize + 1] = {};
   c8 *cur = buf, *eof = buf + Bufsize;
@@ -193,16 +191,16 @@ public:
     return *this;
   }
   void reload() {
-    [[maybe_unused]] i32 tmp = write(fd, buf, static_cast<std::size_t>(cur - buf));
+    [[maybe_unused]] i32 tmp = write(fd, buf, cur - buf);
     cur = buf;
   }
-  void reload(i64 len) {
-    if(static_cast<i64>(eof - cur) < len) [[unlikely]]
+  void reload(u32 len) {
+    if(eof - cur < len) [[unlikely]]
       reload();
   }
-  i64 avail() const { return static_cast<i64>(eof - cur); }
+  u32 avail() const { return eof - cur; }
   c8* current() { return cur; }
-  void skip(i64 n) { cur += n; }
+  void skip(u32 n) { cur += n; }
 };
 class StaticStrWriter : public internal::OstreamInterface<StaticStrWriter> {
   c8* cur;
@@ -210,10 +208,10 @@ public:
   constexpr StaticStrWriter() {}
   constexpr StaticStrWriter(c8* c) : cur(c) {}
   constexpr void reload() const {}
-  constexpr void reload(i64) const {}
-  constexpr i64 avail() const { return std::numeric_limits<i64>::max(); }
+  constexpr void reload(u32) const {}
+  constexpr u32 avail() const { return static_cast<u32>(-1); }
   constexpr c8* current() { return cur; }
-  constexpr void skip(i64 n) { cur += n; }
+  constexpr void skip(u32 n) { cur += n; }
 };
 class MmapReader : public internal::IstreamInterface<MmapReader> {
   [[maybe_unused]] const i32 fh;
@@ -235,9 +233,9 @@ public:
 #endif
   }
   void reload() const {}
-  void reload(i64) const {}
-  i64 avail() const { return static_cast<i64>(eof - cur); }
+  void reload(u32) const {}
+  u32 avail() const { return eof - cur; }
   const c8* current() const { return cur; }
-  void skip(i64 n) { cur += n; }
+  void skip(u32 n) { cur += n; }
 };
 } // namespace gsh

@@ -13,8 +13,8 @@ template<class T> class NoFreeAllocator {
 public:
   using value_type = T;
   using propagate_on_container_move_assignment = std::true_type;
-  using size_type = i64;
-  using difference_type = i64;
+  using size_type = u32;
+  using difference_type = i32;
   using is_always_equal = std::true_type;
   constexpr NoFreeAllocator() noexcept {}
   constexpr NoFreeAllocator(const NoFreeAllocator&) noexcept {}
@@ -30,7 +30,7 @@ public:
   constexpr NoFreeAllocator& operator=(const NoFreeAllocator&) = default;
   template<class U> friend constexpr bool operator==(const NoFreeAllocator&, const NoFreeAllocator<U>&) noexcept { return true; }
 };
-template<class T, i64 N> class PoolAllocator {
+template<class T, u32 N> class PoolAllocator {
   c8* cur = buf;
   alignas(T) c8 buf[sizeof(T) * N];
 public:
@@ -38,8 +38,8 @@ public:
   using propagate_on_container_copy_assignmant = std::true_type;
   using propagate_on_container_move_assignment = std::true_type;
   using propagate_on_container_swap = std::true_type;
-  using size_type = i64;
-  using difference_type = i64;
+  using size_type = u32;
+  using difference_type = i32;
   using is_always_equal = std::false_type;
   template<class U> class rebind {
   public:
@@ -48,7 +48,7 @@ public:
   };
   constexpr PoolAllocator() noexcept {}
   constexpr PoolAllocator(const PoolAllocator&) noexcept {}
-  template<class U, i64 M> constexpr PoolAllocator(const PoolAllocator<U, M>&) noexcept {}
+  template<class U, u32 M> constexpr PoolAllocator(const PoolAllocator<U, M>&) noexcept {}
   [[nodiscard]] T* allocate(size_type n) noexcept {
     T* result = reinterpret_cast<T*>(cur);
     cur += sizeof(T) * n;
@@ -56,13 +56,13 @@ public:
   }
   constexpr void deallocate(T*, size_type) noexcept {}
   constexpr PoolAllocator& operator=(const PoolAllocator&) noexcept {}
-  template<class U, i64 M> friend constexpr bool operator==(const PoolAllocator&, const PoolAllocator<U, M>&) noexcept { return false; }
+  template<class U, u32 M> friend constexpr bool operator==(const PoolAllocator&, const PoolAllocator<U, M>&) noexcept { return false; }
 };
 template<class T> class SingleAllocator {
   T* buffer[24] = {};
-  i64 x = -1, y = 0;
+  u32 x = 0xffffffff, y = 0;
   T** del = nullptr;
-  i64 end = 0;
+  u32 end = 0;
   [[no_unique_address]] std::allocator<T> alloc;
   [[no_unique_address]] std::allocator<T*> del_alloc;
   using traits = std::allocator_traits<std::allocator<T>>;
@@ -72,36 +72,36 @@ public:
   using propagate_on_container_copy_assignmant = std::false_type;
   using propagate_on_container_move_assignment = std::false_type;
   using propagate_on_container_swap = std::false_type;
-  using size_type = i64;
-  using difference_type = i64;
+  using size_type = u32;
+  using difference_type = i32;
   using is_always_equal = std::false_type;
   constexpr SingleAllocator() noexcept {}
   constexpr SingleAllocator(const SingleAllocator&) noexcept {}
   template<class U> constexpr SingleAllocator(const SingleAllocator<U>&) noexcept {}
   constexpr ~SingleAllocator() noexcept {
-    for(i64 i = 0; i != x + 1; ++i) traits::deallocate(alloc, buffer[static_cast<std::size_t>(i)], static_cast<std::size_t>(1ull << i));
-    if(del != nullptr) del_alloc_traits::deallocate(del_alloc, del, static_cast<std::size_t>((1ull << (x + 1)) - 1));
+    for(u32 i = 0; i != x + 1; ++i) traits::deallocate(alloc, buffer[i], 1 << i);
+    if(del != nullptr) del_alloc_traits::deallocate(del_alloc, del, (1u << (x + 1)) - 1);
   }
   constexpr SingleAllocator& operator=(const SingleAllocator&) noexcept {}
-  constexpr T* allocate(size_type) {
-    if(y == static_cast<i64>((1ull << (x + 1)) >> 1)) {
+  constexpr T* allocate(u32) {
+    if(y == (1u << (x + 1)) >> 1) {
       if(end != 0) [[likely]] {
-        return del[static_cast<std::size_t>(--end)];
+        return del[--end];
       } else {
         x += 1, y = 0;
-        buffer[static_cast<std::size_t>(x)] = traits::allocate(alloc, static_cast<std::size_t>(1ull << x));
-        T** new_del = del_alloc_traits::allocate(del_alloc, static_cast<std::size_t>((1ull << (x + 1)) - 1));
+        buffer[x] = traits::allocate(alloc, 1 << x);
+        T** new_del = del_alloc_traits::allocate(del_alloc, (1 << (x + 1)) - 1);
         if(del != nullptr) [[likely]] {
-          for(i64 i = 0; i != end; ++i) new_del[static_cast<std::size_t>(i)] = del[static_cast<std::size_t>(i)];
-          del_alloc_traits::deallocate(del_alloc, del, static_cast<std::size_t>((1ull << x) - 1));
+          for(u32 i = 0; i != end; ++i) new_del[i] = del[i];
+          del_alloc_traits::deallocate(del_alloc, del, (1 << x) - 1);
         }
         del = new_del;
       }
     }
-    return &buffer[static_cast<std::size_t>(x)][static_cast<std::size_t>(y++)];
+    return &buffer[x][y++];
   }
-  constexpr void deallocate(T* p, size_type) noexcept { del[static_cast<std::size_t>(end++)] = p; }
-  constexpr size_type max_size() const noexcept { return (1ull << 24) - 1; }
+  constexpr void deallocate(T* p, u32) noexcept { del[end++] = p; }
+  constexpr u32 max_size() const noexcept { return (1 << 24) - 1; }
   constexpr SingleAllocator select_on_container_copy_construction() const noexcept { return {}; }
   template<class U> friend constexpr bool operator==(const SingleAllocator&, const SingleAllocator<U>&) noexcept { return false; }
   template<class... Args> constexpr void construct(T* p, Args&&... args) { std::construct_at(p, std::forward<Args>(args)...); }

@@ -32,14 +32,14 @@ template<bool Flag> constexpr auto InttoStr = [] {
     c8 table[40004] = {};
   } res;
   if constexpr(Flag) {
-    for(i64 i = 0; i != 10000; ++i) {
+    for(u32 i = 0; i != 10000; ++i) {
       res.table[4 * i + 0] = i < 1000 ? ' ' : (i / 1000 + '0');
       res.table[4 * i + 1] = i < 100 ? ' ' : (i / 100 % 10 + '0');
       res.table[4 * i + 2] = i < 10 ? ' ' : (i / 10 % 10 + '0');
       res.table[4 * i + 3] = (i % 10 + '0');
     }
   } else {
-    for(i64 i = 0; i != 10000; ++i) {
+    for(u32 i = 0; i != 10000; ++i) {
       res.table[4 * i + 0] = (i / 1000 + '0');
       res.table[4 * i + 1] = (i / 100 % 10 + '0');
       res.table[4 * i + 2] = (i / 10 % 10 + '0');
@@ -485,8 +485,8 @@ public:
 template<> class Formatter<const c8*> {
 public:
   template<class Stream> constexpr void operator()(Stream&& stream, const c8* s) const { operator()(stream, s, StrLen(s)); }
-  template<class Stream> constexpr void operator()(Stream&& stream, const c8* s, i64 len) const {
-    i64 avail = stream.avail();
+  template<class Stream> constexpr void operator()(Stream&& stream, const c8* s, u32 len) const {
+    u32 avail = stream.avail();
     if(avail >= len) [[likely]] {
       MemoryCopy(stream.current(), s, len);
       stream.skip(len);
@@ -498,7 +498,7 @@ public:
       while(len != 0) {
         stream.reload();
         avail = stream.avail();
-        const i64 tmp = len < avail ? len : avail;
+        const u32 tmp = len < avail ? len : avail;
         MemoryCopy(stream.current(), s, tmp);
         len -= tmp;
         s += tmp;
@@ -539,7 +539,7 @@ template<class T, std::size_t... I> constexpr bool FormatableTupleImpl<T, std::i
 } // namespace internal
 template<class T> concept FormatableTuple = requires { std::tuple_size<T>::value; } && internal::FormatableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
 template<FormatableTuple T> requires (!FormatableRange<T>) class Formatter<T> {
-  template<std::size_t I, class Stream, class U, class Sep> constexpr void print_element(Stream&& stream, U&& x, Sep&& sep) const {
+  template<u32 I, class Stream, class U, class Sep> constexpr void print_element(Stream&& stream, U&& x, Sep&& sep) const {
     using std::get;
     using element_type = std::decay_t<std::tuple_element_t<I, T>>;
     if constexpr(requires { x.template get<I>(); }) Formatter<element_type>()(stream, x.template get<I>());
@@ -547,7 +547,7 @@ template<FormatableTuple T> requires (!FormatableRange<T>) class Formatter<T> {
     if constexpr(I < std::tuple_size_v<T> - 1) Formatter<std::decay_t<Sep>>()(stream, sep);
   }
   template<class Stream, class U, class Sep> constexpr void print(Stream&& stream, U&& x, Sep&& sep) const {
-    [&]<std::size_t... I>(std::index_sequence<I...>) { (..., print_element<I>(stream, x, sep)); }(std::make_index_sequence<std::tuple_size_v<T>>());
+    [&]<u32... I>(std::integer_sequence<u32, I...>) { (..., print_element<I>(stream, x, sep)); }(std::make_integer_sequence<u32, std::tuple_size_v<T>>());
   }
 public:
   template<class Stream, class U> constexpr void operator()(Stream&& stream, U&& x) const { print(std::forward<Stream>(stream), std::forward<U>(x), ' '); }

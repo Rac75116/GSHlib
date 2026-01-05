@@ -4,7 +4,6 @@
 #include "TypeDef.hpp"
 #include <chrono>
 #include <cmath>
-#include <memory>
 namespace gsh {
 class ZeroTemp {
 public:
@@ -47,12 +46,12 @@ public:
   f64 operator()(f64 progress) const { return init_temp / (progress * shape + 1.0); }
 };
 class IterationProgress {
-  i64 max_iter;
+  u32 max_iter;
   f64 current_progress = 0.0;
 public:
-  IterationProgress(i64 max_iter) : max_iter(max_iter) {}
+  IterationProgress(u32 max_iter) : max_iter(max_iter) {}
   f64 progress() const { return current_progress; }
-  bool update(i64 current_iter) {
+  bool update(u32 current_iter) {
     current_progress = static_cast<f64>(current_iter) / static_cast<f64>(max_iter);
     return current_iter < max_iter;
   }
@@ -64,7 +63,7 @@ class TimeProgress {
 public:
   TimeProgress(std::chrono::milliseconds max_duration) : start_time(std::chrono::steady_clock::now()), max_duration(std::chrono::duration_cast<std::chrono::steady_clock::duration>(max_duration)) {}
   f64 progress() const { return current_progress; }
-  bool update([[maybe_unused]] i64 current_iter) {
+  bool update([[maybe_unused]] u32 current_iter) {
     auto now = std::chrono::steady_clock::now();
     current_progress = static_cast<f64>((now - start_time).count()) / static_cast<f64>(max_duration.count());
     return now - start_time < max_duration;
@@ -85,30 +84,30 @@ template<class OptType, class TempFunction, class ProgressFunction> class Anneal
   f64 threshold_score;
   f64 best_score;
   f64 current_temp = 0.0;
-  i64 ugap;
-  i64 current_iter = 0;
+  u32 ugap;
+  u32 current_iter = 0;
   bool is_best_updated = false;
   [[no_unique_address]] std::allocator<f32> alloc;
   f32* rnd_buf = nullptr;
-  i64 rnd_buf_size;
+  u32 rnd_buf_size;
 public:
   Annealing() = delete;
-  Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, f64 init_score, i64 update_gap = 8, u32 seed = Rand32::default_seed, i64 buf_size = 12) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(static_cast<i64>(1ull << static_cast<u64>(update_gap))), alloc(), rnd_buf_size(static_cast<i64>(1ull << static_cast<u64>(buf_size))) {
+  Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, f64 init_score, u32 update_gap = 8, u32 seed = Rand32::default_seed, u32 buf_size = 12) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(1u << update_gap), alloc(), rnd_buf_size(1u << buf_size) {
     if constexpr(!std::is_same<TempFunction, ZeroTemp>::value) {
-      rnd_buf = alloc.allocate(static_cast<std::size_t>(rnd_buf_size));
+      rnd_buf = alloc.allocate(rnd_buf_size);
       Rand32 rand_function(seed);
-      for(i64 i = 0; i < rnd_buf_size; ++i) { rnd_buf[static_cast<std::size_t>(i)] = std::log(1.0f - Canocicaled32(rand_function)); }
+      for(u32 i = 0; i < rnd_buf_size; ++i) { rnd_buf[i] = std::log(1.0f - Canocicaled32(rand_function)); }
     }
   }
   ~Annealing() {
-    if(rnd_buf) alloc.deallocate(rnd_buf, static_cast<std::size_t>(rnd_buf_size));
+    if(rnd_buf) alloc.deallocate(rnd_buf, rnd_buf_size);
   }
-  i64 iterations() const { return current_iter; }
+  u32 iterations() const { return current_iter; }
   f64 temp() const { return current_temp; }
   f64 score() const { return current_score; }
   f64 threshold() const { return threshold_score; }
   f64 best() const { return best_score; }
-  i64 gap() const { return ugap; }
+  u32 gap() const { return ugap; }
   f64 progress() const { return progress_function.progress(); }
   TempFunction& tempf() { return temp_function; }
   ProgressFunction& progressf() { return progress_function; }
@@ -120,8 +119,7 @@ public:
     if constexpr(std::is_same<TempFunction, ZeroTemp>::value) {
       threshold_score = current_score;
     } else {
-      const auto idx = static_cast<std::size_t>(static_cast<u64>(current_iter) & static_cast<u64>(rnd_buf_size - 1));
-      f64 rnd_val = static_cast<f64>(rnd_buf[idx]);
+      f64 rnd_val = static_cast<f64>(rnd_buf[current_iter & (rnd_buf_size - 1)]);
       if constexpr(is_minimize) {
         threshold_score = current_score - current_temp * rnd_val;
       } else {

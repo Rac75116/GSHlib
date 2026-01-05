@@ -7,7 +7,6 @@
 #include <cerrno>
 #include <cstdlib>
 #include <ranges>
-#include <utility>
 namespace gsh {
 namespace io {
 struct i4dig;
@@ -146,7 +145,7 @@ template<class Stream> constexpr u64 Parseu64(Stream&& stream) {
 }
 template<class Stream> constexpr u128 Parseu128(Stream&& stream) {
   u128 res = 0;
-  for(i64 i = 0; i != 4; ++i) {
+  for(u32 i = 0; i != 4; ++i) {
     u64 v;
     MemoryCopy(&v, stream.current(), 8);
     if(((v ^= 0x3030303030303030) & 0xf0f0f0f0f0f0f0f0) != 0) break;
@@ -341,7 +340,7 @@ public:
     while(true) {
       const c8* e = stream.current();
       while(*e >= '!') ++e;
-      const i64 len = static_cast<i64>(e - stream.current());
+      const u32 len = e - stream.current();
       MemoryCopy(c, stream.current(), len);
       stream.skip(len);
       c += len;
@@ -352,10 +351,10 @@ public:
     *c = '\0';
     return s;
   }
-  template<class Stream> constexpr c8* operator()(Stream&& stream, c8* s, i64 n) const {
-    i64 rem = n;
+  template<class Stream> constexpr c8* operator()(Stream&& stream, c8* s, u32 n) const {
+    u32 rem = n;
     c8* c = s;
-    i64 avail = stream.avail();
+    u32 avail = stream.avail();
     while(avail <= rem) {
       MemoryCopy(c, stream.current(), avail);
       c += avail;
@@ -414,28 +413,28 @@ public:
 namespace internal {
 template<class T, class P, class Stream, class... Args> struct ParsingIterator {
   using value_type = T;
-  using difference_type = i64;
+  using difference_type = i32;
   using pointer = T*;
   using reference = T&;
-  i64 n;
+  u32 n;
   P* ref;
   Stream* stream;
   std::tuple<Args...>* args;
   constexpr ParsingIterator() noexcept : ParsingIterator(0, nullptr, nullptr, nullptr) {}
-  constexpr ParsingIterator(i64 m, P* r, Stream* s, std::tuple<Args...>* a) noexcept : n(m), ref(r), stream(s), args(a) {}
-  GSH_INTERNAL_INLINE friend constexpr i64 operator-(const ParsingIterator& a, const ParsingIterator& b) noexcept { return a.n - b.n; }
+  constexpr ParsingIterator(u32 m, P* r, Stream* s, std::tuple<Args...>* a) noexcept : n(m), ref(r), stream(s), args(a) {}
+  GSH_INTERNAL_INLINE friend constexpr u32 operator-(const ParsingIterator& a, const ParsingIterator& b) noexcept { return a.n - b.n; }
   GSH_INTERNAL_INLINE friend constexpr bool operator==(const ParsingIterator& a, const ParsingIterator& b) noexcept { return a.n == b.n; }
   GSH_INTERNAL_INLINE constexpr ParsingIterator& operator++() noexcept { return ++n, *this; }
-  GSH_INTERNAL_INLINE constexpr ParsingIterator operator++(int) noexcept { return {n++, ref, stream, args}; }
+  GSH_INTERNAL_INLINE constexpr ParsingIterator operator++(int) noexcept { return {n++, *ref, *stream, *args}; }
   GSH_INTERNAL_INLINE constexpr T operator*() const {
-    return [this]<std::size_t... I>(std::index_sequence<I...>) -> T { return (*ref)(*stream, std::get<I>(*args)...); }(std::make_index_sequence<sizeof...(Args)>());
+    return [this]<u32... I>(std::integer_sequence<u32, I...>) -> T { return (*ref)(*stream, std::get<I>(*args)...); }(std::make_integer_sequence<u32, sizeof...(Args)>());
   }
 };
 } // namespace internal
 template<class R> concept ParsableRange = std::ranges::forward_range<R> && requires { sizeof(Parser<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
 template<ParsableRange R> class Parser<R> {
 public:
-  template<class Stream, class... Args> constexpr R operator()(Stream&& stream, i64 len, Args&&... args) const {
+  template<class Stream, class... Args> constexpr R operator()(Stream&& stream, u32 len, Args&&... args) const {
     Parser<std::ranges::range_value_t<R>> p;
     std::tuple<Args...> a(std::forward<Args>(args)...);
     using iter = internal::ParsingIterator<std::ranges::range_value_t<R>, decltype(p), std::remove_cvref_t<Stream>, Args...>;

@@ -44,7 +44,7 @@ struct IsPrime32 {
     const u32 h = x * 0xad625b89;
     u32 d = x - 1;
     auto pow = mint.raw(bases[h >> 24]);
-    i64 s = std::countr_zero(d);
+    u32 s = std::countr_zero(d);
     d >>= s;
     const auto one = mint.one(), mone = mint.neg(one);
     auto cur = one;
@@ -63,7 +63,7 @@ struct IsPrime64 {
   GSH_INTERNAL_INLINE constexpr static bool calc(const u64 x) noexcept {
     internal::MontgomeryModint64Impl mint;
     mint.set(x);
-    const i64 S = std::countr_zero(x - 1);
+    const u32 S = std::countr_zero(x - 1);
     const u64 D = (x - 1) >> S;
     const auto one = mint.one(), mone = mint.neg(one);
     auto test2 = [&](u64 base1, u64 base2) {
@@ -79,7 +79,7 @@ struct IsPrime64 {
       bool res1 = mint.same(a, one) || mint.same(a, mone);
       bool res2 = mint.same(b, one) || mint.same(b, mone);
       if(!(res1 && res2)) {
-        for(i64 i = 0; i != S - 1; ++i) {
+        for(u32 i = 0; i != S - 1; ++i) {
           a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
           res1 |= mint.same(a, mone), res2 |= mint.same(b, mone);
         }
@@ -101,7 +101,7 @@ struct IsPrime64 {
       bool res2 = mint.same(b, one) || mint.same(b, mone);
       bool res3 = mint.same(c, one) || mint.same(c, mone);
       if(!(res1 && res2 && res3)) {
-        for(i64 i = 0; i != S - 1; ++i) {
+        for(u32 i = 0; i != S - 1; ++i) {
           a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c);
           res1 |= mint.same(a, mone), res2 |= mint.same(b, mone), res3 |= mint.same(c, mone);
         }
@@ -124,7 +124,7 @@ struct IsPrime64 {
       bool res3 = mint.same(c, one) || mint.same(c, mone);
       bool res4 = mint.same(d, one) || mint.same(d, mone);
       if(!(res1 && res2 && res3 && res4)) {
-        for(i64 i = 0; i != S - 1; ++i) {
+        for(u32 i = 0; i != S - 1; ++i) {
           a = mint.mul(a, a), b = mint.mul(b, b), c = mint.mul(c, c), d = mint.mul(d, d);
           res1 |= mint.same(a, mone), res2 |= mint.same(b, mone), res3 |= mint.same(c, mone), res4 |= mint.same(d, mone);
         }
@@ -152,64 +152,64 @@ constexpr bool IsPrime(const u64 x) noexcept {
     else return internal::IsPrime64::calc(x);
   }
 }
-constexpr i64 CountPrimes(u64 N) {
+constexpr u32 CountPrimes(u64 N) {
   if(N <= 1) return 0;
-  const i64 v = static_cast<i64>(IntSqrt64(N));
-  i64 s = (v + 1) / 2;
-  u64* const invs = new u64[static_cast<std::size_t>(s)];
-  i64* const smalls = new i64[static_cast<std::size_t>(s)];
-  i64* const larges = new i64[static_cast<std::size_t>(s)];
-  i64* const roughs = new i64[static_cast<std::size_t>(s)];
-  bool* const smooth = new bool[static_cast<std::size_t>(v + 1)];
-  for(i64 i = 0; i != v; ++i) smooth[i] = false;
-  for(i64 i = 0; i != s; ++i) smalls[i] = i;
-  for(i64 i = 0; i != s; ++i) roughs[i] = 2 * i + 1;
-  for(i64 i = 0; i != s; ++i) invs[i] = static_cast<f64>(N) / static_cast<u64>(roughs[i]);
-  for(i64 i = 0; i != s; ++i) larges[i] = static_cast<i64>((invs[i] - 1) / 2);
-  i64 pc = 0;
+  const u32 v = IntSqrt64(N);
+  u32 s = (v + 1) / 2;
+  u64* const invs = new u64[s];
+  u32* const smalls = new u32[s];
+  u32* const larges = new u32[s];
+  u32* const roughs = new u32[s];
+  bool* const smooth = new bool[v + 1];
+  for(u32 i = 0; i != v; ++i) smooth[i] = false;
+  for(u32 i = 0; i != s; ++i) smalls[i] = i;
+  for(u32 i = 0; i != s; ++i) roughs[i] = 2 * i + 1;
+  for(u32 i = 0; i != s; ++i) invs[i] = (f64)N / roughs[i];
+  for(u32 i = 0; i != s; ++i) larges[i] = (invs[i] - 1) / 2;
+  u32 pc = 0;
   for(u64 p = 3; p * p <= v; p += 2) {
     if(smooth[p]) continue;
-    for(u64 i = p * p; i <= static_cast<u64>(v); i += 2 * p) smooth[i] = true;
+    for(u64 i = p * p; i <= v; i += 2 * p) smooth[i] = true;
     smooth[p] = true;
     const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](u64 inv_j) -> u64 { return (u128(inv_j) * invp) >> 64; };
-    i64 ns = 0;
-    i64 k = 0;
+    u32 ns = 0;
+    u32 k = 0;
     GSH_INTERNAL_UNROLL(16)
     for(; true; ++k) {
-      const i64 j = roughs[k];
-      if(static_cast<u64>(j) * p > static_cast<u64>(v)) break;
+      const u32 j = roughs[k];
+      if(j * p > v) break;
       if(smooth[j]) continue;
-      larges[ns] = larges[k] - larges[smalls[static_cast<i64>(static_cast<u64>(j) * p / 2)] - pc] + pc;
+      larges[ns] = larges[k] - larges[smalls[j * p / 2] - pc] + pc;
       invs[ns] = invs[k];
       roughs[ns] = roughs[k];
       ++ns;
     }
     GSH_INTERNAL_UNROLL(16)
     for(; k < s; ++k) {
-      const i64 j = roughs[k];
+      const u32 j = roughs[k];
       if(smooth[j]) continue;
-      larges[ns] = larges[k] - smalls[static_cast<i64>((divide_p(invs[k]) - 1) / 2)] + pc;
+      larges[ns] = larges[k] - smalls[(divide_p(invs[k]) - 1) / 2] + pc;
       invs[ns] = invs[k];
       roughs[ns] = roughs[k];
       ++ns;
     }
     s = ns;
     u64 i = (v - 1) / 2;
-    for(u64 j = (divide_p(static_cast<u64>(v)) - 1) | 1; j >= p; j -= 2) {
-      const i64 d = smalls[static_cast<i64>(j / 2)] - pc;
+    for(u64 j = (divide_p(v) - 1) | 1; j >= p; j -= 2) {
+      const u32 d = smalls[j / 2] - pc;
       for(; i >= j * p / 2; --i) smalls[i] -= d;
     }
     ++pc;
   }
-  i64 ret = 1;
+  u32 ret = 1;
   ret += larges[0] + s * (s - 1) / 2 + (pc - 1) * (s - 1);
-  for(i64 k = 1; k < s; ++k) ret -= larges[k];
-  for(i64 k1 = 1; k1 < s; ++k1) {
-    const u64 p = static_cast<u64>(roughs[k1]);
+  for(u32 k = 1; k < s; ++k) ret -= larges[k];
+  for(u32 k1 = 1; k1 < s; ++k1) {
+    const u64 p = roughs[k1];
     const auto divide_p = [invp = 0xffffffffffffffffu / p + 1](u64 inv_j) -> u64 { return (u128(inv_j) * invp) >> 64; };
-    const i64 k2_max = smalls[static_cast<i64>((divide_p(invs[k1]) - 1) / 2)] - pc;
+    const u32 k2_max = smalls[(divide_p(invs[k1]) - 1) / 2] - pc;
     if(k2_max <= k1) break;
-    for(i64 k2 = k1 + 1; k2 <= k2_max; ++k2) ret += smalls[static_cast<i64>((divide_p(invs[k2]) - 1) / 2)];
+    for(u32 k2 = k1 + 1; k2 <= k2_max; ++k2) ret += smalls[(divide_p(invs[k2]) - 1) / 2];
     ret -= (k2_max - k1) * (pc + k1 - 1);
   }
   delete[] invs;
@@ -219,14 +219,14 @@ constexpr i64 CountPrimes(u64 N) {
   delete[] smooth;
   return ret;
 }
-constexpr Vec<u32> EnumeratePrimes(i64 size) {
+constexpr Vec<u32> EnumeratePrimes(u32 size) {
   if(size <= 1000) {
     // clang-format off
 constexpr u32 primes[]={2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997};
     // clang-format on
-    return Vec(primes, Subrange(primes, primes + 168).upper_bound(static_cast<u32>(size)));
+    return Vec(primes, Subrange(primes, primes + 168).upper_bound(size));
   }
-  const i64 flag_size = size / 30 + (size % 30 != 0);
+  const u32 flag_size = size / 30 + (size % 30 != 0);
   // clang-format off
 constexpr u32 table1[]={0,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,23,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,29,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,23,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,19,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1,17,1,7,1,11,1,7,1,13,1,7,1,11,1,7,1};
 constexpr u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64,0,0,0,0,0,128};
@@ -234,23 +234,22 @@ constexpr u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64,0,0,0,
   Vec<u8> flag(flag_size, 0xffu);
   flag[0] = 0b11111110u;
   Vec<u32> primes{2, 3, 5};
-  f64 primes_size = std::is_constant_evaluated() ? static_cast<f64>(size) / 8 : static_cast<f64>(size) / std::log(static_cast<f64>(size));
-  primes.reserve(static_cast<i64>(1.1 * primes_size));
-  Vec<u32> sieved(static_cast<i64>(primes_size));
+  f64 primes_size = std::is_constant_evaluated() ? static_cast<f64>(size) / 8 : size / std::log(size);
+  primes.reserve(static_cast<u32>(1.1 * primes_size));
+  Vec<u32> sieved(static_cast<u32>(primes_size));
   u32 *first = sieved.data(), *last;
-  i64 k, l;
-  u32 x, y;
+  u32 k, l, x, y;
   u8 temp;
   for(k = 0; k * k < flag_size; ++k) {
     while(flag[k] != 0) {
-      x = static_cast<u32>(30ull * static_cast<u64>(k) + table1[flag[k]]);
-      u32 limit = static_cast<u32>(size / x);
+      x = 30ull * k + table1[flag[k]];
+      u32 limit = size / x;
       primes.push_back(x);
       last = first;
       bool smaller = true;
       for(l = k; smaller; ++l) {
         for(temp = flag[l]; temp != 0; temp &= (temp - 1)) {
-          y = static_cast<u32>(30ull * static_cast<u64>(l) + table1[temp]);
+          y = 30u * l + table1[temp];
           if(y > limit) {
             smaller = false;
             break;
@@ -259,13 +258,13 @@ constexpr u8 table2[]={0,1,0,0,0,0,0,2,0,0,0,4,0,8,0,0,0,16,0,32,0,0,0,64,0,0,0,
         }
       }
       flag[k] &= (flag[k] - 1);
-      for(u32* i = first; i < last; ++i) flag[static_cast<i64>(*i / 30)] ^= table2[*i % 30];
+      for(u32* i = first; i < last; ++i) flag[*i / 30] ^= table2[*i % 30];
     }
   }
-  for(; k < flag_size; ++k) {
+  for(; k < flag_size; k++) {
     while(flag[k] != 0) {
-      x = static_cast<u32>(30ull * static_cast<u64>(k) + table1[flag[k]]);
-      if(static_cast<i64>(x) > size) { return primes; }
+      x = 30 * k + table1[flag[k]];
+      if(x > size) { return primes; }
       primes.push_back(x);
       flag[k] &= (flag[k] - 1);
     }
@@ -279,16 +278,16 @@ inline u64 FindFactor(u64 x) {
   MontgomeryModint64Impl mint;
   mint.set(x);
   static Rand64 engine;
-  constexpr i64 repeat = 8192;
+  constexpr u32 repeat = 8192;
 retry:
   u64 r = mint.raw(engine() % (x - 1) + 1), a, b = mint.raw(engine() % (x - 1) + 1);
-  i64 k = repeat;
+  u32 k = repeat;
   while(true) {
-    for(i64 i = k + 1; --i;) b = mint.fma(b, b, r);
+    for(u32 i = k + 1; --i;) b = mint.fma(b, b, r);
     a = b;
-    for(i64 i = 0; i < k; i += repeat) {
+    for(u32 i = 0; i < k; i += repeat) {
       u64 mul = mint.one(), prev = b;
-      for(i64 j = repeat + 1; --j;) {
+      for(u32 j = repeat + 1; --j;) {
         b = mint.fma(b, b, r);
         mul = mint.mul(mul, mint.sub(a, b));
       }
@@ -315,38 +314,38 @@ inline u64* FactorizeSub64(u64 n, u64* res) noexcept {
   }
   if(n <= 0xffffffff) {
     if(TinyPrimes[0] == 0) {
-      i64 cnt = 0;
-      for(i64 i = 0; i != (1 << 16); ++i) {
-        if(IsPrime(static_cast<u64>(i))) TinyPrimes[static_cast<std::size_t>(cnt++)] = static_cast<u16>(i);
+      u32 cnt = 0;
+      for(u32 i = 0; i != (1 << 16); ++i) {
+        if(IsPrime(i)) TinyPrimes[cnt++] = i;
       }
-      for(i64 i = 0; i != 6542; ++i) { InvPrimes[static_cast<std::size_t>(i)] = 0xffffffffffffffff / TinyPrimes[static_cast<std::size_t>(i)] + 1; }
+      for(u32 i = 0; i != 6542; ++i) { InvPrimes[i] = 0xffffffffffffffff / TinyPrimes[i] + 1; }
     }
-    auto check = [&](i64 idx, u64 m) {
+    auto check = [&](u64 idx, u64 m) {
       if(m * n < m) {
-        const u64 p = TinyPrimes[static_cast<std::size_t>(idx)];
+        u64 p = TinyPrimes[idx];
         do {
           *(res++) = p;
           n = (static_cast<u128>(m) * n) >> 64;
         } while(m * n < m);
       }
     };
-    for(i64 i = 8; i != 14; ++i) {
-      check(i, InvPrimes[static_cast<std::size_t>(i)]);
-      const u64 p = TinyPrimes[static_cast<std::size_t>(i + 1)];
+    for(u32 i = 8; i != 14; ++i) {
+      check(i, InvPrimes[i]);
+      u64 p = TinyPrimes[i + 1];
       if(p * p > n) {
         if(n != 1) *(res++) = n;
         return res;
       }
     }
-    for(i64 i = 14; i != 6542; i += 8) {
-      const u64 m1 = InvPrimes[static_cast<std::size_t>(i)];
-      const u64 m2 = InvPrimes[static_cast<std::size_t>(i + 1)];
-      const u64 m3 = InvPrimes[static_cast<std::size_t>(i + 2)];
-      const u64 m4 = InvPrimes[static_cast<std::size_t>(i + 3)];
-      const u64 m5 = InvPrimes[static_cast<std::size_t>(i + 4)];
-      const u64 m6 = InvPrimes[static_cast<std::size_t>(i + 5)];
-      const u64 m7 = InvPrimes[static_cast<std::size_t>(i + 6)];
-      const u64 m8 = InvPrimes[static_cast<std::size_t>(i + 7)];
+    for(u32 i = 14; i != 6542; i += 8) {
+      u64 m1 = InvPrimes[i];
+      u64 m2 = InvPrimes[i + 1];
+      u64 m3 = InvPrimes[i + 2];
+      u64 m4 = InvPrimes[i + 3];
+      u64 m5 = InvPrimes[i + 4];
+      u64 m6 = InvPrimes[i + 5];
+      u64 m7 = InvPrimes[i + 6];
+      u64 m8 = InvPrimes[i + 7];
       if(m1 * n < m1 || m2 * n < m2 || m3 * n < m3 || m4 * n < m4 || m5 * n < m5 || m6 * n < m6 || m7 * n < m7 || m8 * n < m8) {
         check(i, m1);
         check(i + 1, m2);
@@ -357,7 +356,7 @@ inline u64* FactorizeSub64(u64 n, u64* res) noexcept {
         check(i + 6, m7);
         check(i + 7, m8);
       }
-      const u64 p = TinyPrimes[static_cast<std::size_t>(i + 7)];
+      u64 p = TinyPrimes[i + 7];
       if(p * p >= n) break;
     }
     if(n != 1) *(res++) = n;
@@ -379,9 +378,9 @@ inline auto Factorize(u64 n) {
   u64* p = res;
   {
     Assume(n != 0);
-    i64 rz = std::countr_zero(n);
+    u32 rz = std::countr_zero(n);
     n >>= rz;
-    for(i64 i = 0; i != rz; ++i) *(p++) = 2;
+    for(u32 i = 0; i != rz; ++i) *(p++) = 2;
   }
   {
     const bool a = n % 3 == 0, b = n % 5 == 0, c = n % 7 == 0, d = n % 11 == 0, e = n % 13 == 0, f = n % 17 == 0, g = n % 19 == 0;

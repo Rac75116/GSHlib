@@ -25,10 +25,10 @@ public:
     while(true) {
       const c8* e = stream.current();
       while(*e >= '!') ++e;
-      const i64 len = static_cast<i64>(e - stream.current());
-      const i64 curlen = static_cast<i64>(res.size());
-      res.resize(static_cast<std::size_t>(curlen + len));
-      MemoryCopy(res.data() + static_cast<std::size_t>(curlen), stream.current(), len);
+      const u32 len = e - stream.current();
+      const u32 curlen = res.size();
+      res.resize(curlen + len);
+      MemoryCopy(res.data() + curlen, stream.current(), len);
       stream.skip(len);
       if(stream.avail() == 0) stream.reload();
       else break;
@@ -36,23 +36,23 @@ public:
     stream.skip(1);
     return res;
   }
-  template<class Stream> constexpr Str operator()(Stream&& stream, i64 n) const {
-    i64 rem = n;
+  template<class Stream> constexpr Str operator()(Stream&& stream, u32 n) const {
+    u32 rem = n;
     Str res;
-    i64 avail = stream.avail();
+    u32 avail = stream.avail();
     while(avail <= rem) {
-      const i64 curlen = static_cast<i64>(res.size());
-      res.resize(static_cast<std::size_t>(curlen + avail));
-      MemoryCopy(res.data() + static_cast<std::size_t>(curlen), stream.current(), avail);
+      const u32 curlen = res.size();
+      res.resize(curlen + avail);
+      MemoryCopy(res.data() + curlen, stream.current(), avail);
       rem -= avail;
       stream.skip(avail);
       if(rem == 0) return res;
       stream.reload();
       avail = stream.avail();
     }
-    const i64 curlen = static_cast<i64>(res.size());
-    res.resize(static_cast<std::size_t>(curlen + rem));
-    MemoryCopy(res.data() + static_cast<std::size_t>(curlen), stream.current(), rem);
+    const u32 curlen = res.size();
+    res.resize(curlen + rem);
+    MemoryCopy(res.data() + curlen, stream.current(), rem);
     stream.skip(rem + 1);
     return res;
   }
@@ -62,8 +62,8 @@ template<> class Formatter<StrView> {
 public:
   template<class Stream> constexpr void operator()(Stream&& stream, const StrView& str) const {
     const c8* s = str.data();
-    i64 len = static_cast<i64>(str.size());
-    i64 avail = stream.avail();
+    u32 len = str.size();
+    u32 avail = stream.avail();
     if(avail >= len) [[likely]] {
       MemoryCopy(stream.current(), s, len);
       stream.skip(len);
@@ -75,7 +75,7 @@ public:
       while(len != 0) {
         stream.reload();
         avail = stream.avail();
-        const i64 tmp = len < avail ? len : avail;
+        const u32 tmp = len < avail ? len : avail;
         MemoryCopy(stream.current(), s, tmp);
         len -= tmp;
         s += tmp;

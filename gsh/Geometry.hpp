@@ -65,7 +65,7 @@ template<class T, class U> constexpr T Dot(const Point3<U>& a, const Point3<U>& 
 template<class T, class U> constexpr Point3<T> Cross(const Point3<U>& a, const Point3<U>& b) { return {static_cast<T>(a.y) * static_cast<T>(b.z) - static_cast<T>(a.z) * static_cast<T>(b.y), static_cast<T>(a.z) * static_cast<T>(b.x) - static_cast<T>(a.x) * static_cast<T>(b.z), static_cast<T>(a.x) * static_cast<T>(b.y) - static_cast<T>(a.y) * static_cast<T>(b.x)}; }
 template<std::ranges::input_range T> requires std::same_as<std::ranges::range_value_t<T>, Point2<i32>> constexpr Vec<Point2<i32>> ArgumentSort(T&& r) {
   Vec<u128> v(std::ranges::size(r));
-  for(i64 i = 0; auto&& p : r) {
+  for(u32 i = 0; auto&& p : r) {
     auto [x, y] = p;
     u64 ord = 0;
     const bool xs = (x >= 0), ys = (y >= 0);
@@ -85,20 +85,20 @@ template<std::ranges::input_range T> requires std::same_as<std::ranges::range_va
   }
   v.sort({}, [](u128 x) { return static_cast<u64>(x); });
   Vec<Point2<i32>> res(v.size());
-  for(i64 i = 0, j = v.size(); i != j; ++i) res[i] = std::bit_cast<Point2<i32>>(static_cast<u64>(v[i] >> 64));
+  for(u32 i = 0, j = v.size(); i != j; ++i) res[i] = std::bit_cast<Point2<i32>>(static_cast<u64>(v[i] >> 64));
   return res;
 }
 template<std::ranges::input_range T> requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<T>>, Point2<i32>> constexpr Vec<Point2<i32>> ConvexHull(T&& r) {
-  const i64 n = static_cast<i64>(std::ranges::size(r));
+  const u32 n = std::ranges::size(r);
   if(n <= 1) return r;
-  i64 m = 1;
+  u32 m = 1;
   Vec<Point2<i32>> p(n);
   {
     Vec<u64> sorted(n);
-    for(i64 i = 0; auto&& e : r) sorted[i++] = std::bit_cast<u64>(e) ^ 0x8000000080000000;
+    for(u32 i = 0; auto&& e : r) sorted[i++] = std::bit_cast<u64>(e) ^ 0x8000000080000000;
     sorted.sort();
     p[0] = std::bit_cast<Point2<i32>>(sorted[0] ^ 0x8000000080000000);
-    for(i64 i = 1; i != n; ++i) {
+    for(u32 i = 1; i != n; ++i) {
       p[m] = std::bit_cast<Point2<i32>>(sorted[i] ^ 0x8000000080000000);
       m += sorted[i] != sorted[i - 1];
     }
@@ -108,11 +108,11 @@ template<std::ranges::input_range T> requires std::same_as<std::remove_cvref_t<s
     return p;
   }
   Vec<Point2<i32>> ch(2 * m);
-  i64 k = 0;
-  for(i64 i = 0; i < m; ch[k++] = p[i++]) {
+  u32 k = 0;
+  for(u32 i = 0; i < m; ch[k++] = p[i++]) {
     while(k >= 2 && Cross<i64>(ch[k - 1] - ch[k - 2], p[i] - ch[k - 2]) <= 0) --k;
   }
-  for(i64 i = m - 1, t = k + 1; i > 0; ch[k++] = p[--i]) {
+  for(u32 i = m - 1, t = k + 1; i > 0; ch[k++] = p[--i]) {
     while(k >= t && Cross<i64>(ch[k - 1] - ch[k - 2], p[i - 1] - ch[k - 2]) <= 0) --k;
   }
   ch.resize(k - 1);
@@ -125,23 +125,23 @@ template<std::ranges::random_access_range T> requires std::same_as<std::remove_c
     constexpr const auto& first() const noexcept { return a; }
     constexpr const auto& second() const noexcept { return b; }
   };
-  const i64 n = static_cast<i64>(std::ranges::size(p));
+  const u32 n = std::ranges::size(p);
   if(n == 0) throw Exception("gsh::ConvexDiameter / Input is empty.");
   const auto bg = std::ranges::begin(p);
   if(n <= 2) {
     if(n == 1) return result_type{*bg, *bg};
     else return result_type{*bg, *std::ranges::next(bg)};
   }
-  i64 is = 0, js = 0;
-  for(i64 i = 1; i != n; i++) {
+  u32 is = 0, js = 0;
+  for(u32 i = 1; i != n; i++) {
     auto a = std::ranges::next(bg, i)->y, b = std::ranges::next(bg, is)->y, c = std::ranges::next(bg, js)->y;
     is = (a > b ? i : is);
     js = (a < c ? i : js);
   }
   i64 maxdis = NormSquare<i64>(*std::ranges::next(bg, is) - *std::ranges::next(bg, js));
-  i64 maxi = is, maxj = js, i = is, j = js;
+  u32 maxi = is, maxj = js, i = is, j = js;
   do {
-    const i64 in = (i + 1 == n ? 0 : i + 1), jn = (j + 1 == n ? 0 : j + 1);
+    const u32 in = (i + 1 == n ? 0 : i + 1), jn = (j + 1 == n ? 0 : j + 1);
     const bool f = Cross<i64>(*std::ranges::next(bg, in) - *std::ranges::next(bg, i), *std::ranges::next(bg, jn) - *std::ranges::next(bg, j)) > 0;
     j = f ? jn : j;
     i = f ? i : in;

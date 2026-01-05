@@ -13,7 +13,7 @@ namespace gsh {
 #elif _MSC_VER
   __assume(false);
 #else
-  [[maybe_unused]] i64 n = 1 / 0;
+  [[maybe_unused]] u32 n = 1 / 0;
 #endif
 };
 GSH_INTERNAL_INLINE constexpr void Assume(const bool f) {
@@ -60,46 +60,46 @@ GSH_INTERNAL_INLINE inline void PreventConstexpr() noexcept {
 }
 class InPlaceTag {};
 [[maybe_unused]] constexpr InPlaceTag InPlace;
-template<class T> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, c8 byte, i64 len) {
+template<class T> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr void MemorySet(T* p, c8 byte, u32 len) {
   if(std::is_constant_evaluated()) {
     struct mem {
       c8 buf[sizeof(T)] = {};
     };
     mem init;
-    for(i64 i = 0; i != static_cast<i64>(sizeof(T)); ++i) init.buf[i] = byte;
-    for(i64 i = 0; i != len / static_cast<i64>(sizeof(T)); ++i) p[i] = std::bit_cast<T>(init);
+    for(u32 i = 0; i != sizeof(T); ++i) init.buf[i] = byte;
+    for(u32 i = 0; i != len / sizeof(T); ++i) p[i] = std::bit_cast<T>(init);
     if(len % sizeof(T) != 0) {
-      auto& ref = p[len / static_cast<i64>(sizeof(T))];
+      auto& ref = p[len / sizeof(T)];
       mem tmp = std::bit_cast<mem>(ref);
-      for(i64 i = 0; i != len % static_cast<i64>(sizeof(T)); ++i) tmp.buf[i] = byte;
+      for(u32 i = 0; i != len % sizeof(T); ++i) tmp.buf[i] = byte;
       ref = std::bit_cast<T>(tmp);
     }
-  } else std::memset(p, byte, static_cast<std::size_t>(len));
+  } else std::memset(p, byte, len);
 }
-template<class T> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr i64 MemoryChar(T* p, c8 byte, i64 len) {
+template<class T> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr u32 MemoryChar(T* p, c8 byte, u32 len) {
   if(std::is_constant_evaluated()) {
     struct mem {
       c8 buf[sizeof(T)] = {};
     };
-    for(i64 i = 0; i != len / static_cast<i64>(sizeof(T)); ++i) {
+    for(u32 i = 0; i != len / sizeof(T); ++i) {
       mem tmp = std::bit_cast<mem>(p[i]);
-      for(i64 j = 0; j != static_cast<i64>(sizeof(T)); ++j) {
+      for(u32 j = 0; j != sizeof(T); ++j) {
         if(tmp.buf[j] == byte) return i * sizeof(T) + j;
       }
     }
     if(len % sizeof(T) != 0) {
-      mem tmp = std::bit_cast<mem>(p[len / static_cast<i64>(sizeof(T))]);
-      for(i64 i = 0; i != len % static_cast<i64>(sizeof(T)); ++i) {
-        if(tmp.buf[i] == byte) return len / static_cast<i64>(sizeof(T)) * static_cast<i64>(sizeof(T)) + i;
+      mem tmp = std::bit_cast<mem>(p[len / sizeof(T)]);
+      for(u32 i = 0; i != len % sizeof(T); ++i) {
+        if(tmp.buf[i] == byte) return len / sizeof(T) * sizeof(T) + i;
       }
     }
-    return -1;
+    return 0xffffffff;
   } else {
-    const void* tmp = std::memchr(p, byte, static_cast<std::size_t>(len));
-    return (tmp == nullptr ? -1 : static_cast<i64>(static_cast<const c8*>(tmp) - reinterpret_cast<const c8*>(p)));
+    const void* tmp = std::memchr(p, byte, len);
+    return (tmp == nullptr ? 0xffffffff : static_cast<const c8*>(tmp) - reinterpret_cast<const c8*>(p));
   }
 }
-template<class T, class U> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr void MemoryCopy(T* GSH_INTERNAL_RESTRICT dst, U* GSH_INTERNAL_RESTRICT src, i64 len) {
+template<class T, class U> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE constexpr void MemoryCopy(T* GSH_INTERNAL_RESTRICT dst, U* GSH_INTERNAL_RESTRICT src, u32 len) {
   if(std::is_constant_evaluated()) {
     struct mem1 {
       c8 buf[sizeof(T)] = {};
@@ -109,54 +109,52 @@ template<class T, class U> requires std::is_trivial_v<T> GSH_INTERNAL_INLINE con
     };
     mem1 tmp1;
     mem2 tmp2;
-    const i64 tSize = static_cast<i64>(sizeof(T));
-    const i64 uSize = static_cast<i64>(sizeof(U));
-    for(i64 i = 0; i != len; ++i) {
-      if(i % uSize == 0) tmp2 = std::bit_cast<mem2>(src[i / uSize]);
-      tmp1.buf[i % tSize] = tmp2.buf[i % uSize];
-      if((i + 1) % tSize == 0) {
-        dst[i / tSize] = std::bit_cast<T>(tmp1);
+    for(u32 i = 0; i != len; ++i) {
+      if(i % sizeof(U) == 0) tmp2 = std::bit_cast<mem2>(src[i / sizeof(U)]);
+      tmp1.buf[i % sizeof(T)] = tmp2.buf[i % sizeof(U)];
+      if((i + 1) % sizeof(T) == 0) {
+        dst[i / sizeof(T)] = std::bit_cast<T>(tmp1);
         tmp1 = mem1{};
       }
     }
     if(len % sizeof(T) != 0) {
-      mem1 tmp3 = std::bit_cast<mem1>(dst[len / tSize]);
-      for(i64 i = 0; i != len % tSize; ++i) tmp3.buf[i] = tmp1.buf[i];
-      dst[len / tSize] = std::bit_cast<T>(tmp3);
+      mem1 tmp3 = std::bit_cast<mem1>(dst[len / sizeof(T)]);
+      for(u32 i = 0; i != len % sizeof(T); ++i) tmp3.buf[i] = tmp1.buf[i];
+      dst[len / sizeof(T)] = std::bit_cast<T>(tmp3);
     }
-  } else std::memcpy(dst, src, static_cast<std::size_t>(len));
+  } else std::memcpy(dst, src, len);
 }
 /*
 template<class T, class U>
-  requires std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>
-GSH_INTERNAL_INLINE constexpr void MemoryMove(T* dst, U* src, i64 len) {
-  if (std::is_constant_evaluated()) {
-  } else std::memmove(dst, src, static_cast<std::size_t>(len));
+    requires std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>
+GSH_INTERNAL_INLINE constexpr void MemoryMove(T* dst, U* src, u32 len) {
+    if (std::is_constant_evaluated()) {
+    } else std::memmove(dst, src, len);
 }
 */
-GSH_INTERNAL_INLINE constexpr i64 StrLen(const c8* p) {
+GSH_INTERNAL_INLINE constexpr u32 StrLen(const c8* p) {
   if(std::is_constant_evaluated()) {
     auto q = p;
     while(*q != '\0') ++q;
-    return static_cast<i64>(q - p);
-  } else return static_cast<i64>(std::strlen(p));
+    return q - p;
+  } else return std::strlen(p);
 }
 namespace internal {
-template<i64 N, class First, class... Tail> class TypeAtImpl : public TypeAtImpl<N - 1, Tail...> {};
+template<u32 N, class First, class... Tail> class TypeAtImpl : public TypeAtImpl<N - 1, Tail...> {};
 template<class T, class... Types> class TypeAtImpl<0, T, Types...> {
 public:
   using type = T;
 };
 } // namespace internal
-template<i64 N, class... Types> using TypeAt = typename internal::TypeAtImpl<N, Types...>::type;
+template<u32 N, class... Types> using TypeAt = typename internal::TypeAtImpl<N, Types...>::type;
 template<class... Types> class TypeArr {
 public:
-  constexpr static i64 size() noexcept { return static_cast<i64>(sizeof...(Types)); }
-  template<i64 N> using type = std::conditional_t<(0 <= N && N < static_cast<i64>(sizeof...(Types))), TypeAt<N, Types...>, void>;
+  constexpr static u32 size() noexcept { return sizeof...(Types); }
+  template<u32 N> using type = std::conditional_t<(N < sizeof...(Types)), TypeAt<N, Types...>, void>;
 };
 template<> class TypeArr<> {
 public:
-  constexpr static i64 size() noexcept { return 0; }
-  template<i64 N> using type = void;
+  constexpr static u32 size() noexcept { return 0; }
+  template<u32 N> using type = void;
 };
 } // namespace gsh

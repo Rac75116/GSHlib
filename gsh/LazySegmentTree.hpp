@@ -45,22 +45,22 @@ template<class Op, class E, class Mapping, class Composition, class Id> constexp
 namespace segment_specs {
 template<class T> class RangeAddRangeMin : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
 template<class T> class RangeAddRangeMax : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
-template<class T> class RangeAddRangeSum : public decltype(internal::LazySegmentSpec([](const std::pair<T, i64>& a, const std::pair<T, i64>& b) { return std::pair<T, i64>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, i64> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, i64>& x) { return std::pair<T, i64>{x.first + f * static_cast<T>(x.second), x.second}; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeAddRangeSum : public decltype(internal::LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{x.first + f * static_cast<T>(x.second), x.second}; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
 template<class T> class RangeSetRangeMin : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); }, [](const std::optional<T>& f, const T& x) { return f ? *f : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })){};
 template<class T> class RangeSetRangeMax : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const std::optional<T>& f, const T& x) { return f ? *f : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })){};
-template<class T> class RangeSetRangeSum : public decltype(internal::LazySegmentSpec([](const std::pair<T, i64>& a, const std::pair<T, i64>& b) { return std::pair<T, i64>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, i64> { return {static_cast<T>(0), 0}; }, [](const std::optional<T>& f, const std::pair<T, i64>& x) { return f ? std::pair<T, i64>{(*f) * static_cast<T>(x.second), x.second} : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })){};
-template<class T> requires std::integral<T> class RangeXorRangeXor : public decltype(internal::LazySegmentSpec([](const std::pair<T, i64>& a, const std::pair<T, i64>& b) { return std::pair<T, i64>{static_cast<T>(a.first ^ b.first), a.second + b.second}; }, []() -> std::pair<T, i64> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, i64>& x) { return std::pair<T, i64>{static_cast<T>(x.first ^ ((x.second & 1) ? f : static_cast<T>(0))), x.second}; }, [](const T& f, const T& g) { return static_cast<T>(f ^ g); }, []() -> T { return static_cast<T>(0); })){};
+template<class T> class RangeSetRangeSum : public decltype(internal::LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const std::optional<T>& f, const std::pair<T, std::size_t>& x) { return f ? std::pair<T, std::size_t>{(*f) * static_cast<T>(x.second), x.second} : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })){};
+template<class T> requires std::integral<T> class RangeXorRangeXor : public decltype(internal::LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{static_cast<T>(a.first ^ b.first), a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{static_cast<T>(x.first ^ ((x.second & 1) ? f : static_cast<T>(0))), x.second}; }, [](const T& f, const T& g) { return static_cast<T>(f ^ g); }, []() -> T { return static_cast<T>(0); })){};
 template<class T> requires std::integral<T> class RangeOrRangeOr : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return static_cast<T>(a | b); }, []() -> T { return static_cast<T>(0); }, [](const T& f, const T& x) { return static_cast<T>(x | f); }, [](const T& f, const T& g) { return static_cast<T>(f | g); }, []() -> T { return static_cast<T>(0); })){};
 template<class T> requires std::integral<T> class RangeAndRangeAnd : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return static_cast<T>(a & b); }, []() -> T { return static_cast<T>(~T(0)); }, [](const T& f, const T& x) { return static_cast<T>(x & f); }, [](const T& f, const T& g) { return static_cast<T>(f & g); }, []() -> T { return static_cast<T>(~T(0)); })){};
-template<class T> class RangeAffineRangeSum : public decltype(internal::LazySegmentSpec([](const std::pair<T, i64>& a, const std::pair<T, i64>& b) { return std::pair<T, i64>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, i64> { return {static_cast<T>(0), 0}; }, [](const std::pair<T, T>& f, const std::pair<T, i64>& x) { return std::pair<T, i64>{f.first * x.first + f.second * static_cast<T>(x.second), x.second}; }, [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{f.first * g.first, f.first * g.second + f.second}; }, []() -> std::pair<T, T> { return {static_cast<T>(1), static_cast<T>(0)}; })){};
+template<class T> class RangeAffineRangeSum : public decltype(internal::LazySegmentSpec([](const std::pair<T, std::size_t>& a, const std::pair<T, std::size_t>& b) { return std::pair<T, std::size_t>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, std::size_t> { return {static_cast<T>(0), 0}; }, [](const std::pair<T, T>& f, const std::pair<T, std::size_t>& x) { return std::pair<T, std::size_t>{f.first * x.first + f.second * static_cast<T>(x.second), x.second}; }, [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{f.first * g.first, f.first * g.second + f.second}; }, []() -> std::pair<T, T> { return {static_cast<T>(1), static_cast<T>(0)}; })){};
 } // namespace segment_specs
 template<class Spec> requires internal::IsLazySegmentSpecImplemented<Spec> class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
 public:
   using value_type = typename Spec::value_type;
   using operator_type = typename Spec::operator_type;
-  using size_type = i64;
-  using difference_type = i64;
+  using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
 private:
   size_type n;
   size_type sz;
@@ -81,16 +81,16 @@ public:
   constexpr LazySegmentTree() : n(0), sz(0), log(0) {}
   constexpr LazySegmentTree(Spec spec) : spec(spec), n(0), sz(0), log(0) {}
   constexpr LazySegmentTree(size_type n, Spec spec = Spec()) : spec(spec), n(n) {
-    sz = n > 0 ? static_cast<i64>(std::bit_ceil(static_cast<u64>(n))) : 0;
-    log = sz == 0 ? 0 : static_cast<i64>(std::countr_zero(static_cast<u64>(sz)));
+    sz = n > 0 ? std::bit_ceil(n) : 0;
+    log = std::countr_zero(sz);
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
     }
   }
-  template<class InputIt> requires std::forward_iterator<InputIt> constexpr LazySegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec), n(static_cast<i64>(std::ranges::distance(first, last))) {
-    sz = n > 0 ? static_cast<i64>(std::bit_ceil(static_cast<u64>(n))) : 0;
-    log = sz == 0 ? 0 : static_cast<i64>(std::countr_zero(static_cast<u64>(sz)));
+  template<class InputIt> requires std::forward_iterator<InputIt> constexpr LazySegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec), n(std::ranges::distance(first, last)) {
+    sz = n > 0 ? std::bit_ceil(n) : 0;
+    log = std::countr_zero(sz);
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
@@ -126,14 +126,9 @@ public:
     assign(tmp.begin(), tmp.end());
   }
   template<class InputIt> requires std::forward_iterator<InputIt> constexpr void assign(InputIt first, InputIt last) {
-    n = static_cast<size_type>(std::ranges::distance(first, last));
-    if(n > 0) {
-      sz = static_cast<size_type>(std::bit_ceil(static_cast<u64>(n)));
-      log = static_cast<size_type>(std::countr_zero(static_cast<u64>(sz)));
-    } else {
-      sz = 0;
-      log = 0;
-    }
+    n = std::ranges::distance(first, last);
+    sz = n > 0 ? std::bit_ceil(n) : 0;
+    log = std::countr_zero(sz);
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
@@ -147,13 +142,8 @@ public:
   }
   constexpr void assign(size_type n, const value_type& u) {
     this->n = n;
-    if(n > 0) {
-      sz = static_cast<size_type>(std::bit_ceil(static_cast<u64>(n)));
-      log = static_cast<size_type>(std::countr_zero(static_cast<u64>(sz)));
-    } else {
-      sz = 0;
-      log = 0;
-    }
+    sz = n > 0 ? std::bit_ceil(n) : 0;
+    log = std::countr_zero(sz);
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());

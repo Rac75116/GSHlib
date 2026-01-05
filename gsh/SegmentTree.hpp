@@ -45,8 +45,8 @@ template<class Spec> requires internal::IsSegmentSpecImplemented<Spec> class Seg
   [[no_unique_address]] Spec spec;
 public:
   using value_type = typename Spec::value_type;
-  using size_type = std::size_t;
-  using difference_type = std::ptrdiff_t;
+  using size_type = u32;
+  using difference_type = i32;
 private:
   size_type n;
   size_type sz;

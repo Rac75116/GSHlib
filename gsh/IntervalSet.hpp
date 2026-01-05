@@ -7,6 +7,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <new>
 #include <optional>
 #include <ranges>
 #include <set>
@@ -86,6 +87,26 @@ private:
       }
     }
   }
+  struct shard_slot {
+    bool has = false;
+    alignas(value_type) unsigned char buf[sizeof(value_type)];
+    value_type* ptr() { return std::launder(reinterpret_cast<value_type*>(buf)); }
+    const value_type* ptr() const { return std::launder(reinterpret_cast<const value_type*>(buf)); }
+    void reset() {
+      if(has) {
+        ptr()->~value_type();
+        has = false;
+      }
+    }
+    void emplace(const Key& l, const Key& r, const Value& v) {
+      reset();
+      ::new((void*)buf) value_type(l, r, v);
+      has = true;
+    }
+    value_type& get() { return *ptr(); }
+    const value_type& get() const { return *ptr(); }
+    ~shard_slot() { reset(); }
+  };
 public:
   IntervalSet() : comp(), vcomp(), s(value_compare(comp), Alloc()) {}
   explicit IntervalSet(const Comp& comp, const Alloc& alloc = Alloc()) : comp(comp), vcomp(), s(value_compare(comp), alloc) {}
@@ -139,46 +160,50 @@ public:
     auto it = s.lower_bound(new_l);
     if(it != s.begin()) {
       auto prev = std::prev(it);
-      if(eq_(comp, prev->right, new_l) && eq_value_(prev->value, value)) {
+      bool prev_same = true;
+      if constexpr(!std::same_as<Value, std::monostate>) { prev_same = eq_value_(prev->value, value); }
+      if(eq_(comp, prev->right, new_l) && prev_same) {
         new_l = prev->left;
         it = prev;
       }
     }
-    std::optional<value_type> left_shard;
-    std::optional<value_type> right_shard;
+    shard_slot left_shard;
+    shard_slot right_shard;
     auto start_erase = it;
     while(it != s.end()) {
       if(lt_(comp, new_r, it->left)) break;
-      if(eq_(comp, new_r, it->left) && !eq_value_(it->value, value)) break;
+      bool same = true;
+      if constexpr(!std::same_as<Value, std::monostate>) { same = eq_value_(it->value, value); }
+      if(eq_(comp, new_r, it->left) && !same) break;
       if(lt_(comp, it->left, new_l)) {
-        if(eq_value_(it->value, value)) {
+        if(same) {
           new_l = it->left;
         } else {
-          left_shard = value_type{it->left, new_l, it->value};
+          left_shard.emplace(it->left, new_l, it->value);
         }
       }
       if(lt_(comp, new_r, it->right)) {
-        if(eq_value_(it->value, value)) {
+        if(same) {
           new_r = it->right;
         } else {
-          right_shard = value_type{new_r, it->right, it->value};
+          right_shard.emplace(new_r, it->right, it->value);
         }
-      } else {
-        if(lt_(comp, new_r, it->right) && eq_value_(it->value, value)) { new_r = it->right; }
       }
       del_hook_(on_del, *it);
       it++;
     }
     auto hint = s.erase(start_erase, it);
-    if(right_shard) {
-      add_hook_(on_add, right_shard->left, right_shard->right, right_shard->value);
-      hint = s.insert(hint, *right_shard);
+    if(right_shard.has) {
+      const auto& rs = right_shard.get();
+      add_hook_(on_add, rs.left, rs.right, rs.value);
+      hint = s.emplace_hint(hint, rs.left, rs.right, rs.value);
     }
     add_hook_(on_add, new_l, new_r, value);
     auto it_new = s.emplace_hint(hint, new_l, new_r, value);
-    if(left_shard) {
-      add_hook_(on_add, left_shard->left, left_shard->right, left_shard->value);
-      s.insert(it_new, *left_shard);
+    if(left_shard.has) {
+      const auto& ls = left_shard.get();
+      add_hook_(on_add, ls.left, ls.right, ls.value);
+      s.emplace_hint(it_new, ls.left, ls.right, ls.value);
     }
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const value_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(v.left, v.right, v.value, on_add, on_del); }
@@ -204,24 +229,26 @@ public:
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void erase(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     if(!lt_(comp, l, r)) return;
     auto it = s.lower_bound(l);
-    std::optional<value_type> left_shard;
-    std::optional<value_type> right_shard;
+    shard_slot left_shard;
+    shard_slot right_shard;
     auto start_erase = it;
     while(it != s.end()) {
       if(!lt_(comp, it->left, r)) break;
-      if(lt_(comp, it->left, l)) { left_shard = value_type{it->left, l, it->value}; }
-      if(lt_(comp, r, it->right)) { right_shard = value_type{r, it->right, it->value}; }
+      if(lt_(comp, it->left, l)) { left_shard.emplace(it->left, l, it->value); }
+      if(lt_(comp, r, it->right)) { right_shard.emplace(r, it->right, it->value); }
       del_hook_(on_del, *it);
       it++;
     }
     auto hint = s.erase(start_erase, it);
-    if(right_shard) {
-      add_hook_(on_add, right_shard->left, right_shard->right, right_shard->value);
-      hint = s.insert(hint, *right_shard);
+    if(right_shard.has) {
+      const auto& rs = right_shard.get();
+      add_hook_(on_add, rs.left, rs.right, rs.value);
+      hint = s.emplace_hint(hint, rs.left, rs.right, rs.value);
     }
-    if(left_shard) {
-      add_hook_(on_add, left_shard->left, left_shard->right, left_shard->value);
-      s.insert(hint, *left_shard);
+    if(left_shard.has) {
+      const auto& ls = left_shard.get();
+      add_hook_(on_add, ls.left, ls.right, ls.value);
+      s.emplace_hint(hint, ls.left, ls.right, ls.value);
     }
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void erase(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { erase(v.left, v.right, on_add, on_del); }

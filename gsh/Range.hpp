@@ -64,14 +64,14 @@ public:
   constexpr auto begin() const { return std::ranges::begin(derived()); }
   constexpr auto end() { return std::ranges::end(derived()); }
   constexpr auto end() const { return std::ranges::end(derived()); }
-  constexpr auto rbegin() { return std::reverse_iterator(begin()); }
-  constexpr auto rbegin() const { return std::reverse_iterator(cbegin()); }
-  constexpr auto rend() { return std::reverse_iterator(end()); }
-  constexpr auto rend() const { return std::reverse_iterator(cend()); }
+  constexpr auto rbegin() { return std::reverse_iterator(end()); }
+  constexpr auto rbegin() const { return std::reverse_iterator(cend()); }
+  constexpr auto rend() { return std::reverse_iterator(begin()); }
+  constexpr auto rend() const { return std::reverse_iterator(cbegin()); }
   constexpr auto cbegin() const { return std::ranges::cbegin(derived()); }
   constexpr auto cend() const { return std::ranges::cend(derived()); }
-  constexpr auto crbegin() const { return rbegin(); }
-  constexpr auto crend() const { return rend(); }
+  constexpr auto crbegin() const { return std::reverse_iterator(cend()); }
+  constexpr auto crend() const { return std::reverse_iterator(cbegin()); }
   constexpr reference front() { return *begin(); }
   constexpr const_reference front() const { return *cbegin(); }
   constexpr reference back() { return *rbegin(); }

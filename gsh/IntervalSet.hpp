@@ -39,9 +39,9 @@ public:
     constexpr value_compare(const Comp& comp) : comp(comp) {}
   public:
     using is_transparent = void;
-    constexpr bool operator()(const value_type& a, const value_type& b) const { return std::invoke(comp, a.left, b.left); }
-    constexpr bool operator()(const value_type& a, const Key& b) const { return std::invoke(comp, a.left, b); }
-    constexpr bool operator()(const Key& a, const value_type& b) const { return std::invoke(comp, a, b.left); }
+    constexpr bool operator()(const value_type& a, const value_type& b) const { return std::invoke(comp, a.right, b.right); }
+    constexpr bool operator()(const value_type& a, const Key& b) const { return std::invoke(comp, a.right, b); }
+    constexpr bool operator()(const Key& a, const value_type& b) const { return std::invoke(comp, a, b.right); }
     constexpr bool operator()(const Key& a, const Key& b) const { return std::invoke(comp, a, b); }
   };
   using set_type = std::set<value_type, value_compare, Alloc>;
@@ -136,48 +136,31 @@ public:
     if(!lt_(comp, l, r)) return;
     Key nl = l;
     Key nr = r;
-    auto it = s.lower_bound(l);
-    if(it != s.begin()) {
-      auto pit = std::prev(it);
-      if(!le_(comp, pit->right, nl)) {
-        const auto a = pit->left;
-        const auto b = pit->right;
-        const Value old_value = pit->value;
-        del_hook_(on_del, *pit);
-        it = s.erase(pit);
-        if(eq_value_(old_value, value)) {
-          nl = min_(comp, nl, a);
-          nr = max_(comp, nr, b);
-        } else {
-          if(lt_(comp, a, nl)) {
-            add_hook_(on_add, a, nl, old_value);
-            s.emplace_hint(it, value_type{a, nl, old_value});
-          }
-          if(lt_(comp, nr, b)) {
-            add_hook_(on_add, nr, b, old_value);
-            s.emplace_hint(it, value_type{nr, b, old_value});
-            add_hook_(on_add, nl, nr, value);
-            s.emplace_hint(it, value_type{nl, nr, value});
-            return;
-          }
-        }
-      }
-    }
+    auto it = s.upper_bound(l);
     while(it != s.end() && lt_(comp, it->left, nr)) {
+      const auto a = it->left;
       const auto b = it->right;
       const Value old_value = it->value;
       del_hook_(on_del, *it);
       it = s.erase(it);
       if(eq_value_(old_value, value)) {
+        nl = min_(comp, nl, a);
         nr = max_(comp, nr, b);
       } else {
+        if(lt_(comp, a, nl)) {
+          add_hook_(on_add, a, nl, old_value);
+          s.emplace_hint(it, value_type{a, nl, old_value});
+        }
         if(lt_(comp, nr, b)) {
           add_hook_(on_add, nr, b, old_value);
           s.emplace_hint(it, value_type{nr, b, old_value});
-          break;
+          add_hook_(on_add, nl, nr, value);
+          s.emplace_hint(it, value_type{nl, nr, value});
+          return;
         }
       }
     }
+    it = s.lower_bound(nr);
     while(it != s.end() && eq_(comp, it->left, nr) && eq_value_(it->value, value)) {
       nr = max_(comp, nr, it->right);
       del_hook_(on_del, *it);
@@ -208,11 +191,7 @@ public:
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void erase(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     if(!lt_(comp, l, r)) return;
-    auto it = s.lower_bound(l);
-    if(it != s.begin()) {
-      auto pit = std::prev(it);
-      if(lt_(comp, l, pit->right)) it = pit;
-    }
+    auto it = s.upper_bound(l);
     while(it != s.end() && lt_(comp, it->left, r)) {
       const auto a = it->left;
       const auto b = it->right;
@@ -286,7 +265,10 @@ public:
       s.emplace_hint(nxt, value_type{p, b, old_value});
     }
   }
-  template<class OnAdd = empty_hook, class OnDel = empty_hook> void split(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { split(v.left, v.right, on_add, on_del); }
+  template<class OnAdd = empty_hook, class OnDel = empty_hook> void split(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
+    split(v.left, on_add, on_del);
+    split(v.right, on_add, on_del);
+  }
   template<class K, class F = Plus> void slide(const K& k, F func = F()) {
     Vec<value_type> v;
     v.reserve(size());
@@ -296,14 +278,12 @@ public:
       v.emplace_back(value_type{nl, nr, seg.value});
     }
     s.clear();
-    auto hint = s.end();
-    for(auto& seg : v) { hint = s.emplace_hint(hint, std::move(seg)); }
+    s.insert_range(v);
   }
   const_iterator find(const Key& p) const {
     auto it = s.upper_bound(p);
-    if(it == s.begin()) return s.end();
-    --it;
-    if(le_(comp, it->left, p) && lt_(comp, p, it->right)) return it;
+    if(it == s.end()) return s.end();
+    if(le_(comp, it->left, p)) return it;
     return s.end();
   }
   const_iterator lower_bound(const Key& p) const { return s.lower_bound(p); }
@@ -311,13 +291,9 @@ public:
   bool contains(const Key& p) const { return find(p) != s.end(); }
   bool intersects(const Key& l, const Key& r) const {
     if(!lt_(comp, l, r)) return false;
-    auto it = s.lower_bound(l);
-    if(it != s.begin()) {
-      auto pit = std::prev(it);
-      if(lt_(comp, l, pit->right) && lt_(comp, pit->left, r)) return true;
-    }
-    if(it != s.end() && lt_(comp, it->left, r) && lt_(comp, l, it->right)) return true;
-    return false;
+    auto it = s.upper_bound(l);
+    if(it == s.end()) return false;
+    return lt_(comp, it->left, r);
   }
   bool intersects(const bounds_type& v) const { return intersects(v.left, v.right); }
   bool covered(const Key& l, const Key& r) const {
@@ -329,24 +305,23 @@ public:
   bool covered(const bounds_type& v) const { return covered(v.left, v.right); }
   Subrange<const_iterator> intersecting_intervals(const Key& l, const Key& r) const {
     if(!lt_(comp, l, r)) return Subrange(s.end(), s.end());
-    auto first = s.lower_bound(l);
-    if(first != s.begin()) {
-      auto pit = std::prev(first);
-      if(lt_(comp, l, pit->right)) first = pit;
-    }
+    auto first = s.upper_bound(l);
+    if(first == s.end()) return Subrange(s.end(), s.end());
     auto last = s.lower_bound(r);
+    if(last != s.end() && lt_(comp, last->left, r)) ++last;
     return Subrange(first, last);
   }
   Subrange<const_iterator> intersecting_intervals(const bounds_type& v) const { return intersecting_intervals(v.left, v.right); }
   Subrange<const_iterator> included_intervals(const Key& l, const Key& r) const {
     if(!lt_(comp, l, r)) return Subrange(s.end(), s.end());
-    auto first = s.lower_bound(l);
-    auto it = first;
-    while(it != s.end()) {
-      if(!lt_(comp, it->left, r)) break;
-      if(lt_(comp, r, it->right)) break;
-      ++it;
+    auto first = s.upper_bound(l);
+    if(first == s.end()) return Subrange(s.end(), s.end());
+    if(lt_(comp, first->left, l)) {
+      ++first;
+      if(first == s.end()) return Subrange(s.end(), s.end());
     }
+    auto it = first;
+    while(it != s.end() && le_(comp, it->right, r)) { ++it; }
     return Subrange(first, it);
   }
   Subrange<const_iterator> included_intervals(const bounds_type& v) const { return included_intervals(v.left, v.right); }

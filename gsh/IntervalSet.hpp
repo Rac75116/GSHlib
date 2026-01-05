@@ -134,40 +134,52 @@ public:
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) requires std::same_as<Value, std::monostate> { insert(l, r, Value{}, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const Key& l, const Key& r, const Value& value, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     if(!lt_(comp, l, r)) return;
-    Key nl = l;
-    Key nr = r;
-    auto it = s.upper_bound(l);
-    while(it != s.end() && lt_(comp, it->left, nr)) {
-      const auto a = it->left;
-      const auto b = it->right;
-      const Value old_value = it->value;
-      del_hook_(on_del, *it);
-      it = s.erase(it);
-      if(eq_value_(old_value, value)) {
-        nl = min_(comp, nl, a);
-        nr = max_(comp, nr, b);
-      } else {
-        if(lt_(comp, a, nl)) {
-          add_hook_(on_add, a, nl, old_value);
-          s.emplace_hint(it, value_type{a, nl, old_value});
-        }
-        if(lt_(comp, nr, b)) {
-          add_hook_(on_add, nr, b, old_value);
-          s.emplace_hint(it, value_type{nr, b, old_value});
-          add_hook_(on_add, nl, nr, value);
-          s.emplace_hint(it, value_type{nl, nr, value});
-          return;
-        }
+    Key new_l = l;
+    Key new_r = r;
+    auto it = s.lower_bound(new_l);
+    if(it != s.begin()) {
+      auto prev = std::prev(it);
+      if(eq_(comp, prev->right, new_l) && eq_value_(prev->value, value)) {
+        new_l = prev->left;
+        it = prev;
       }
     }
-    it = s.lower_bound(nr);
-    while(it != s.end() && eq_(comp, it->left, nr) && eq_value_(it->value, value)) {
-      nr = max_(comp, nr, it->right);
+    std::optional<value_type> left_shard;
+    std::optional<value_type> right_shard;
+    auto start_erase = it;
+    while(it != s.end()) {
+      if(lt_(comp, new_r, it->left)) break;
+      if(eq_(comp, new_r, it->left) && !eq_value_(it->value, value)) break;
+      if(lt_(comp, it->left, new_l)) {
+        if(eq_value_(it->value, value)) {
+          new_l = it->left;
+        } else {
+          left_shard = value_type{it->left, new_l, it->value};
+        }
+      }
+      if(lt_(comp, new_r, it->right)) {
+        if(eq_value_(it->value, value)) {
+          new_r = it->right;
+        } else {
+          right_shard = value_type{new_r, it->right, it->value};
+        }
+      } else {
+        if(lt_(comp, new_r, it->right) && eq_value_(it->value, value)) { new_r = it->right; }
+      }
       del_hook_(on_del, *it);
-      it = s.erase(it);
+      it++;
     }
-    add_hook_(on_add, nl, nr, value);
-    s.emplace_hint(it, value_type{nl, nr, value});
+    auto hint = s.erase(start_erase, it);
+    if(right_shard) {
+      add_hook_(on_add, right_shard->left, right_shard->right, right_shard->value);
+      hint = s.insert(hint, *right_shard);
+    }
+    add_hook_(on_add, new_l, new_r, value);
+    auto it_new = s.emplace_hint(hint, new_l, new_r, value);
+    if(left_shard) {
+      add_hook_(on_add, left_shard->left, left_shard->right, left_shard->value);
+      s.insert(it_new, *left_shard);
+    }
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const value_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { insert(v.left, v.right, v.value, on_add, on_del); }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void insert(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) requires (!std::same_as<Value, std::monostate>) { insert(v.left, v.right, on_add, on_del); }
@@ -191,22 +203,25 @@ public:
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void erase(const Key& l, const Key& r, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) {
     if(!lt_(comp, l, r)) return;
-    auto it = s.upper_bound(l);
-    while(it != s.end() && lt_(comp, it->left, r)) {
-      const auto a = it->left;
-      const auto b = it->right;
-      const Value old_value = it->value;
+    auto it = s.lower_bound(l);
+    std::optional<value_type> left_shard;
+    std::optional<value_type> right_shard;
+    auto start_erase = it;
+    while(it != s.end()) {
+      if(!lt_(comp, it->left, r)) break;
+      if(lt_(comp, it->left, l)) { left_shard = value_type{it->left, l, it->value}; }
+      if(lt_(comp, r, it->right)) { right_shard = value_type{r, it->right, it->value}; }
       del_hook_(on_del, *it);
-      it = s.erase(it);
-      if(lt_(comp, a, l)) {
-        add_hook_(on_add, a, l, old_value);
-        s.emplace_hint(it, value_type{a, l, old_value});
-      }
-      if(lt_(comp, r, b)) {
-        add_hook_(on_add, r, b, old_value);
-        s.emplace_hint(it, value_type{r, b, old_value});
-        break;
-      }
+      it++;
+    }
+    auto hint = s.erase(start_erase, it);
+    if(right_shard) {
+      add_hook_(on_add, right_shard->left, right_shard->right, right_shard->value);
+      hint = s.insert(hint, *right_shard);
+    }
+    if(left_shard) {
+      add_hook_(on_add, left_shard->left, left_shard->right, left_shard->value);
+      s.insert(hint, *left_shard);
     }
   }
   template<class OnAdd = empty_hook, class OnDel = empty_hook> void erase(const bounds_type& v, OnAdd on_add = OnAdd(), OnDel on_del = OnDel()) { erase(v.left, v.right, on_add, on_del); }
@@ -292,37 +307,37 @@ public:
   bool intersects(const Key& l, const Key& r) const {
     if(!lt_(comp, l, r)) return false;
     auto it = s.upper_bound(l);
-    if(it == s.end()) return false;
-    return lt_(comp, it->left, r);
+    return it != s.end() && lt_(comp, it->left, r);
   }
   bool intersects(const bounds_type& v) const { return intersects(v.left, v.right); }
   bool covered(const Key& l, const Key& r) const {
     if(!lt_(comp, l, r)) return true;
-    auto it = find(l);
-    if(it == s.end()) return false;
-    return le_(comp, r, it->right);
+    auto it = s.upper_bound(l);
+    if(it == s.end() || lt_(comp, l, it->left)) return false;
+    Key current_end = it->right;
+    while(lt_(comp, current_end, r)) {
+      it++;
+      if(it == s.end()) return false;
+      if(lt_(comp, current_end, it->left)) return false;
+      current_end = max_(comp, current_end, it->right);
+    }
+    return true;
   }
   bool covered(const bounds_type& v) const { return covered(v.left, v.right); }
   Subrange<const_iterator> intersecting_intervals(const Key& l, const Key& r) const {
-    if(!lt_(comp, l, r)) return Subrange(s.end(), s.end());
+    if(!lt_(comp, l, r)) return {s.end(), s.end()};
     auto first = s.upper_bound(l);
-    if(first == s.end()) return Subrange(s.end(), s.end());
     auto last = s.lower_bound(r);
-    if(last != s.end() && lt_(comp, last->left, r)) ++last;
-    return Subrange(first, last);
+    if(last != s.end() && lt_(comp, last->left, r)) { last = std::next(last); }
+    return {first, last};
   }
   Subrange<const_iterator> intersecting_intervals(const bounds_type& v) const { return intersecting_intervals(v.left, v.right); }
   Subrange<const_iterator> included_intervals(const Key& l, const Key& r) const {
-    if(!lt_(comp, l, r)) return Subrange(s.end(), s.end());
-    auto first = s.upper_bound(l);
-    if(first == s.end()) return Subrange(s.end(), s.end());
-    if(lt_(comp, first->left, l)) {
-      ++first;
-      if(first == s.end()) return Subrange(s.end(), s.end());
-    }
-    auto it = first;
-    while(it != s.end() && le_(comp, it->right, r)) { ++it; }
-    return Subrange(first, it);
+    if(!lt_(comp, l, r)) return {s.end(), s.end()};
+    auto first = s.lower_bound(l);
+    if(first != s.end() && lt_(comp, first->left, l)) { first = std::next(first); }
+    auto last = s.upper_bound(r);
+    return {first, last};
   }
   Subrange<const_iterator> included_intervals(const bounds_type& v) const { return included_intervals(v.left, v.right); }
   template<class F> void visit(const Key& l, const Key& r, F callback) const {

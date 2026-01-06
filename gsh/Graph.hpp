@@ -51,7 +51,7 @@ template<std::size_t M, class W> auto get(Edge<W>& e) {
 namespace graph_format {
 template<class W> class CRS {
   Vec<std::pair<Edge<W>, u32>> storage;
-  Arr<u32> tail;
+  Vec<u32> tail;
   template<bool IsConst> class adjacency_list {
     using storage_ptr_type = std::conditional_t<IsConst, typename decltype(storage)::const_iterator, typename decltype(storage)::iterator>;
     storage_ptr_type storage_ptr;

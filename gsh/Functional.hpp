@@ -147,6 +147,18 @@ class Hash {
 public:
   template<class T> GSH_INTERNAL_INLINE constexpr u64 operator()(const T& v) const {
     using Type = std::remove_cvref_t<T>;
+    constexpr bool tuple_like = requires {
+      std::get<0>(v);
+      std::tuple_size_v<Type>;
+    };
+    constexpr bool optional_like = requires {
+      v.has_value();
+      *v;
+    };
+    constexpr bool variant_like = requires {
+      v.index();
+      std::visit([](auto&&) {}, v);
+    };
     if constexpr(internal::CustomizedHashCallable<Type>) {
       return static_cast<u64>(CustomizedHash<Type>{}(v));
     } else if constexpr(std::is_same_v<Type, std::nullptr_t>) {
@@ -178,37 +190,26 @@ public:
         }
         return (*this)(bits);
       }
-    } else if constexpr(requires {
-                          v.begin();
-                          v.end();
-                        }) {
-      if constexpr(requires {
-                     v.data();
-                     v.size();
-                   } && internal::IsCharType<typename std::iterator_traits<decltype(v.begin())>::value_type>) {
+    } else if constexpr(std::ranges::range<T>) {
+      constexpr bool has_ptr = requires {
+        v.data();
+        v.size();
+      };
+      if constexpr(has_ptr && internal::IsCharType<typename std::iterator_traits<decltype(v.begin())>::value_type>) {
         return internal::HashRangeBytes(v.data(), v.data() + v.size());
       } else {
         u64 seed = 0;
         for(const auto& elem : v) { seed ^= (*this)(elem) + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2); }
         return seed;
       }
-    } else if constexpr(requires {
-                          std::get<0>(v);
-                          std::tuple_size_v<Type>;
-                        }) {
+    } else if constexpr(tuple_like) {
       u64 seed = 0;
       [&]<std::size_t... I>(std::index_sequence<I...>) { ((seed ^= (*this)(std::get<I>(v)) + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2)), ...); }(std::make_index_sequence<std::tuple_size_v<Type>>{});
       return seed;
-    } else if constexpr(requires {
-                          v.has_value();
-                          *v;
-                        }) {
+    } else if constexpr(optional_like) {
       if(v.has_value()) { return (*this)(*v); }
-      return 0x12345678;
-    } else if constexpr(requires {
-                          v.index();
-                          std::visit([](auto&&) {}, v);
-                        }) {
+      return 0;
+    } else if constexpr(variant_like) {
       u64 seed = (*this)(v.index());
       std::visit([&](auto&& val) { seed ^= (*this)(val) + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2); }, v);
       return seed;

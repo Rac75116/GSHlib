@@ -7,20 +7,14 @@
 #include <stdfloat>
 #endif
 namespace gsh {
-using i8 = signed char;
-using u8 = unsigned char;
-using i16 = signed short;
-using u16 = unsigned short;
-using i32 = int;
-using u32 = unsigned int;
+using i8 = std::int8_t;
+using u8 = std::uint8_t;
+using i16 = std::int16_t;
+using u16 = std::uint16_t;
+using i32 = std::int32_t;
+using u32 = std::uint32_t;
 using i64 = long long;
 using u64 = unsigned long long;
-static_assert(sizeof(i8) == 1);
-static_assert(sizeof(u8) == 1);
-static_assert(sizeof(i16) == 2);
-static_assert(sizeof(u16) == 2);
-static_assert(sizeof(i32) == 4);
-static_assert(sizeof(u32) == 4);
 static_assert(sizeof(i64) == 8);
 static_assert(sizeof(u64) == 8);
 class InvalidFloat16Tag;

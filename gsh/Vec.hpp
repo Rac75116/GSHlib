@@ -266,16 +266,261 @@ public:
 #endif
     traits::destroy(alloc, ptr + (--len));
   }
-  /*
-  constexpr iterator insert(const const_iterator position, const T& x);
-  constexpr iterator insert(const const_iterator position, T&& x);
-  constexpr iterator insert(const const_iterator position, const u32 n, const T& x);
-  template<class InputIter> constexpr iterator insert(const const_iterator position, const InputIter first, const InputIter last);
-  constexpr iterator insert(const const_iterator position, const std::initializer_list<T> il);
-  template<class... Args> constexpr iterator emplace(const_iterator position, Args&&... args);
-  constexpr iterator erase(const_iterator position);
-  constexpr iterator erase(const_iterator first, const_iterator last);
-  */
+  constexpr iterator insert(const const_iterator position, const T& x) {
+#ifndef NDEBUG
+    if(len == 0) {
+      if(position != ptr) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    } else {
+      if(position < ptr || position > ptr + len) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    }
+#endif
+    const u32 idx = (len == 0 ? 0u : static_cast<u32>(position - ptr));
+    if(len + 1 > cap) {
+      u32 new_cap = cap;
+      while(new_cap < len + 1) new_cap = new_cap * 2 + 8;
+      T* new_ptr = traits::allocate(alloc, new_cap);
+      for(u32 i = 0; i != idx; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+      traits::construct(alloc, new_ptr + idx, x);
+      for(u32 i = idx; i != len; ++i) traits::construct(alloc, new_ptr + (i + 1), std::move_if_noexcept(*(ptr + i)));
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      if(cap != 0) traits::deallocate(alloc, ptr, cap);
+      ptr = new_ptr, cap = new_cap;
+      ++len;
+      return ptr + idx;
+    }
+    if(idx == len) {
+      traits::construct(alloc, ptr + len, x);
+      ++len;
+      return ptr + idx;
+    }
+    for(u32 i = len; i > idx; --i) {
+      const u32 src = i - 1;
+      const u32 dst = src + 1;
+      if(dst >= len) {
+        traits::construct(alloc, ptr + dst, std::move_if_noexcept(*(ptr + src)));
+      } else {
+        *(ptr + dst) = std::move_if_noexcept(*(ptr + src));
+      }
+    }
+    traits::destroy(alloc, ptr + idx);
+    traits::construct(alloc, ptr + idx, x);
+    ++len;
+    return ptr + idx;
+  }
+  constexpr iterator insert(const const_iterator position, T&& x) {
+#ifndef NDEBUG
+    if(len == 0) {
+      if(position != ptr) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    } else {
+      if(position < ptr || position > ptr + len) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    }
+#endif
+    const u32 idx = (len == 0 ? 0u : static_cast<u32>(position - ptr));
+    if(len + 1 > cap) {
+      u32 new_cap = cap;
+      while(new_cap < len + 1) new_cap = new_cap * 2 + 8;
+      T* new_ptr = traits::allocate(alloc, new_cap);
+      for(u32 i = 0; i != idx; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+      traits::construct(alloc, new_ptr + idx, std::move(x));
+      for(u32 i = idx; i != len; ++i) traits::construct(alloc, new_ptr + (i + 1), std::move_if_noexcept(*(ptr + i)));
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      if(cap != 0) traits::deallocate(alloc, ptr, cap);
+      ptr = new_ptr, cap = new_cap;
+      ++len;
+      return ptr + idx;
+    }
+    if(idx == len) {
+      traits::construct(alloc, ptr + len, std::move(x));
+      ++len;
+      return ptr + idx;
+    }
+    for(u32 i = len; i > idx; --i) {
+      const u32 src = i - 1;
+      const u32 dst = src + 1;
+      if(dst >= len) {
+        traits::construct(alloc, ptr + dst, std::move_if_noexcept(*(ptr + src)));
+      } else {
+        *(ptr + dst) = std::move_if_noexcept(*(ptr + src));
+      }
+    }
+    traits::destroy(alloc, ptr + idx);
+    traits::construct(alloc, ptr + idx, std::move(x));
+    ++len;
+    return ptr + idx;
+  }
+  constexpr iterator insert(const const_iterator position, const u32 n, const T& x) {
+#ifndef NDEBUG
+    if(len == 0) {
+      if(position != ptr) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    } else {
+      if(position < ptr || position > ptr + len) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    }
+#endif
+    if(n == 0) return (len == 0 ? ptr : const_cast<iterator>(position));
+    const u32 idx = (len == 0 ? 0u : static_cast<u32>(position - ptr));
+    if(len + n > cap) {
+      u32 new_cap = cap;
+      while(new_cap < len + n) new_cap = new_cap * 2 + 8;
+      T* new_ptr = traits::allocate(alloc, new_cap);
+      for(u32 i = 0; i != idx; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+      for(u32 i = 0; i != n; ++i) traits::construct(alloc, new_ptr + (idx + i), x);
+      for(u32 i = idx; i != len; ++i) traits::construct(alloc, new_ptr + (i + n), std::move_if_noexcept(*(ptr + i)));
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      if(cap != 0) traits::deallocate(alloc, ptr, cap);
+      ptr = new_ptr, cap = new_cap;
+      len += n;
+      return ptr + idx;
+    }
+    if(idx == len) {
+      for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + (len + i), x);
+      len += n;
+      return ptr + idx;
+    }
+    for(u32 i = len; i > idx; --i) {
+      const u32 src = i - 1;
+      const u32 dst = src + n;
+      if(dst >= len) {
+        traits::construct(alloc, ptr + dst, std::move_if_noexcept(*(ptr + src)));
+      } else {
+        *(ptr + dst) = std::move_if_noexcept(*(ptr + src));
+      }
+    }
+    for(u32 i = 0; i != n; ++i) {
+      traits::destroy(alloc, ptr + (idx + i));
+      traits::construct(alloc, ptr + (idx + i), x);
+    }
+    len += n;
+    return ptr + idx;
+  }
+  template<class InputIter> constexpr iterator insert(const const_iterator position, const InputIter first, const InputIter last) {
+#ifndef NDEBUG
+    if(len == 0) {
+      if(position != ptr) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    } else {
+      if(position < ptr || position > ptr + len) [[unlikely]]
+        throw Exception("gsh::Vec::insert / The iterator is out of range.");
+    }
+#endif
+    Vec tmp(alloc);
+    for(auto it = first; it != last; ++it) tmp.push_back(*it);
+    const u32 n = tmp.size();
+    if(n == 0) return (len == 0 ? ptr : const_cast<iterator>(position));
+    const u32 idx = (len == 0 ? 0u : static_cast<u32>(position - ptr));
+    if(len + n > cap) {
+      u32 new_cap = cap;
+      while(new_cap < len + n) new_cap = new_cap * 2 + 8;
+      T* new_ptr = traits::allocate(alloc, new_cap);
+      for(u32 i = 0; i != idx; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+      for(u32 i = 0; i != n; ++i) traits::construct(alloc, new_ptr + (idx + i), tmp[i]);
+      for(u32 i = idx; i != len; ++i) traits::construct(alloc, new_ptr + (i + n), std::move_if_noexcept(*(ptr + i)));
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      if(cap != 0) traits::deallocate(alloc, ptr, cap);
+      ptr = new_ptr, cap = new_cap;
+      len += n;
+      return ptr + idx;
+    }
+    if(idx == len) {
+      for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + (len + i), tmp[i]);
+      len += n;
+      return ptr + idx;
+    }
+    for(u32 i = len; i > idx; --i) {
+      const u32 src = i - 1;
+      const u32 dst = src + n;
+      if(dst >= len) {
+        traits::construct(alloc, ptr + dst, std::move_if_noexcept(*(ptr + src)));
+      } else {
+        *(ptr + dst) = std::move_if_noexcept(*(ptr + src));
+      }
+    }
+    for(u32 i = 0; i != n; ++i) {
+      traits::destroy(alloc, ptr + (idx + i));
+      traits::construct(alloc, ptr + (idx + i), tmp[i]);
+    }
+    len += n;
+    return ptr + idx;
+  }
+  constexpr iterator insert(const const_iterator position, const std::initializer_list<T> il) { return insert(position, il.begin(), il.end()); }
+  template<class... Args> constexpr iterator emplace(const_iterator position, Args&&... args) {
+#ifndef NDEBUG
+    if(len == 0) {
+      if(position != ptr) [[unlikely]]
+        throw Exception("gsh::Vec::emplace / The iterator is out of range.");
+    } else {
+      if(position < ptr || position > ptr + len) [[unlikely]]
+        throw Exception("gsh::Vec::emplace / The iterator is out of range.");
+    }
+#endif
+    const u32 idx = (len == 0 ? 0u : static_cast<u32>(position - ptr));
+    if(len + 1 > cap) {
+      u32 new_cap = cap;
+      while(new_cap < len + 1) new_cap = new_cap * 2 + 8;
+      T* new_ptr = traits::allocate(alloc, new_cap);
+      for(u32 i = 0; i != idx; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+      traits::construct(alloc, new_ptr + idx, std::forward<Args>(args)...);
+      for(u32 i = idx; i != len; ++i) traits::construct(alloc, new_ptr + (i + 1), std::move_if_noexcept(*(ptr + i)));
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      if(cap != 0) traits::deallocate(alloc, ptr, cap);
+      ptr = new_ptr, cap = new_cap;
+      ++len;
+      return ptr + idx;
+    }
+    if(idx == len) {
+      traits::construct(alloc, ptr + len, std::forward<Args>(args)...);
+      ++len;
+      return ptr + idx;
+    }
+    for(u32 i = len; i > idx; --i) {
+      const u32 src = i - 1;
+      const u32 dst = src + 1;
+      if(dst >= len) {
+        traits::construct(alloc, ptr + dst, std::move_if_noexcept(*(ptr + src)));
+      } else {
+        *(ptr + dst) = std::move_if_noexcept(*(ptr + src));
+      }
+    }
+    traits::destroy(alloc, ptr + idx);
+    traits::construct(alloc, ptr + idx, std::forward<Args>(args)...);
+    ++len;
+    return ptr + idx;
+  }
+  constexpr iterator erase(const_iterator position) {
+#ifndef NDEBUG
+    if(len == 0) [[unlikely]]
+      throw Exception("gsh::Vec::erase / The container is empty.");
+    if(position < ptr || position >= ptr + len) [[unlikely]]
+      throw Exception("gsh::Vec::erase / The iterator is out of range.");
+#endif
+    const u32 idx = static_cast<u32>(position - ptr);
+    for(u32 i = idx + 1; i != len; ++i) *(ptr + (i - 1)) = std::move_if_noexcept(*(ptr + i));
+    traits::destroy(alloc, ptr + (len - 1));
+    --len;
+    return ptr + idx;
+  }
+  constexpr iterator erase(const_iterator first, const_iterator last) {
+#ifndef NDEBUG
+    if(first == last) return const_cast<iterator>(first);
+    if(len == 0) [[unlikely]]
+      throw Exception("gsh::Vec::erase / The container is empty.");
+    if(first < ptr || first > ptr + len || last < ptr || last > ptr + len || last < first) [[unlikely]]
+      throw Exception("gsh::Vec::erase / The iterator range is out of range.");
+#endif
+    if(first == last) return const_cast<iterator>(first);
+    const u32 idx_f = static_cast<u32>(first - ptr);
+    const u32 idx_l = static_cast<u32>(last - ptr);
+    const u32 n = idx_l - idx_f;
+    for(u32 i = idx_l; i != len; ++i) *(ptr + (i - n)) = std::move_if_noexcept(*(ptr + i));
+    for(u32 i = len - n; i != len; ++i) traits::destroy(alloc, ptr + i);
+    len -= n;
+    return ptr + idx_f;
+  }
   constexpr void swap(Vec& x) noexcept(traits::propagate_on_container_swap::value || traits::is_always_equal::value) {
     using std::swap;
     swap(ptr, x.ptr);

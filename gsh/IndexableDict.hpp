@@ -58,6 +58,15 @@ class IndexableDict {
     return static_cast<u32>(bits < bit_len ? bits : bit_len);
   }
   constexpr u32 zeros_prefix_words(u32 wi) const noexcept { return bits_prefix_words(wi) - ones_prefix_words(wi); }
+  constexpr u32 rank1_unchecked(u32 pos) const noexcept {
+    const u32 wi = pos >> 6;
+    const u32 bi = pos & 63;
+    u32 res = rank_[wi];
+    const u64* bits = bv_.data();
+    const u64 x = bits[wi] & ((1ull << bi) - 1);
+    res += static_cast<u32>(std::popcount(x));
+    return res;
+  }
 public:
   constexpr IndexableDict() noexcept = default;
   explicit IndexableDict(const BitVector& bv) : bv_(bv) { build(); }
@@ -76,10 +85,7 @@ public:
     word_len = words_for_bits(bit_len);
     rank_.resize(word_len + 1);
     rank_[0] = 0;
-    for(u32 i = 0; i != word_len; ++i) {
-      const u64 x = bits[i] & word_mask(i);
-      rank_[i + 1] = rank_[i] + static_cast<u32>(std::popcount(x));
-    }
+    for(u32 i = 0; i != word_len; ++i) rank_[i + 1] = rank_[i] + static_cast<u32>(std::popcount(bits[i]));
   }
   constexpr u32 size() const noexcept { return bit_len; }
   constexpr bool empty() const noexcept { return bit_len == 0; }
@@ -92,19 +98,11 @@ public:
   template<class CharT = char, class Traits = std::char_traits<CharT>, class Alloc = std::allocator<CharT>> constexpr std::basic_string<CharT, Traits, Alloc> to_string(CharT zero = CharT('0'), CharT one_c = CharT('1')) const { return bv_.template to_string<CharT, Traits, Alloc>(zero, one_c); }
   constexpr u32 rank1(u32 pos) const {
     check_pos_on_debug(pos);
-    const u32 wi = pos >> 6;
-    const u32 bi = pos & 63;
-    u32 res = rank_[wi];
-    if(bi != 0 && wi < word_len) {
-      const u64* bits = bv_.data();
-      const u64 x = bits[wi] & low_mask(bi);
-      res += static_cast<u32>(std::popcount(x));
-    }
-    return res;
+    return rank1_unchecked(pos);
   }
   constexpr u32 rank0(u32 pos) const {
     check_pos_on_debug(pos);
-    return pos - rank1(pos);
+    return pos - rank1_unchecked(pos);
   }
   constexpr u32 count1() const noexcept { return rank_.empty() ? 0 : rank_[word_len]; }
   constexpr u32 count0() const noexcept { return bit_len - count1(); }

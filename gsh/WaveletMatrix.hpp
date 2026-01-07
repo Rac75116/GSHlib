@@ -45,10 +45,7 @@ private:
 #endif
   }
   constexpr u32 sigma() const noexcept { return static_cast<u32>(vals_.size()); }
-  constexpr u32 lower_bound_id(const value_type& x) const noexcept {
-    const auto it = std::lower_bound(vals_.begin(), vals_.end(), x);
-    return static_cast<u32>(it - vals_.begin());
-  }
+  constexpr u32 lower_bound_id(const value_type& x) const noexcept { return vals_.lower_bound_index(x); }
   constexpr u32 id_of_existing(const value_type& x) const noexcept {
     const u32 id = lower_bound_id(x);
     if(id == sigma() || vals_[id] != x) return sigma();
@@ -307,30 +304,6 @@ public:
     const u32 id = id_of_existing(c);
     if(id == sigma()) return 0;
     return rank_id_range(id, l, r);
-  }
-  // select(c, k): position of k-th occurrence (0-indexed). returns -1 if not found.
-  constexpr i32 select(const value_type& c, u32 k) const noexcept {
-    const u32 id = id_of_existing(c);
-    if(id == sigma()) return -1;
-    const u32 start = begin_[id];
-    const u32 end = begin_[id + 1u];
-    if(start + k >= end) return -1;
-    u32 pos = start + k;
-    if(lg_ == 0) return static_cast<i32>(pos);
-    for(u32 t = lg_; t-- > 0;) {
-      const u32 level = t;
-      const u32 bit = (id >> (lg_ - 1u - level)) & 1u;
-      if(bit == 0) {
-        const i32 p = mat_[level].select0(pos);
-        if(p < 0) return -1;
-        pos = static_cast<u32>(p);
-      } else {
-        const i32 p = mat_[level].select1(pos - mid_[level]);
-        if(p < 0) return -1;
-        pos = static_cast<u32>(p);
-      }
-    }
-    return static_cast<i32>(pos);
   }
   // quantile(l, r, k): k-th smallest in [l, r) (0-indexed)
   constexpr value_type quantile(u32 l, u32 r, u32 k) const {

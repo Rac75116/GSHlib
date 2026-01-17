@@ -17,19 +17,19 @@ template<class Spec> concept IsSegmentSpecImplemented = requires(Spec spec) {
   { spec.op(std::declval<typename Spec::value_type>(), std::declval<typename Spec::value_type>()) } -> std::same_as<typename Spec::value_type>;
   { spec.e() } -> std::same_as<typename Spec::value_type>;
 };
-template<class Op, class Id> requires IsValidSegmentSpec<Op, Id> class DefaultSegmentSpec {
+template<class T, class Op, class Id> requires IsValidSegmentSpec<Op, Id> class DefaultSegmentSpec {
   [[no_unique_address]] mutable Op op_func;
   [[no_unique_address]] mutable Id id_func;
 public:
-  using value_type = std::remove_cvref_t<std::invoke_result_t<Id>>;
+  using value_type = T;
   constexpr DefaultSegmentSpec() = default;
   constexpr DefaultSegmentSpec(Op op, Id id) : op_func(op), id_func(id) {}
   constexpr value_type op(const value_type& a, const value_type& b) const noexcept(noexcept(std::is_nothrow_invocable_v<Op, const value_type&, const value_type&>)) { return static_cast<value_type>(std::invoke(op_func, a, b)); }
   constexpr value_type e() const noexcept(noexcept(std::is_nothrow_invocable_v<Id>)) { return static_cast<value_type>(std::invoke(id_func)); }
 };
 }
-template<class Op, class Id> constexpr internal::DefaultSegmentSpec<Op, Id> MakeSegmentSpec() { return {}; }
-template<class Op, class Id> constexpr internal::DefaultSegmentSpec<Op, Id> MakeSegmentSpec(Op op, Id id) { return {op, id}; }
+template<class T, class Op, class Id> constexpr internal::DefaultSegmentSpec<T, Op, Id> MakeSegmentSpec() { return {}; }
+template<class T, class Op, class Id> constexpr internal::DefaultSegmentSpec<T, Op, Id> MakeSegmentSpec(Op op, Id id) { return {op, id}; }
 namespace segment_specs {
 template<class T> class RangePlus : public decltype(internal::DefaultSegmentSpec(gsh::Plus(), []() -> T { return static_cast<T>(0); })){};
 template<class T> class RangeMultiplies : public decltype(internal::DefaultSegmentSpec(gsh::Multiplies(), []() -> T { return static_cast<T>(1); })){};

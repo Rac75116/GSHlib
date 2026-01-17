@@ -22,15 +22,15 @@ template<class Spec> concept IsLazySegmentSpecImplemented = requires(Spec spec) 
   { spec.composition(std::declval<typename Spec::operator_type>(), std::declval<typename Spec::operator_type>()) } -> std::same_as<typename Spec::operator_type>;
   { spec.id() } -> std::same_as<typename Spec::operator_type>;
 };
-template<class Op, class E, class Mapping, class Composition, class Id> requires IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
+template<class T, class U, class Op, class E, class Mapping, class Composition, class Id> requires IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
   [[no_unique_address]] mutable Op op_func;
   [[no_unique_address]] mutable E e_func;
   [[no_unique_address]] mutable Mapping mapping_func;
   [[no_unique_address]] mutable Composition composition_func;
   [[no_unique_address]] mutable Id id_func;
 public:
-  using value_type = std::remove_cvref_t<std::invoke_result_t<E>>;
-  using operator_type = std::remove_cvref_t<std::invoke_result_t<Id>>;
+  using value_type = T;
+  using operator_type = U;
   constexpr LazySegmentSpec() = default;
   constexpr LazySegmentSpec(Op op, E e, Mapping mapping, Composition composition, Id id) : op_func(op), e_func(e), mapping_func(mapping), composition_func(composition), id_func(id) {}
   constexpr value_type op(const value_type& a, const value_type& b) const { return static_cast<value_type>(std::invoke(op_func, a, b)); }
@@ -40,8 +40,8 @@ public:
   constexpr operator_type id() const { return static_cast<operator_type>(std::invoke(id_func)); }
 };
 }
-template<class Op, class E, class Mapping, class Composition, class Id> constexpr internal::LazySegmentSpec<Op, E, Mapping, Composition, Id> MakeLazySegmentSpec() { return {}; }
-template<class Op, class E, class Mapping, class Composition, class Id> constexpr internal::LazySegmentSpec<Op, E, Mapping, Composition, Id> MakeLazySegmentSpec(Op op, E e, Mapping mapping, Composition composition, Id id) { return {op, e, mapping, composition, id}; }
+template<class T, class U, class Op, class E, class Mapping, class Composition, class Id> constexpr internal::LazySegmentSpec<T, U, Op, E, Mapping, Composition, Id> MakeLazySegmentSpec() { return {}; }
+template<class T, class U, class Op, class E, class Mapping, class Composition, class Id> constexpr internal::LazySegmentSpec<T, U, Op, E, Mapping, Composition, Id> MakeLazySegmentSpec(Op op, E e, Mapping mapping, Composition composition, Id id) { return {op, e, mapping, composition, id}; }
 namespace segment_specs {
 template<class T> class RangeAddRangeMin : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};
 template<class T> class RangeAddRangeMax : public decltype(internal::LazySegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); }, [](const T& f, const T& x) { return x + f; }, [](const T& f, const T& g) { return f + g; }, []() -> T { return static_cast<T>(0); })){};

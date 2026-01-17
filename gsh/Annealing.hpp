@@ -92,7 +92,7 @@ template<class OptType, class TempFunction, class ProgressFunction> class Anneal
   u32 rnd_buf_size;
 public:
   Annealing() = delete;
-  Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, f64 init_score, u32 update_gap = 8, u32 seed = Rand32::default_seed, u32 buf_size = 12) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(1u << update_gap), alloc(), rnd_buf_size(1u << buf_size) {
+  Annealing(const OptType&, const TempFunction& tempf, const ProgressFunction& progressf, f64 init_score, u32 update_gap = 8, u32 seed = Rand32::default_seed, u32 buf_size = 128) : temp_function(tempf), progress_function(progressf), current_score(init_score), best_score(init_score), ugap(1u << update_gap), alloc(), rnd_buf_size(1u << buf_size) {
     if constexpr(!std::is_same<TempFunction, ZeroTemp>::value) {
       rnd_buf = alloc.allocate(rnd_buf_size);
       Rand32 rand_function(seed);

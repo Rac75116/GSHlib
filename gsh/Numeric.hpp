@@ -27,7 +27,7 @@ constexpr u32 CharLength64(u64 x) {
 template<class... Bounds> requires (sizeof...(Bounds) != 0 && sizeof...(Bounds) % 2 == 0) class InRange {
   std::tuple<Bounds...> bounds;
 public:
-  constexpr InRange(Bounds&&... bounds) : bounds(std::forward<Bounds>(bounds)...) {}
+  constexpr InRange(const Bounds&... bounds) : bounds(bounds...) {}
   template<class... Args> requires (sizeof...(Args) == sizeof...(Bounds) / 2) constexpr bool operator()(Args&&... args) {
     return [&]<u32... I>(std::integer_sequence<u32, I...>) {
       auto det = [&]<u32 Idx>(std::integral_constant<u32, Idx>, auto&& val) { return std::get<2 * Idx>(bounds) <= val && val < std::get<2 * Idx + 1>(bounds); };

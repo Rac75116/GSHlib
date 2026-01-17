@@ -338,12 +338,24 @@ public:
     pop_min_impl();
   }
   constexpr void replace_max(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
-    data[mx] = x;
-    pop_max_impl();
+    if(std::invoke(comp_func, x, data[0])) {
+      data[mx] = std::move(data[0]);
+      data[0] = x;
+      pop_max_impl();
+    } else {
+      data[mx] = x;
+      pop_max_impl();
+    }
   }
   constexpr void replace_max(T&& x) noexcept(nothrow_op) {
-    data[mx] = std::move(x);
-    pop_max_impl();
+    if(std::invoke(comp_func, x, data[0])) {
+      data[mx] = std::move(data[0]);
+      data[0] = std::move(x);
+      pop_max_impl();
+    } else {
+      data[mx] = std::move(x);
+      pop_max_impl();
+    }
   }
   constexpr void pushpop(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) { pushpop_min(x); }
   constexpr void pushpop(T&& x) noexcept(nothrow_op) { pushpop_min(std::move(x)); }
@@ -361,14 +373,26 @@ public:
   }
   constexpr void pushpop_max(const T& x) noexcept(nothrow_op && std::is_nothrow_copy_assignable_v<T>) {
     if(std::invoke(comp_func, x, data[mx])) {
-      data[mx] = x;
-      pop_max_impl();
+      if(std::invoke(comp_func, x, data[0])) {
+        data[mx] = std::move(data[0]);
+        data[0] = x;
+        pop_max_impl();
+      } else {
+        data[mx] = x;
+        pop_max_impl();
+      }
     }
   }
   constexpr void pushpop_max(T&& x) noexcept(nothrow_op) {
     if(std::invoke(comp_func, x, data[mx])) {
-      data[mx] = std::move(x);
-      pop_max_impl();
+      if(std::invoke(comp_func, x, data[0])) {
+        data[mx] = std::move(data[0]);
+        data[0] = std::move(x);
+        pop_max_impl();
+      } else {
+        data[mx] = std::move(x);
+        pop_max_impl();
+      }
     }
   }
 };

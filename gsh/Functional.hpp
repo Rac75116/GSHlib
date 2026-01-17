@@ -250,12 +250,12 @@ public:
 };
 class True {
 public:
-  template<class... Args> constexpr static bool operator()(Args&&...) noexcept { return true; }
+  template<class... Args> constexpr bool operator()(Args&&...) noexcept { return true; }
   using is_transparent = void;
 };
 class False {
 public:
-  template<class... Args> constexpr static bool operator()(Args&&...) noexcept { return false; }
+  template<class... Args> constexpr bool operator()(Args&&...) noexcept { return false; }
   using is_transparent = void;
 };
 } // namespace gsh

@@ -159,9 +159,13 @@ protected:
     return adjacency_list<true>(storage.begin(), tail[v]);
   }
   constexpr void reserve(u32 m) { storage.reserve(m); }
+  constexpr u32 outdegree(u32 v) {
+    // TODO
+  }
 };
 } // namespace graph_format
-template<class W, template<class> class Format = graph_format::CRS> class DirectedGraph : public Format<W> {
+namespace internal { template<class D> class GraphInterface; }
+template<class W, template<class> class Format = graph_format::CRS> class DirectedGraph : public Format<W>, public internal::GraphInterface<DirectedGraph<W, Format>> {
   using base = Format<W>;
   using weight_type_impl = std::conditional_t<std::is_void_v<W>, u32, W>;
 public:
@@ -178,8 +182,9 @@ public:
   constexpr void connect(u32 from, u32 to) { base::connect(from, to); }
   constexpr void connect(u32 from, u32 to, const weight_type& w) requires is_weighted { base::connect(from, to, w); }
   constexpr void connect(u32 from, u32 to, weight_type&& w) requires is_weighted { base::connect(from, to, std::move(w)); }
+  constexpr void outdegree(u32 v) { return base::outdegree(v); }
 };
-template<class W, template<class> class Format = graph_format::CRS> class UndirectedGraph : public Format<W> {
+template<class W, template<class> class Format = graph_format::CRS> class UndirectedGraph : public Format<W>, public internal::GraphInterface<UndirectedGraph<W, Format>> {
   using base = Format<W>;
   using weight_type_impl = std::conditional_t<std::is_void_v<W>, u32, W>;
 public:
@@ -206,6 +211,8 @@ public:
     base::connect(a, b, tmp);
     base::connect(b, a, std::move(tmp));
   }
+  constexpr u32 outdegree(u32 v) { return base::outdegree(v); }
+  constexpr u32 degree(u32 v) { return base::outdegree(v); }
   constexpr auto to_directed() const {
     u32 n = vertex_count();
     DirectedGraph<W, Format> res(n);
@@ -224,5 +231,11 @@ template<class T> constexpr static bool IsGraphType = false;
 template<class W, template<class> class Format> constexpr static bool IsGraphType<DirectedGraph<W, Format>> = true;
 template<class W, template<class> class Format> constexpr static bool IsGraphType<UndirectedGraph<W, Format>> = true;
 template<class T> concept GraphType = IsGraphType<T>;
+template<class D> class GraphInterface {
+  constexpr D& derived() noexcept { return *static_cast<D*>(this); }
+  constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
+public:
+  // TODO
+};
 }
 } // namespace gsh

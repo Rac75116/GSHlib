@@ -1,6 +1,7 @@
 #pragma once
 #include "Arr.hpp"
 #include "Exception.hpp"
+#include "Range.hpp"
 #include "TypeDef.hpp"
 #include "Vec.hpp"
 #include <tuple>
@@ -47,7 +48,6 @@ template<std::size_t M, class W> auto get(Edge<W>& e) {
   if constexpr(M == 0) return e.to();
   else return e.weight();
 }
-// gsh::graph_format::(DOK, LIL, COO, CRS, Matrix, Grid, Generative, Functional)
 namespace graph_format {
 template<class W> class CRS {
   Vec<std::pair<Edge<W>, u32>> storage;
@@ -103,13 +103,11 @@ template<class W> class CRS {
       }
     };
     constexpr iterator begin() { return iterator(storage_ptr, idx); }
+    // TODO
   };
 protected:
   constexpr CRS() {}
   constexpr CRS(u32 n) : tail(n, 0xffffffffu) {}
-public:
-  using graph_format = void;
-  constexpr void reserve(u32 m) { storage.reserve(m); }
   constexpr u32 vertex_count() const noexcept { return tail.size(); }
   constexpr u32 edge_count() const noexcept { return storage.size(); }
   constexpr void connect(u32 from, u32 to) {
@@ -124,6 +122,25 @@ public:
     storage.emplace_back(std::piecewise_construct, std::tuple{to, std::move(w)}, std::tuple{tail[from]});
     tail[from] = storage.size() - 1;
   }
+public:
+  constexpr void reserve(u32 m) { storage.reserve(m); }
+  // TODO
 };
 } // namespace graph_format
+template<class W, template<class> class Format = graph_format::CRS> class DirectedGraph : public Format<W> {
+  using base = Format<W>;
+public:
+  // TODO
+};
+template<class W, template<class> class Format = graph_format::CRS> class UndirectedGraph : public Format<W> {
+  using base = Format<W>;
+public:
+  // TODO
+};
+namespace internal {
+template<class T> constexpr static bool IsGraphType = false;
+template<class W, template<class> class Format> constexpr static bool IsGraphType<DirectedGraph<W, Format>> = true;
+template<class W, template<class> class Format> constexpr static bool IsGraphType<UndirectedGraph<W, Format>> = true;
+template<class T> concept GraphType = IsGraphType<T>;
+}
 } // namespace gsh

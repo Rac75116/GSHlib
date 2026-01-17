@@ -1,11 +1,8 @@
 #pragma once
-#include "Arr.hpp"
+#include "Algorithm.hpp"
 #include "Exception.hpp"
 #include "Heap.hpp"
-#include "Range.hpp"
-#include "TypeDef.hpp"
 #include "UnionFind.hpp"
-#include "Vec.hpp"
 #include <algorithm>
 #include <iterator>
 #include <limits>

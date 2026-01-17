@@ -174,13 +174,7 @@ protected:
   }
 };
 } // namespace graph_format
-namespace internal {
-template<class T> constexpr T inf_value() {
-  if constexpr(std::numeric_limits<T>::is_specialized) return std::numeric_limits<T>::max();
-  else return T{};
-}
-template<class D, class WT, bool IsWeighted> class GraphInterface;
-} // namespace internal
+namespace internal { template<class D, class WT, bool IsWeighted> class GraphInterface; }
 template<class W, template<class> class Format = graph_format::CRS> class DirectedGraph : public Format<W>, public internal::GraphInterface<DirectedGraph<W, Format>, std::conditional_t<std::is_void_v<W>, u32, W>, !std::is_void_v<W>> {
   using base = Format<W>;
 public:
@@ -251,7 +245,7 @@ template<class D, class WT, bool IsWeighted> class GraphInterface {
   using weight_type = WT;
   constexpr static bool is_weighted = IsWeighted;
 public:
-  inline static const weight_type inf = inf_value<weight_type>();
+  constexpr static weight_type default_inf() { return std::numeric_limits<weight_type>::max(); }
   constexpr Vec<u32> indegree() const {
     const u32 n = derived().vertex_count();
     Vec<u32> deg(n, 0);
@@ -330,7 +324,7 @@ public:
     }
     return res;
   }
-  constexpr auto longest_path_length_dag() const {
+  template<class Comp = Less> constexpr auto longest_path_length_dag(const Comp& comp = Comp()) const {
     const u32 n = derived().vertex_count();
     Vec<weight_type> dp(n, weight_type{});
     auto ord = topological_sort();
@@ -343,19 +337,20 @@ public:
           else return static_cast<weight_type>(1);
         }();
         const weight_type cand = dp[v] + w;
-        if(dp[to] < cand) dp[to] = cand;
+        if(std::invoke(comp, dp[to], cand)) dp[to] = cand;
       }
     }
     return dp;
   }
   template<class WTT> struct ShortestPathResult {
     using weight_type = WTT;
+    weight_type inf;
     Vec<weight_type> dist;
     Vec<u32> prev;
     constexpr Vec<u32> restore(u32 t) const {
       Vec<u32> path;
       if(t >= prev.size()) return path;
-      if(dist[t] == GraphInterface::inf) return path;
+      if(dist[t] == inf) return path;
       for(u32 cur = t;; cur = prev[cur]) {
         path.push_back(cur);
         if(prev[cur] == cur) break;
@@ -364,13 +359,13 @@ public:
       return path;
     }
   };
-  constexpr auto shortest_path(u32 s) const {
-    if constexpr(!is_weighted) return shortest_path_bfs(s);
-    else return shortest_path_dijkstra(s);
+  template<class Comp = Less> constexpr auto shortest_path(u32 s, const weight_type& inf = default_inf(), const Comp& comp = Comp()) const {
+    if constexpr(!is_weighted) return shortest_path_bfs(s, inf);
+    else return shortest_path_dijkstra(s, inf, comp);
   }
-  constexpr auto shortest_path_bfs(u32 s) const {
+  constexpr auto shortest_path_bfs(u32 s, const weight_type& inf = default_inf()) const {
     const u32 n = derived().vertex_count();
-    ShortestPathResult<weight_type> res{Vec<weight_type>(n, GraphInterface::inf), Vec<u32>(n, 0)};
+    ShortestPathResult<weight_type> res{inf, Vec<weight_type>(n, inf), Vec<u32>(n, 0)};
     Vec<u32> q;
     q.reserve(n);
     u32 head = 0;
@@ -381,7 +376,7 @@ public:
       const u32 v = q[head++];
       for(const auto& e : derived()[v]) {
         const u32 to = e.to();
-        if(res.dist[to] != GraphInterface::inf) continue;
+        if(res.dist[to] != inf) continue;
         res.dist[to] = res.dist[v] + static_cast<weight_type>(1);
         res.prev[to] = v;
         q.push_back(to);
@@ -389,17 +384,18 @@ public:
     }
     return res;
   }
-  constexpr auto shortest_path_dijkstra(u32 s) const {
+  template<class Comp = Less> constexpr auto shortest_path_dijkstra(u32 s, const weight_type& inf = default_inf(), const Comp& comp = Comp()) const {
     const u32 n = derived().vertex_count();
-    ShortestPathResult<weight_type> res{Vec<weight_type>(n, GraphInterface::inf), Vec<u32>(n, 0)};
+    ShortestPathResult<weight_type> res{inf, Vec<weight_type>(n, inf), Vec<u32>(n, 0)};
     struct Node {
       weight_type d;
       u32 v;
     };
-    struct Comp {
-      constexpr bool operator()(const Node& a, const Node& b) const noexcept { return a.d < b.d; }
+    struct NodeComp {
+      Comp comp;
+      constexpr bool operator()(const Node& a, const Node& b) const noexcept(noexcept(std::invoke(comp, a.d, b.d))) { return std::invoke(comp, a.d, b.d); }
     };
-    Heap<Node, Comp> pq;
+    Heap<Node, NodeComp> pq(NodeComp{comp});
     res.dist[s] = weight_type{};
     res.prev[s] = s;
     pq.push(Node{weight_type{}, s});
@@ -410,9 +406,9 @@ public:
       for(const auto& e : derived()[cur.v]) {
         const u32 to = e.to();
         const weight_type w = e.weight();
-        if(res.dist[cur.v] == GraphInterface::inf) continue;
+        if(res.dist[cur.v] == inf) continue;
         const weight_type nd = cur.d + w;
-        if(nd < res.dist[to]) {
+        if(std::invoke(comp, nd, res.dist[to])) {
           res.dist[to] = nd;
           res.prev[to] = cur.v;
           pq.push(Node{nd, to});
@@ -421,7 +417,7 @@ public:
     }
     return res;
   }
-  constexpr auto minimum_spanning_forest_cost() const {
+  template<class Comp = Less> constexpr auto minimum_spanning_forest_cost(const Comp& comp = Comp()) const {
     const u32 n = derived().vertex_count();
     struct E {
       weight_type w;
@@ -441,7 +437,7 @@ public:
         }
       }
     }
-    std::sort(es.begin(), es.end(), [](const E& a, const E& b) { return a.w < b.w; });
+    es.sort([&](const E& a, const E& b) { return std::invoke(comp, a.w, b.w); });
     UnionFind uf(n);
     weight_type res{};
     for(const auto& e : es) {

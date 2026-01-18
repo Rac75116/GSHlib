@@ -80,82 +80,63 @@ template<class WTT> struct ShortestPathResult {
   }
 };
 namespace internal {
+template<class W, bool IsConst> class AdjacencyList : public ViewInterface<AdjacencyList<W, IsConst>, Edge<W>> {
+  constexpr static u32 npos = 0xffffffffu;
+  using storage_type = Vec<std::pair<Edge<W>, u32>>;
+  using storage_ptr_type = std::conditional_t<IsConst, typename storage_type::const_iterator, typename storage_type::iterator>;
+  storage_ptr_type storage_ptr;
+  u32 idx;
+  template<class W2> friend class CRS;
+  constexpr AdjacencyList(storage_ptr_type p, u32 i) : storage_ptr(p), idx(i) {}
+  template<bool IterIsConst> class iterator_impl {
+    storage_ptr_type storage_ptr;
+    u32 current_idx;
+    constexpr iterator_impl(storage_ptr_type p, u32 i) : storage_ptr(p), current_idx(i) {}
+    friend class AdjacencyList;
+  public:
+    using difference_type = i32;
+    using value_type = Edge<W>;
+    using pointer = std::conditional_t<IterIsConst, const value_type*, value_type*>;
+    using reference = std::conditional_t<IterIsConst, const value_type&, value_type&>;
+    using iterator_category = std::forward_iterator_tag;
+    constexpr iterator_impl() : storage_ptr(nullptr), current_idx(-1) {}
+    constexpr reference operator*() const noexcept { return storage_ptr[current_idx].first; }
+    constexpr pointer operator->() const noexcept { return &(storage_ptr[current_idx].first); }
+    constexpr iterator_impl& operator++() {
+      current_idx = storage_ptr[current_idx].second;
+      return *this;
+    }
+    constexpr iterator_impl operator++(int) {
+      auto copy = *this;
+      operator++();
+      return copy;
+    }
+    friend constexpr bool operator==(const iterator_impl& a, const iterator_impl& b) noexcept { return a.current_idx == b.current_idx; }
+  };
+public:
+  using iterator = iterator_impl<IsConst>;
+  using const_iterator = iterator_impl<true>;
+  constexpr u32 size() const noexcept {
+    u32 current_idx = idx;
+    u32 cnt = 0;
+    while(current_idx != npos) {
+      current_idx = storage_ptr[current_idx].second;
+      ++cnt;
+    }
+    return cnt;
+  }
+  constexpr bool empty() const noexcept { return idx == npos; }
+  constexpr iterator begin() noexcept { return iterator(storage_ptr, idx); }
+  constexpr iterator end() noexcept { return iterator(storage_ptr, npos); }
+  constexpr const_iterator begin() const noexcept { return const_iterator(storage_ptr, idx); }
+  constexpr const_iterator end() const noexcept { return const_iterator(storage_ptr, npos); }
+};
 template<class W> class CRS {
   constexpr static u32 npos = 0xffffffffu;
   Vec<std::pair<Edge<W>, u32>> storage;
   Vec<u32> tail;
-  template<bool IsConst> class adjacency_list : public ViewInterface<adjacency_list<IsConst>, Edge<W>> {
-    using storage_ptr_type = std::conditional_t<IsConst, typename decltype(storage)::const_iterator, typename decltype(storage)::iterator>;
-    storage_ptr_type storage_ptr;
-    u32 idx;
-    friend class CRS;
-    constexpr adjacency_list(storage_ptr_type p, u32 i) : storage_ptr(p), idx(i) {}
-  public:
-    class iterator {
-      storage_ptr_type storage_ptr;
-      u32 current_idx;
-      constexpr iterator(storage_ptr_type p, u32 i) : storage_ptr(p), current_idx(i) {}
-      friend class adjacency_list;
-    public:
-      using difference_type = i32;
-      using value_type = Edge<W>;
-      using pointer = std::conditional_t<IsConst, const value_type*, value_type*>;
-      using reference = std::conditional_t<IsConst, const value_type&, value_type&>;
-      using iterator_category = std::forward_iterator_tag;
-      constexpr reference operator*() const noexcept { return storage_ptr[current_idx].first; }
-      constexpr pointer operator->() const noexcept { return &(storage_ptr[current_idx].first); }
-      constexpr iterator& operator++() {
-        current_idx = storage_ptr[current_idx].second;
-        return *this;
-      }
-      constexpr iterator operator++(int) {
-        auto copy = *this;
-        operator++();
-        return copy;
-      }
-      friend constexpr bool operator==(const iterator& a, const iterator& b) noexcept { return a.current_idx == b.current_idx; }
-    };
-    class const_iterator {
-      using storage_ptr_type = decltype(storage)::const_iterator;
-      storage_ptr_type storage_ptr;
-      u32 current_idx;
-      constexpr const_iterator(storage_ptr_type p, u32 i) : storage_ptr(p), current_idx(i) {}
-      friend class adjacency_list;
-    public:
-      using difference_type = i32;
-      using value_type = Edge<W>;
-      using pointer = const value_type*;
-      using reference = const value_type&;
-      using iterator_category = std::forward_iterator_tag;
-      constexpr reference operator*() const noexcept { return storage_ptr[current_idx].first; }
-      constexpr pointer operator->() const noexcept { return &(storage_ptr[current_idx].first); }
-      constexpr const_iterator& operator++() {
-        current_idx = storage_ptr[current_idx].second;
-        return *this;
-      }
-      constexpr const_iterator operator++(int) {
-        auto copy = *this;
-        operator++();
-        return copy;
-      }
-      friend constexpr bool operator==(const const_iterator& a, const const_iterator& b) noexcept { return a.current_idx == b.current_idx; }
-    };
-    constexpr u32 size() const noexcept {
-      u32 current_idx = idx;
-      u32 cnt = 0;
-      while(current_idx != npos) {
-        current_idx = storage_ptr[current_idx].second;
-        ++cnt;
-      }
-      return cnt;
-    }
-    constexpr bool empty() const noexcept { return idx == npos; }
-    constexpr iterator begin() noexcept { return iterator(storage_ptr, idx); }
-    constexpr iterator end() noexcept { return iterator(storage_ptr, npos); }
-    constexpr iterator begin() const noexcept { return iterator(storage_ptr, idx); }
-    constexpr iterator end() const noexcept { return iterator(storage_ptr, npos); }
-  };
   constexpr static bool is_weighted = Edge<W>::is_weighted;
+  template<bool IsConst> using adjacency_list = AdjacencyList<W, IsConst>;
 public:
   constexpr CRS() {}
   constexpr explicit CRS(u32 n) : tail(n, npos) {}
@@ -565,3 +546,4 @@ public:
   constexpr void reserve(u32 m) { base::reserve(2 * m); }
 };
 } // namespace gsh
+namespace std::ranges { template<class W, bool IsConst> inline constexpr bool enable_borrowed_range<gsh::internal::AdjacencyList<W, IsConst>> = true; }

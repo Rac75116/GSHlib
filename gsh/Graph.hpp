@@ -149,6 +149,7 @@ public:
   constexpr ShortestPathResult(ShortestPathResult&&) = default;
   constexpr const weight_type& dist(u32 t) const { return dist_[t]; }
   constexpr u32 prev(u32 t) const { return prev_[t]; }
+  constexpr bool is_reachable(u32 t) const { return dist_[t] != inf; }
   constexpr Vec<u32> path(u32 t) const {
     u32 len = 0;
     for(u32 cur = t; cur != npos; cur = prev_[cur]) ++len;
@@ -166,28 +167,32 @@ public:
   using weight_type = typename edge_type::weight_type;
   constexpr static bool is_weighted = edge_type::is_weighted;
   template<class W2> constexpr static W2 default_inf() { return std::numeric_limits<W2>::max(); }
-  constexpr auto shortest_path_bfs(u32 s) const {
+  constexpr auto shortest_path_bfs(u32 s, u32 t = 0xffffffff) const {
     const u32 n = derived().vertex_count();
     constexpr u32 inf = std::numeric_limits<u32>::max();
     ShortestPathResult<u32> res(inf, n);
     Vec<u32> q(n);
     u32 head = 0;
     u32 tail = 0;
-    res.dist_[s] = u32{};
-    q[tail++] = n;
-    while(head < q.size()) {
+    res.dist_[s] = 0;
+    q[tail++] = s;
+    while(head != tail) {
       const u32 v = q[head++];
       for(const auto& e : derived()[v]) {
         const u32 to = e.to();
         if(res.dist_[to] != inf) continue;
-        res.dist_[to] = res.dist_[v] + u32(1);
+        res.dist_[to] = res.dist_[v] + 1u;
         res.prev_[to] = v;
         q[tail++] = to;
+        if(to == t) {
+          tail = head;
+          break;
+        }
       }
     }
     return res;
   }
-  constexpr auto shortest_path_01bfs(u32 s) const {
+  constexpr auto shortest_path_01bfs(u32 s, u32 t = 0xffffffff) const {
     const u32 n = derived().vertex_count();
     constexpr u32 inf = std::numeric_limits<u32>::max();
     ShortestPathResult<u32> res(inf, n);
@@ -200,6 +205,7 @@ public:
     while(front != back) {
       const u32 v = dq[front++];
       if(used[v]) continue;
+      if(v == t) break;
       used[v] = 1;
       for(const auto& e : derived()[v]) {
         const u32 to = e.to();

@@ -11,26 +11,18 @@
 #include <type_traits>
 #include <utility>
 namespace gsh {
-template<class W = void> class Edge {
+template<class W = std::monostate> class Edge {
   u32 t = 0;
-  W w{};
+  [[no_unique_address]] W w{};
 public:
+  constexpr static bool is_weighted = !std::is_same_v<W, std::monostate>;
+  using weight_type = std::conditional_t<is_weighted, W, u32>;
   constexpr Edge(u32 _t) : t(_t) {}
   constexpr Edge(u32 _t, W _w) : t(_t), w(_w) {}
   constexpr u32 to() const noexcept { return t; }
-  constexpr W& weight() noexcept { return w; }
-  constexpr const W& weight() const noexcept { return w; }
-  constexpr operator u32() const noexcept { return t; }
-};
-template<> class Edge<void> {
-  u32 t = 0;
-public:
-  constexpr Edge(u32 _t) noexcept : t(_t) {}
-  constexpr Edge(u32 _t, u32 _w) : t(_t) {
-    if(_w != 1) throw gsh::Exception("gsh::Edge<void>::Edge / The weight is not 1.");
-  }
-  constexpr u32 to() const noexcept { return t; }
-  constexpr u32 weight() const noexcept { return 1; }
+  constexpr W& weight() noexcept requires is_weighted { return w; }
+  constexpr const W& weight() const noexcept requires is_weighted { return w; }
+  constexpr u32 weight() const noexcept requires (!is_weighted) { return 1; }
   constexpr operator u32() const noexcept { return t; }
 };
 } // namespace gsh
@@ -39,10 +31,6 @@ template<class W> struct tuple_size<gsh::Edge<W>> : integral_constant<size_t, 2>
 template<std::size_t M, class W> struct tuple_element<M, gsh::Edge<W>> {
   static_assert(M < 2, "std::tuple_element<gsh::Edge> / The index is out of range.");
   using type = std::conditional_t<M == 0, gsh::u32, W>;
-};
-template<std::size_t M> struct tuple_element<M, gsh::Edge<void>> {
-  static_assert(M < 2, "std::tuple_element<gsh::Edge<void>> / The index is out of range.");
-  using type = gsh::u32;
 };
 } // namespace std
 namespace gsh {
@@ -61,7 +49,37 @@ template<std::size_t M, class W> auto get(Edge<W>&& e) {
   if constexpr(M == 0) return e.to();
   else return std::move(e.weight());
 }
-namespace graph_format {
+struct ConnectedComponents {
+  Vec<Vec<u32>> vertex;
+  Vec<u32> aff;
+  constexpr u32 size() const noexcept { return aff.size(); }
+  constexpr bool empty() const noexcept { return aff.empty(); }
+  constexpr u32 count_groups() const noexcept { return vertex.size(); }
+  constexpr u32 affiliation(u32 v) const noexcept { return aff[v]; }
+  constexpr const Vec<u32>& affiliation() const noexcept { return aff; }
+  constexpr const Vec<Vec<u32>>& groups() const noexcept { return vertex; }
+  constexpr const Vec<u32>& extract(u32 v) const { return vertex[aff[v]]; }
+  constexpr u32 leader(u32 v) const { return vertex[aff[v]][0]; }
+  constexpr bool same(u32 a, u32 b) const noexcept { return aff[a] == aff[b]; }
+};
+template<class WTT> struct ShortestPathResult {
+  using weight_type = WTT;
+  weight_type inf;
+  Vec<weight_type> dist;
+  Vec<u32> prev;
+  constexpr Vec<u32> restore(u32 t) const {
+    Vec<u32> path;
+    if(t >= prev.size()) return path;
+    if(dist[t] == inf) return path;
+    for(u32 cur = t;; cur = prev[cur]) {
+      path.push_back(cur);
+      if(prev[cur] == cur) break;
+    }
+    path.reverse();
+    return path;
+  }
+};
+namespace internal {
 template<class W> class CRS {
   constexpr static u32 npos = 0xffffffffu;
   Vec<std::pair<Edge<W>, u32>> storage;
@@ -122,13 +140,23 @@ template<class W> class CRS {
       }
       friend constexpr bool operator==(const const_iterator& a, const const_iterator& b) noexcept { return a.current_idx == b.current_idx; }
     };
-    constexpr bool empty() const noexcept { return idx == CRS::npos; }
+    constexpr u32 size() const noexcept {
+      u32 current_idx = idx;
+      u32 cnt = 0;
+      while(current_idx != npos) {
+        current_idx = storage_ptr[current_idx].second;
+        ++cnt;
+      }
+      return cnt;
+    }
+    constexpr bool empty() const noexcept { return idx == npos; }
     constexpr iterator begin() noexcept { return iterator(storage_ptr, idx); }
-    constexpr iterator end() noexcept { return iterator(storage_ptr, CRS::npos); }
+    constexpr iterator end() noexcept { return iterator(storage_ptr, npos); }
     constexpr iterator begin() const noexcept { return iterator(storage_ptr, idx); }
-    constexpr iterator end() const noexcept { return iterator(storage_ptr, CRS::npos); }
+    constexpr iterator end() const noexcept { return iterator(storage_ptr, npos); }
   };
-protected:
+  constexpr static bool is_weighted = Edge<W>::is_weighted;
+public:
   constexpr CRS() {}
   constexpr explicit CRS(u32 n) : tail(n, npos) {}
   constexpr u32 vertex_count() const noexcept { return tail.size(); }
@@ -137,12 +165,8 @@ protected:
     storage.emplace_back(std::piecewise_construct, std::tuple{to}, std::tuple{tail[from]});
     tail[from] = storage.size() - 1;
   }
-  template<class WW = W> constexpr void connect(u32 from, u32 to, const WW& w) requires (!std::is_void_v<WW>) {
+  constexpr void connect(u32 from, u32 to, const W& w) {
     storage.emplace_back(std::piecewise_construct, std::tuple{to, w}, std::tuple{tail[from]});
-    tail[from] = storage.size() - 1;
-  }
-  template<class WW = W> constexpr void connect(u32 from, u32 to, WW&& w) requires (!std::is_void_v<WW>) {
-    storage.emplace_back(std::piecewise_construct, std::tuple{to, std::move(w)}, std::tuple{tail[from]});
     tail[from] = storage.size() - 1;
   }
   constexpr auto operator[](u32 v) {
@@ -160,202 +184,15 @@ protected:
     return adjacency_list<true>(storage.begin(), tail[v]);
   }
   constexpr void reserve(u32 m) { storage.reserve(m); }
-  constexpr u32 outdegree(u32 v) const {
-#ifndef NDEBUG
-    if(v >= vertex_count()) [[unlikely]]
-      throw Exception("gsh::graph_format::CRS::outdegree / The index is out of range. ( v=", v, ", size=", vertex_count(), " )");
-#endif
-    u32 res = 0;
-    for(auto it = adjacency_list<true>(storage.begin(), tail[v]).begin(); it != adjacency_list<true>(storage.begin(), tail[v]).end(); ++it) ++res;
-    return res;
-  }
 };
-} // namespace graph_format
-namespace internal { template<class D, class WT, bool IsWeighted> class GraphInterface; }
-template<class W, template<class> class Format = graph_format::CRS> class DirectedGraph : public Format<W>, public internal::GraphInterface<DirectedGraph<W, Format>, std::conditional_t<std::is_void_v<W>, u32, W>, !std::is_void_v<W>> {
-  using base = Format<W>;
-public:
-  using edge_type = Edge<W>;
-  using weight_type = std::conditional_t<std::is_void_v<W>, u32, W>;
-  constexpr static bool is_weighted = !std::is_void_v<W>;
-  constexpr DirectedGraph() : base() {}
-  constexpr explicit DirectedGraph(u32 n) : base(n) {}
-  constexpr u32 vertex_count() const noexcept { return base::vertex_count(); }
-  constexpr u32 edge_count() const noexcept { return base::edge_count(); }
-  constexpr auto operator[](u32 v) { return base::operator[](v); }
-  constexpr auto operator[](u32 v) const { return base::operator[](v); }
-  constexpr void reserve(u32 m) { base::reserve(m); }
-  constexpr void connect(u32 from, u32 to) { base::connect(from, to); }
-  constexpr void connect(u32 from, u32 to, const weight_type& w) requires is_weighted { base::connect(from, to, w); }
-  constexpr void connect(u32 from, u32 to, weight_type&& w) requires is_weighted { base::connect(from, to, std::move(w)); }
-  constexpr u32 outdegree(u32 v) const { return base::outdegree(v); }
-};
-template<class W, template<class> class Format = graph_format::CRS> class UndirectedGraph : public Format<W>, public internal::GraphInterface<UndirectedGraph<W, Format>, std::conditional_t<std::is_void_v<W>, u32, W>, !std::is_void_v<W>> {
-  using base = Format<W>;
-public:
-  using edge_type = Edge<W>;
-  using weight_type = std::conditional_t<std::is_void_v<W>, u32, W>;
-  constexpr static bool is_weighted = !std::is_void_v<W>;
-  constexpr UndirectedGraph() : base() {}
-  constexpr explicit UndirectedGraph(u32 n) : base(n) {}
-  constexpr u32 vertex_count() const noexcept { return base::vertex_count(); }
-  constexpr u32 edge_count() const noexcept { return base::edge_count() / 2; }
-  constexpr auto operator[](u32 v) { return base::operator[](v); }
-  constexpr auto operator[](u32 v) const { return base::operator[](v); }
-  constexpr void reserve(u32 m) { base::reserve(m * 2); }
-  constexpr void connect(u32 a, u32 b) {
-    base::connect(a, b);
-    base::connect(b, a);
-  }
-  constexpr void connect(u32 a, u32 b, const weight_type& w) requires is_weighted {
-    base::connect(a, b, w);
-    base::connect(b, a, w);
-  }
-  constexpr void connect(u32 a, u32 b, weight_type&& w) requires is_weighted {
-    auto tmp = std::move(w);
-    base::connect(a, b, tmp);
-    base::connect(b, a, std::move(tmp));
-  }
-  constexpr u32 outdegree(u32 v) const { return base::outdegree(v); }
-  constexpr u32 degree(u32 v) const { return base::outdegree(v); }
-  constexpr auto to_directed() const {
-    u32 n = vertex_count();
-    DirectedGraph<W, Format> res(n);
-    res.reserve(base::edge_count());
-    for(u32 i = 0; i != n; ++i) {
-      for(const auto& e : (*this)[i]) {
-        if constexpr(!is_weighted) res.connect(i, e.to());
-        else res.connect(i, e.to(), e.weight());
-      }
-    }
-    return res;
-  }
-};
-namespace internal {
-template<class T> constexpr static bool IsGraphType = false;
-template<class W, template<class> class Format> constexpr static bool IsGraphType<DirectedGraph<W, Format>> = true;
-template<class W, template<class> class Format> constexpr static bool IsGraphType<UndirectedGraph<W, Format>> = true;
-template<class T> concept GraphType = IsGraphType<T>;
-template<class D, class WT, bool IsWeighted> class GraphInterface {
+template<class D, class W> class GraphInterface {
   constexpr D& derived() noexcept { return *static_cast<D*>(this); }
   constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
-  using weight_type = WT;
-  constexpr static bool is_weighted = IsWeighted;
 public:
+  using edge_type = Edge<W>;
+  using weight_type = typename edge_type::weight_type;
+  constexpr static bool is_weighted = edge_type::is_weighted;
   constexpr static weight_type default_inf() { return std::numeric_limits<weight_type>::max(); }
-  constexpr Vec<u32> indegree() const {
-    const u32 n = derived().vertex_count();
-    Vec<u32> deg(n, 0);
-    for(u32 i = 0; i != n; ++i) {
-      for(const auto& e : derived()[i]) ++deg[e.to()];
-    }
-    return deg;
-  }
-  constexpr u32 indegree(u32 v) const { return indegree()[v]; }
-  constexpr Vec<Vec<u32>> connected_components() const {
-    const u32 n = derived().vertex_count();
-    UnionFind uf(n);
-    for(u32 i = 0; i != n; ++i) {
-      for(const auto& e : derived()[i]) uf.merge(i, e.to());
-    }
-    return uf.groups();
-  }
-  constexpr u32 count_connected_components() const { return connected_components().size(); }
-  constexpr bool is_connected_graph() const { return derived().vertex_count() == 0 ? true : (count_connected_components() == 1); }
-  constexpr bool is_tree() const {
-    const u32 n = derived().vertex_count();
-    if(n == 0) return true;
-    if(derived().edge_count() + 1 != n) return false;
-    return is_connected_graph();
-  }
-  constexpr bool is_path_graph() const {
-    const u32 n = derived().vertex_count();
-    if(n == 0) return true;
-    if(derived().edge_count() + 1 != n) return false;
-    u32 cnt1 = 0;
-    for(u32 i = 0; i != n; ++i) {
-      const u32 d = derived().outdegree(i);
-      if(d > 2) return false;
-      cnt1 += (d == 1);
-    }
-    if(n == 1) return true;
-    if(cnt1 != 2) return false;
-    return is_connected_graph();
-  }
-  constexpr Vec<u32> topological_sort() const {
-    const u32 n = derived().vertex_count();
-    Vec<u32> indeg = indegree();
-    Vec<u32> st;
-    st.reserve(n);
-    for(u32 i = 0; i != n; ++i)
-      if(indeg[i] == 0) st.push_back(i);
-    Vec<u32> res;
-    res.reserve(n);
-    while(!st.empty()) {
-      const u32 v = st.back();
-      st.pop_back();
-      res.push_back(v);
-      for(const auto& e : derived()[v]) {
-        const u32 to = e.to();
-        if(--indeg[to] == 0) st.push_back(to);
-      }
-    }
-    return res;
-  }
-  template<class Comp> constexpr Vec<u32> topological_sort(const Comp& comp) const {
-    const u32 n = derived().vertex_count();
-    Vec<u32> indeg = indegree();
-    Heap<u32, Comp> heap(comp);
-    for(u32 i = 0; i != n; ++i)
-      if(indeg[i] == 0) heap.push(i);
-    Vec<u32> res;
-    res.reserve(n);
-    while(!heap.empty()) {
-      const u32 v = heap.min();
-      heap.pop_min();
-      res.push_back(v);
-      for(const auto& e : derived()[v]) {
-        const u32 to = e.to();
-        if(--indeg[to] == 0) heap.push(to);
-      }
-    }
-    return res;
-  }
-  template<class Comp = Less> constexpr auto longest_path_length_dag(const Comp& comp = Comp()) const {
-    const u32 n = derived().vertex_count();
-    Vec<weight_type> dp(n, weight_type{});
-    auto ord = topological_sort();
-    for(u32 idx = 0; idx != ord.size(); ++idx) {
-      const u32 v = ord[idx];
-      for(const auto& e : derived()[v]) {
-        const u32 to = e.to();
-        const weight_type w = [&]() {
-          if constexpr(is_weighted) return e.weight();
-          else return static_cast<weight_type>(1);
-        }();
-        const weight_type cand = dp[v] + w;
-        if(std::invoke(comp, dp[to], cand)) dp[to] = cand;
-      }
-    }
-    return dp;
-  }
-  template<class WTT> struct ShortestPathResult {
-    using weight_type = WTT;
-    weight_type inf;
-    Vec<weight_type> dist;
-    Vec<u32> prev;
-    constexpr Vec<u32> restore(u32 t) const {
-      Vec<u32> path;
-      if(t >= prev.size()) return path;
-      if(dist[t] == inf) return path;
-      for(u32 cur = t;; cur = prev[cur]) {
-        path.push_back(cur);
-        if(prev[cur] == cur) break;
-      }
-      path.reverse();
-      return path;
-    }
-  };
   template<class Comp = Less> constexpr auto shortest_path(u32 s, const weight_type& inf = default_inf(), const Comp& comp = Comp()) const {
     if constexpr(!is_weighted) return shortest_path_bfs(s, inf);
     else return shortest_path_dijkstra(s, inf, comp);
@@ -393,6 +230,7 @@ public:
       constexpr bool operator()(const Node& a, const Node& b) const noexcept(noexcept(std::invoke(comp, a.d, b.d))) { return std::invoke(comp, a.d, b.d); }
     };
     Heap<Node, NodeComp> pq(NodeComp{comp});
+    pq.reserve(derived().edge_count());
     res.dist[s] = weight_type{};
     res.prev[s] = s;
     pq.push(Node{weight_type{}, s});
@@ -411,6 +249,212 @@ public:
           pq.push(Node{nd, to});
         }
       }
+    }
+    return res;
+  }
+};
+template<class D, class W> class DirectedGraphInterface : public GraphInterface<D, W> {
+  constexpr D& derived() noexcept { return *static_cast<D*>(this); }
+  constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
+public:
+  using edge_type = Edge<W>;
+  using weight_type = typename edge_type::weight_type;
+  constexpr static bool is_weighted = edge_type::is_weighted;
+  constexpr Vec<u32> indegree() const {
+    const u32 n = derived().vertex_count();
+    Vec<u32> deg(n, 0);
+    for(u32 i = 0; i != n; ++i) {
+      for(const auto& e : derived()[i]) ++deg[e.to()];
+    }
+    return deg;
+  }
+  constexpr Vec<u32> outdegree() const {
+    const u32 n = derived().vertex_count();
+    Vec<u32> deg(n);
+    for(u32 i = 0; i != n; ++i) deg[i] = derived()[i].size();
+    return deg;
+  }
+  constexpr Vec<u32> topological_sort() const {
+    const u32 n = derived().vertex_count();
+    Vec<u32> indeg = derived().indegree();
+    Vec<u32> st;
+    st.reserve(n);
+    for(u32 i = 0; i != n; ++i)
+      if(indeg[i] == 0) st.push_back(i);
+    Vec<u32> res;
+    res.reserve(n);
+    while(!st.empty()) {
+      const u32 v = st.back();
+      st.pop_back();
+      res.push_back(v);
+      for(const auto& e : derived()[v]) {
+        const u32 to = e.to();
+        if(--indeg[to] == 0) st.push_back(to);
+      }
+    }
+    return res;
+  }
+  template<class Comp = Less> constexpr Vec<u32> topological_sort(Comp comp = Comp()) const {
+    const u32 n = derived().vertex_count();
+    Vec<u32> indeg = derived().indegree();
+    Heap<u32, Comp> heap(comp);
+    for(u32 i = 0; i != n; ++i)
+      if(indeg[i] == 0) heap.push(i);
+    Vec<u32> res;
+    res.reserve(n);
+    while(!heap.empty()) {
+      const u32 v = heap.min();
+      heap.pop_min();
+      res.push_back(v);
+      for(const auto& e : derived()[v]) {
+        const u32 to = e.to();
+        if(--indeg[to] == 0) heap.push(to);
+      }
+    }
+    return res;
+  }
+  template<class Comp = Less> constexpr auto longest_path_length_dag(const Comp& comp = Comp()) const {
+    const u32 n = derived().vertex_count();
+    Vec<weight_type> dp(n, weight_type{});
+    auto ord = topological_sort();
+    for(u32 idx = 0; idx != ord.size(); ++idx) {
+      const u32 v = ord[idx];
+      for(const auto& e : derived()[v]) {
+        const u32 to = e.to();
+        const weight_type w = [&]() {
+          if constexpr(is_weighted) return e.weight();
+          else return static_cast<weight_type>(1);
+        }();
+        const weight_type cand = dp[v] + w;
+        if(std::invoke(comp, dp[to], cand)) dp[to] = cand;
+      }
+    }
+    return dp;
+  }
+  constexpr ConnectedComponents strongly_connected_components_decomposition() const {
+    const u32 n = derived().vertex_count();
+    Vec<Vec<u32>> g(n), rg(n);
+    for(u32 v = 0; v != n; ++v) {
+      for(const auto& e : derived()[v]) {
+        const u32 to = e.to();
+        g[v].push_back(to);
+        rg[to].push_back(v);
+      }
+    }
+    Vec<u8> seen(n, 0);
+    Vec<u32> order;
+    order.reserve(n);
+    Vec<std::pair<u32, u32>> st;
+    st.reserve(n);
+    for(u32 s = 0; s != n; ++s) {
+      if(seen[s]) continue;
+      st.clear();
+      st.push_back({s, 0});
+      seen[s] = 1;
+      while(!st.empty()) {
+        auto& top = st.back();
+        const u32 v = top.first;
+        u32& i = top.second;
+        if(i < g[v].size()) {
+          const u32 to = g[v][i++];
+          if(!seen[to]) {
+            seen[to] = 1;
+            st.push_back({to, 0});
+          }
+        } else {
+          order.push_back(v);
+          st.pop_back();
+        }
+      }
+    }
+    ConnectedComponents res;
+    res.aff.assign(n, 0);
+    Vec<u8> used(n, 0);
+    Vec<u32> stack;
+    stack.reserve(n);
+    for(u32 k = order.size(); k != 0; --k) {
+      const u32 s = order[k - 1];
+      if(used[s]) continue;
+      res.vertex.emplace_back();
+      const u32 gid = res.vertex.size() - 1;
+      stack.clear();
+      stack.push_back(s);
+      used[s] = 1;
+      while(!stack.empty()) {
+        const u32 v = stack.back();
+        stack.pop_back();
+        res.aff[v] = gid;
+        res.vertex[gid].push_back(v);
+        for(u32 to : rg[v]) {
+          if(used[to]) continue;
+          used[to] = 1;
+          stack.push_back(to);
+        }
+      }
+    }
+    return res;
+  }
+};
+template<class D, class W> class UndirectedGraphInterface : public GraphInterface<D, W> {
+  constexpr D& derived() noexcept { return *static_cast<D*>(this); }
+  constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
+public:
+  using edge_type = Edge<W>;
+  using weight_type = typename edge_type::weight_type;
+  constexpr static bool is_weighted = edge_type::is_weighted;
+  constexpr Vec<u32> degree() const {
+    const u32 n = derived().vertex_count();
+    Vec<u32> deg(n);
+    for(u32 i = 0; i != n; ++i) deg[i] = derived()[i].size();
+    return deg;
+  }
+  constexpr Vec<Vec<u32>> connected_components() const {
+    const u32 n = derived().vertex_count();
+    UnionFind uf(n);
+    for(u32 i = 0; i != n; ++i) {
+      for(const auto& e : derived()[i])
+        if(i < e.to()) uf.merge(i, e.to());
+    }
+    return uf.groups();
+  }
+  constexpr u32 count_connected_components() const {
+    const u32 n = derived().vertex_count();
+    UnionFind uf(n);
+    for(u32 i = 0; i != n; ++i) {
+      for(const auto& e : derived()[i])
+        if(i < e.to()) uf.merge(i, e.to());
+    }
+    return uf.count_groups();
+  }
+  constexpr bool is_connected_graph() const { return derived().vertex_count() == 0 ? true : (count_connected_components() == 1); }
+  constexpr bool is_tree() const {
+    const u32 n = derived().vertex_count();
+    if(n == 0) return true;
+    if(derived().edge_count() + 1 != n) return false;
+    return is_connected_graph();
+  }
+  constexpr bool is_path_graph() const {
+    const u32 n = derived().vertex_count();
+    if(n == 0) return true;
+    if(derived().edge_count() + 1 != n) return false;
+    auto deg = derived().degree();
+    u32 cnt1 = 0;
+    for(u32 i = 0; i != n; ++i) {
+      const u32 d = deg[i];
+      if(d > 2) return false;
+      cnt1 += (d == 1);
+    }
+    if(n == 1) return true;
+    if(cnt1 != 2) return false;
+    return is_connected_graph();
+  }
+  constexpr ConnectedComponents connected_components_decomposition() const {
+    const u32 n = derived().vertex_count();
+    ConnectedComponents res;
+    res.vertex = connected_components();
+    res.aff.assign(n, 0);
+    for(u32 gid = 0; gid != res.vertex.size(); ++gid) {
+      for(u32 v : res.vertex[gid]) res.aff[v] = gid;
     }
     return res;
   }
@@ -498,4 +542,26 @@ public:
   }
 };
 }
+template<class W = std::monostate> class DirectedGraph : public internal::CRS<W>, public internal::DirectedGraphInterface<DirectedGraph<W>, W> {
+  using base = internal::CRS<W>;
+public:
+  constexpr DirectedGraph() = default;
+  constexpr DirectedGraph(u32 n) : base(n) {}
+};
+template<class W = std::monostate> class UndirectedGraph : public internal::CRS<W>, public internal::UndirectedGraphInterface<UndirectedGraph<W>, W> {
+  using base = internal::CRS<W>;
+public:
+  constexpr UndirectedGraph() = default;
+  constexpr UndirectedGraph(u32 n) : base(n) {}
+  constexpr void connect(u32 a, u32 b) {
+    base::connect(a, b);
+    base::connect(b, a);
+  }
+  constexpr void connect(u32 a, u32 b, const W& w) {
+    base::connect(a, b, w);
+    base::connect(b, a, w);
+  }
+  constexpr u32 edge_count() const noexcept { return base::edge_count() / 2; }
+  constexpr void reserve(u32 m) { base::reserve(2 * m); }
+};
 } // namespace gsh

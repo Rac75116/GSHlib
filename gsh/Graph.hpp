@@ -255,6 +255,130 @@ public:
     }
     return res;
   }
+  template<class W2 = weight_type> constexpr ShortestPathResult<W2> shortest_path_bellman_ford(u32 s) const {
+    const auto& g = derived();
+    const u32 n = g.vertex_count();
+    static_assert(std::numeric_limits<W2>::is_signed, "gsh::GraphInterface::shortest_path_bellman_ford / W2 must be signed.");
+    const W2 inf = std::numeric_limits<W2>::max();
+    const W2 neg_inf = std::numeric_limits<W2>::lowest();
+    constexpr u32 npos = 0xffffffffu;
+    ShortestPathResult<W2> res(inf, n);
+    if(n == 0) return res;
+    auto& dist = res.dist_;
+    auto& prev = res.prev_;
+    dist[s] = W2{};
+    Vec<u8> inq(n, 0);
+    Vec<u32> push_cnt(n, 0);
+    Vec<u8> neg(n, 0);
+    const u32 cap = n + 1;
+    Vec<u32> q(cap);
+    u32 head = 0;
+    u32 tail = 0;
+    u32 sz = 0;
+    auto pop_front = [&]() constexpr {
+      const u32 v = q[head];
+      head = (head + 1 == cap) ? 0 : (head + 1);
+      --sz;
+      return v;
+    };
+    auto push_back = [&](u32 v) constexpr {
+      q[tail] = v;
+      tail = (tail + 1 == cap) ? 0 : (tail + 1);
+      ++sz;
+    };
+    auto push_front = [&](u32 v) constexpr {
+      head = (head == 0) ? (cap - 1) : (head - 1);
+      q[head] = v;
+      ++sz;
+    };
+    auto front = [&]() constexpr { return q[head]; };
+    Vec<u32> negq(n);
+    u32 nhead = 0;
+    u32 ntail = 0;
+    auto neg_push = [&](u32 v) constexpr { negq[ntail++] = v; };
+    auto drain_neg = [&]() constexpr {
+      while(nhead != ntail) {
+        const u32 v = negq[nhead++];
+        for(const auto& e : g[v]) {
+          const u32 to = e.to();
+          if(neg[to]) continue;
+          neg[to] = 1;
+          dist[to] = neg_inf;
+          prev[to] = v;
+          neg_push(to);
+        }
+      }
+    };
+    push_back(s);
+    inq[s] = 1;
+    push_cnt[s] = 1;
+    Vec<u8> in_cycle(n, 0);
+    Vec<u32> cycle_nodes;
+    cycle_nodes.reserve(4);
+    while(sz != 0) {
+      const u32 v = pop_front();
+      inq[v] = 0;
+      if(neg[v]) continue;
+      if(dist[v] == inf || dist[v] == neg_inf) continue;
+      for(const auto& e : g[v]) {
+        const u32 to = e.to();
+        if(neg[to]) continue;
+        const W2 w = static_cast<W2>(e.weight());
+        const W2 nd = dist[v] + w;
+        if(nd < dist[to]) {
+          dist[to] = nd;
+          prev[to] = v;
+          if(!inq[to]) {
+            if(++push_cnt[to] >= n) [[unlikely]] {
+              u32 x = to;
+              for(u32 i = 0; i != n; ++i) {
+                const u32 p = prev[x];
+                if(p == npos) break;
+                x = p;
+              }
+              if(prev[x] != npos) {
+                u32 cur = x;
+                while(!in_cycle[cur]) {
+                  in_cycle[cur] = 1;
+                  cycle_nodes.push_back(cur);
+                  const u32 p = prev[cur];
+                  if(p == npos) break;
+                  cur = p;
+                }
+              }
+              if(!cycle_nodes.empty()) {
+                for(u32 u : cycle_nodes) {
+                  if(neg[u]) continue;
+                  neg[u] = 1;
+                  dist[u] = neg_inf;
+                  neg_push(u);
+                }
+              } else {
+                neg[to] = 1;
+                dist[to] = neg_inf;
+                prev[to] = to;
+                neg_push(to);
+              }
+              drain_neg();
+            } else {
+              if(sz != 0 && nd < dist[front()]) push_front(to);
+              else push_back(to);
+              inq[to] = 1;
+            }
+          }
+        }
+      }
+    }
+    if(ntail == 0) return res;
+    if(!cycle_nodes.empty()) {
+      for(u32 u : cycle_nodes) {
+        const u32 p = prev[u];
+        if(p == npos || !in_cycle[p]) prev[u] = u;
+      }
+    }
+    drain_neg();
+    return res;
+  }
 };
 template<class D, class W> class DirectedGraphInterface : public GraphInterface<D, W> {
   constexpr D& derived() noexcept { return *static_cast<D*>(this); }

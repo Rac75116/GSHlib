@@ -49,23 +49,6 @@ template<std::size_t M, class W> auto get(Edge<W>&& e) {
   if constexpr(M == 0) return e.to();
   else return std::move(e.weight());
 }
-template<class WTT> struct ShortestPathResult {
-  using weight_type = WTT;
-  weight_type inf;
-  Vec<weight_type> dist;
-  Vec<u32> prev;
-  constexpr Vec<u32> restore(u32 t) const {
-    Vec<u32> path;
-    if(t >= prev.size()) return path;
-    if(dist[t] == inf) return path;
-    for(u32 cur = t;; cur = prev[cur]) {
-      path.push_back(cur);
-      if(prev[cur] == cur) break;
-    }
-    path.reverse();
-    return path;
-  }
-};
 namespace internal {
 template<class W, bool IsConst> class AdjacencyList : public ViewInterface<AdjacencyList<W, IsConst>, Edge<W>> {
   constexpr static u32 npos = 0xffffffffu;
@@ -153,6 +136,28 @@ public:
   }
   constexpr void reserve(u32 m) { storage.reserve(m); }
 };
+template<class WTT> class ShortestPathResult {
+  template<class D, class W> friend class GraphInterface;
+  constexpr static u32 npos = 0xffffffff;
+  using weight_type = WTT;
+  Vec<weight_type> dist_;
+  Vec<u32> prev_;
+  constexpr ShortestPathResult(const weight_type& inf, u32 n) : dist_(n, inf), prev_(n, npos), inf(inf) {}
+public:
+  const weight_type inf;
+  constexpr ShortestPathResult(const ShortestPathResult&) = default;
+  constexpr ShortestPathResult(ShortestPathResult&&) = default;
+  constexpr const weight_type& dist(u32 t) const { return dist_[t]; }
+  constexpr u32 prev(u32 t) const { return prev_[t]; }
+  constexpr Vec<u32> path(u32 t) const {
+    u32 len = 0;
+    for(u32 cur = t; cur != npos; cur = prev_[cur]) ++len;
+    Vec<u32> path(len);
+    for(u32 cur = t, i = 0; cur != npos; cur = prev_[cur]) path[i++] = cur;
+    path.reverse();
+    return path;
+  }
+};
 template<class D, class W> class GraphInterface {
   constexpr D& derived() noexcept { return *static_cast<D*>(this); }
   constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
@@ -164,28 +169,55 @@ public:
   constexpr auto shortest_path_bfs(u32 s) const {
     const u32 n = derived().vertex_count();
     constexpr u32 inf = std::numeric_limits<u32>::max();
-    ShortestPathResult<u32> res{inf, Vec<u32>(n, inf), Vec<u32>(n, 0)};
-    Vec<u32> q;
-    q.reserve(n);
+    ShortestPathResult<u32> res(inf, n);
+    Vec<u32> q(n);
     u32 head = 0;
-    res.dist[s] = u32{};
-    res.prev[s] = s;
-    q.push_back(s);
+    u32 tail = 0;
+    res.dist_[s] = u32{};
+    q[tail++] = n;
     while(head < q.size()) {
       const u32 v = q[head++];
       for(const auto& e : derived()[v]) {
         const u32 to = e.to();
-        if(res.dist[to] != inf) continue;
-        res.dist[to] = res.dist[v] + u32(1);
-        res.prev[to] = v;
-        q.push_back(to);
+        if(res.dist_[to] != inf) continue;
+        res.dist_[to] = res.dist_[v] + u32(1);
+        res.prev_[to] = v;
+        q[tail++] = to;
       }
     }
     return res;
   }
-  template<class W2 = weight_type, class Comp = Less> constexpr auto shortest_path_dijkstra(u32 s, const W2& inf = default_inf<W2>(), Comp comp = Comp()) const {
+  constexpr auto shortest_path_01bfs(u32 s) const {
     const u32 n = derived().vertex_count();
-    ShortestPathResult<W2> res{inf, Vec<W2>(n, inf), Vec<u32>(n, 0)};
+    constexpr u32 inf = std::numeric_limits<u32>::max();
+    ShortestPathResult<u32> res(inf, n);
+    Vec<u8> used(n, 0);
+    Vec<u32> dq(2 * n);
+    u32 front = n;
+    u32 back = n;
+    res.dist_[s] = 0;
+    dq[back++] = s;
+    while(front != back) {
+      const u32 v = dq[front++];
+      if(used[v]) continue;
+      used[v] = 1;
+      for(const auto& e : derived()[v]) {
+        const u32 to = e.to();
+        const bool w = static_cast<bool>(e.weight());
+        const u32 nd = res.dist_[v] + w;
+        if(nd < res.dist_[to]) {
+          res.dist_[to] = nd;
+          res.prev_[to] = v;
+          if(w) dq[back++] = to;
+          else dq[--front] = to;
+        }
+      }
+    }
+    return res;
+  }
+  template<class W2 = weight_type, class Comp = Less> constexpr auto shortest_path_dijkstra(u32 s, u32 t = 0xffffffff, const W2& inf = default_inf<W2>(), Comp comp = Comp()) const {
+    const u32 n = derived().vertex_count();
+    ShortestPathResult<W2> res(inf, n);
     struct Node {
       W2 d;
       u32 v;
@@ -196,21 +228,21 @@ public:
     };
     Heap<Node, NodeComp> pq(NodeComp{comp});
     pq.reserve(derived().edge_count());
-    res.dist[s] = W2{};
-    res.prev[s] = s;
+    res.dist_[s] = W2{};
     pq.emplace(W2{}, s);
     while(!pq.empty()) {
       const auto cur = pq.min();
       pq.pop_min();
-      if(cur.d != res.dist[cur.v]) continue;
+      if(cur.d != res.dist_[cur.v]) continue;
+      if(cur.v == t) break;
       for(const auto& e : derived()[cur.v]) {
         const u32 to = e.to();
         const W2 w = static_cast<W2>(e.weight());
-        if(res.dist[cur.v] == inf) continue;
+        if(res.dist_[cur.v] == inf) continue;
         const W2 nd = cur.d + w;
-        if(std::invoke(comp, nd, res.dist[to])) {
-          res.dist[to] = nd;
-          res.prev[to] = cur.v;
+        if(std::invoke(comp, nd, res.dist_[to])) {
+          res.dist_[to] = nd;
+          res.prev_[to] = cur.v;
           pq.emplace(nd, to);
         }
       }

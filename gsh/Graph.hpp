@@ -49,19 +49,6 @@ template<std::size_t M, class W> auto get(Edge<W>&& e) {
   if constexpr(M == 0) return e.to();
   else return std::move(e.weight());
 }
-struct ConnectedComponents {
-  Vec<Vec<u32>> vertex;
-  Vec<u32> aff;
-  constexpr u32 size() const noexcept { return aff.size(); }
-  constexpr bool empty() const noexcept { return aff.empty(); }
-  constexpr u32 count_groups() const noexcept { return vertex.size(); }
-  constexpr u32 affiliation(u32 v) const noexcept { return aff[v]; }
-  constexpr const Vec<u32>& affiliation() const noexcept { return aff; }
-  constexpr const Vec<Vec<u32>>& groups() const noexcept { return vertex; }
-  constexpr const Vec<u32>& extract(u32 v) const { return vertex[aff[v]]; }
-  constexpr u32 leader(u32 v) const { return vertex[aff[v]][0]; }
-  constexpr bool same(u32 a, u32 b) const noexcept { return aff[a] == aff[b]; }
-};
 template<class WTT> struct ShortestPathResult {
   using weight_type = WTT;
   weight_type inf;
@@ -173,18 +160,15 @@ public:
   using edge_type = Edge<W>;
   using weight_type = typename edge_type::weight_type;
   constexpr static bool is_weighted = edge_type::is_weighted;
-  constexpr static weight_type default_inf() { return std::numeric_limits<weight_type>::max(); }
-  template<class Comp = Less> constexpr auto shortest_path(u32 s, const weight_type& inf = default_inf(), const Comp& comp = Comp()) const {
-    if constexpr(!is_weighted) return shortest_path_bfs(s, inf);
-    else return shortest_path_dijkstra(s, inf, comp);
-  }
-  constexpr auto shortest_path_bfs(u32 s, const weight_type& inf = default_inf()) const {
+  template<class W2> constexpr static W2 default_inf() { return std::numeric_limits<W2>::max(); }
+  constexpr auto shortest_path_bfs(u32 s) const {
     const u32 n = derived().vertex_count();
-    ShortestPathResult<weight_type> res{inf, Vec<weight_type>(n, inf), Vec<u32>(n, 0)};
+    constexpr u32 inf = std::numeric_limits<u32>::max();
+    ShortestPathResult<u32> res{inf, Vec<u32>(n, inf), Vec<u32>(n, 0)};
     Vec<u32> q;
     q.reserve(n);
     u32 head = 0;
-    res.dist[s] = weight_type{};
+    res.dist[s] = u32{};
     res.prev[s] = s;
     q.push_back(s);
     while(head < q.size()) {
@@ -192,18 +176,18 @@ public:
       for(const auto& e : derived()[v]) {
         const u32 to = e.to();
         if(res.dist[to] != inf) continue;
-        res.dist[to] = res.dist[v] + static_cast<weight_type>(1);
+        res.dist[to] = res.dist[v] + u32(1);
         res.prev[to] = v;
         q.push_back(to);
       }
     }
     return res;
   }
-  template<class Comp = Less> constexpr auto shortest_path_dijkstra(u32 s, const weight_type& inf = default_inf(), const Comp& comp = Comp()) const {
+  template<class W2 = weight_type, class Comp = Less> constexpr auto shortest_path_dijkstra(u32 s, const W2& inf = default_inf<W2>(), Comp comp = Comp()) const {
     const u32 n = derived().vertex_count();
-    ShortestPathResult<weight_type> res{inf, Vec<weight_type>(n, inf), Vec<u32>(n, 0)};
+    ShortestPathResult<W2> res{inf, Vec<W2>(n, inf), Vec<u32>(n, 0)};
     struct Node {
-      weight_type d;
+      W2 d;
       u32 v;
     };
     struct NodeComp {
@@ -212,22 +196,22 @@ public:
     };
     Heap<Node, NodeComp> pq(NodeComp{comp});
     pq.reserve(derived().edge_count());
-    res.dist[s] = weight_type{};
+    res.dist[s] = W2{};
     res.prev[s] = s;
-    pq.push(Node{weight_type{}, s});
+    pq.emplace(W2{}, s);
     while(!pq.empty()) {
       const auto cur = pq.min();
       pq.pop_min();
       if(cur.d != res.dist[cur.v]) continue;
       for(const auto& e : derived()[cur.v]) {
         const u32 to = e.to();
-        const weight_type w = e.weight();
+        const W2 w = static_cast<W2>(e.weight());
         if(res.dist[cur.v] == inf) continue;
-        const weight_type nd = cur.d + w;
+        const W2 nd = cur.d + w;
         if(std::invoke(comp, nd, res.dist[to])) {
           res.dist[to] = nd;
           res.prev[to] = cur.v;
-          pq.push(Node{nd, to});
+          pq.emplace(nd, to);
         }
       }
     }
@@ -312,7 +296,7 @@ public:
     }
     return dp;
   }
-  constexpr ConnectedComponents strongly_connected_components_decomposition() const {
+  constexpr Vec<Vec<u32>> strongly_connected_components() const {
     const u32 n = derived().vertex_count();
     Vec<Vec<u32>> g(n), rg(n);
     for(u32 v = 0; v != n; ++v) {
@@ -348,24 +332,22 @@ public:
         }
       }
     }
-    ConnectedComponents res;
-    res.aff.assign(n, 0);
+    Vec<Vec<u32>> res;
     Vec<u8> used(n, 0);
     Vec<u32> stack;
     stack.reserve(n);
     for(u32 k = order.size(); k != 0; --k) {
       const u32 s = order[k - 1];
       if(used[s]) continue;
-      res.vertex.emplace_back();
-      const u32 gid = res.vertex.size() - 1;
+      res.emplace_back();
+      const u32 gid = res.size() - 1;
       stack.clear();
       stack.push_back(s);
       used[s] = 1;
       while(!stack.empty()) {
         const u32 v = stack.back();
         stack.pop_back();
-        res.aff[v] = gid;
-        res.vertex[gid].push_back(v);
+        res[gid].push_back(v);
         for(u32 to : rg[v]) {
           if(used[to]) continue;
           used[to] = 1;
@@ -428,16 +410,6 @@ public:
     if(n == 1) return true;
     if(cnt1 != 2) return false;
     return is_connected_graph();
-  }
-  constexpr ConnectedComponents connected_components_decomposition() const {
-    const u32 n = derived().vertex_count();
-    ConnectedComponents res;
-    res.vertex = connected_components();
-    res.aff.assign(n, 0);
-    for(u32 gid = 0; gid != res.vertex.size(); ++gid) {
-      for(u32 v : res.vertex[gid]) res.aff[v] = gid;
-    }
-    return res;
   }
   template<class Comp = Less> constexpr auto minimum_spanning_forest_cost(const Comp& comp = Comp()) const {
     const u32 n = derived().vertex_count();

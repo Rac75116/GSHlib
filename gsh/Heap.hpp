@@ -52,9 +52,9 @@ private:
     T tmp = std::move(data[idx]);
     while(true) {
       u32 grdch = (cur + 1) * 4 - 1;
-      if(cur >= lim) [[unlikely]] {
+      if(cur >= lim) {
         u32 ch = (cur + 1) * 2 - 1;
-        if(grdch < data.size()) [[unlikely]] {
+        if(grdch < data.size()) {
           u32 m = ch + comp(data[ch + 1], data[ch]);
           switch(data.size() - grdch) {
           case 3: {
@@ -95,9 +95,9 @@ private:
               data[cur] = std::move(tmp);
             }
           }
-        } else if(ch >= data.size()) [[likely]] {
+        } else if(ch >= data.size()) {
           data[cur] = std::move(tmp);
-        } else if(ch < data.size() - 1) [[likely]] {
+        } else if(ch < data.size() - 1) {
           bool f = comp(data[ch + 1], data[ch]);
           T m = std::move(f ? data[ch + 1] : data[ch]);
           bool g = comp(m, tmp);
@@ -119,7 +119,9 @@ private:
       u32 b = grdch + 2 + comp(data[grdch + 3], data[grdch + 2]);
       u32 c = a + comp(data[b], data[a]) * (b - a);
       u32 p = (c + 1) / 2 - 1;
-      if(!comp(data[c], tmp)) {
+      T cv = std::move(data[c]);
+      T tmp2 = std::move(data[p]);
+      if(!comp(cv, tmp)) {
         data[cur] = std::move(tmp);
         if constexpr(SetMax) {
           Assume(data.size() >= 3);
@@ -127,12 +129,14 @@ private:
         }
         return;
       }
-      data[cur] = std::move(data[c]);
+      data[cur] = std::move(cv);
       cur = c;
-      bool f = comp(data[p], tmp);
-      T tmp2 = data[p];
-      data[p] = std::move(f ? tmp : tmp2);
-      tmp = std::move(f ? tmp2 : tmp);
+      if(comp(tmp2, tmp)) {
+        data[p] = std::move(tmp);
+        tmp = std::move(tmp2);
+      } else {
+        data[p] = std::move(tmp2);
+      }
     }
   }
   GSH_INTERNAL_INLINE constexpr void pop_min_impl() noexcept(nothrow_op) {

@@ -6,6 +6,8 @@
 #include "Util.hpp"
 #include "internal/UtilMacro.hpp"
 namespace gsh {
+struct NoInit_ {};
+constexpr NoInit_ NoInit;
 template<class T, class Alloc = std::allocator<T>> requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)class Vec : public ViewInterface<Vec<T, Alloc>, T> {
   using traits = std::allocator_traits<Alloc>;
 public:
@@ -27,6 +29,12 @@ public:
     ptr = traits::allocate(alloc, n);
     len = n, cap = n;
     for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
+  }
+  constexpr explicit Vec(NoInit_, u32 n, const Alloc& a = Alloc()) : alloc(a) {
+    if(n == 0) [[unlikely]]
+      return;
+    ptr = traits::allocate(alloc, n);
+    len = n, cap = n;
   }
   constexpr explicit Vec(const u32 n, const T& value, const allocator_type& a = Alloc()) : alloc(a) {
     if(n == 0) [[unlikely]]

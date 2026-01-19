@@ -221,34 +221,27 @@ public:
     }
     return res;
   }
-  template<class W2 = weight_type, class Comp = Less> constexpr auto shortest_path_dijkstra(u32 s, u32 t = 0xffffffff, const W2& inf = default_inf<W2>(), Comp comp = Comp()) const {
+  template<class W2 = weight_type> constexpr auto shortest_path_dijkstra(u32 s, u32 t = 0xffffffff) const {
     const u32 n = derived().vertex_count();
+    const auto inf = std::numeric_limits<W2>::max();
     ShortestPathResult<W2> res(inf, n);
-    struct Node {
-      W2 d;
-      u32 v;
-    };
-    struct NodeComp {
-      Comp comp;
-      constexpr bool operator()(const Node& a, const Node& b) const noexcept(noexcept(std::invoke(comp, a.d, b.d))) { return std::invoke(comp, a.d, b.d); }
-    };
-    Heap<Node, NodeComp> pq(NodeComp{comp});
+    Heap<std::pair<W2, u32>, decltype([](const auto& a, const auto& b) { return a.first < b.first; })> pq;
     pq.reserve(derived().edge_count());
     res.dist_[s] = W2{};
     pq.emplace(W2{}, s);
     while(!pq.empty()) {
-      const auto cur = pq.min();
+      auto [d, v] = pq.min();
       pq.pop_min();
-      if(cur.d != res.dist_[cur.v]) continue;
-      if(cur.v == t) break;
-      for(const auto& e : derived()[cur.v]) {
+      if(d != res.dist_[v]) continue;
+      if(v == t) break;
+      for(const auto& e : derived()[v]) {
         const u32 to = e.to();
         const W2 w = static_cast<W2>(e.weight());
-        if(res.dist_[cur.v] == inf) continue;
-        const W2 nd = cur.d + w;
-        if(std::invoke(comp, nd, res.dist_[to])) {
+        if(res.dist_[v] == inf) continue;
+        const W2 nd = d + w;
+        if(nd < res.dist_[to]) {
           res.dist_[to] = nd;
-          res.prev_[to] = cur.v;
+          res.prev_[to] = v;
           pq.emplace(nd, to);
         }
       }

@@ -159,6 +159,33 @@ public:
     return path;
   }
 };
+class StronglyConnectedComponents {
+  u32 n_ = 0;
+  u32 comp_cnt_ = 0;
+  Vec<u32> comp_id_;
+  Vec<u32> comp_start_;
+  Vec<u32> comp_size_;
+  Vec<u32> comp_list_;
+public:
+  constexpr StronglyConnectedComponents() = default;
+  constexpr StronglyConnectedComponents(u32 n, u32 comp_cnt, Vec<u32>&& comp_id, Vec<u32>&& comp_start, Vec<u32>&& comp_size, Vec<u32>&& comp_list) : n_(n), comp_cnt_(comp_cnt), comp_id_(std::move(comp_id)), comp_start_(std::move(comp_start)), comp_size_(std::move(comp_size)), comp_list_(std::move(comp_list)) {}
+  constexpr u32 vertex_count() const noexcept { return n_; }
+  constexpr u32 size() const noexcept { return comp_cnt_; }
+  constexpr u32 count() const noexcept { return comp_cnt_; }
+  constexpr u32 id(u32 v) const noexcept { return comp_id_[v]; }
+  constexpr auto operator[](u32 cid) const noexcept {
+    auto p = comp_list_.data() + comp_start_[cid];
+    return Subrange(p, p + comp_size_[cid]);
+  }
+  constexpr Vec<Vec<u32>> groups() const {
+    Vec<Vec<u32>> res(comp_cnt_);
+    for(u32 cid = 0; cid != comp_cnt_; ++cid) {
+      auto c = (*this)[cid];
+      res[cid].assign_range(c);
+    }
+    return res;
+  }
+};
 template<class D, class W> class GraphInterface {
   constexpr D& derived() noexcept { return *static_cast<D*>(this); }
   constexpr const D& derived() const noexcept { return *static_cast<const D*>(this); }
@@ -232,12 +259,11 @@ public:
     while(!pq.empty()) {
       auto [d, v] = pq.min();
       pq.pop_min();
-      if(d != res.dist_[v]) continue;
       if(v == t) break;
+      if(d != res.dist_[v]) continue;
       for(const auto& e : derived()[v]) {
         const u32 to = e.to();
         const W2 w = static_cast<W2>(e.weight());
-        if(res.dist_[v] == inf) continue;
         const W2 nd = d + w;
         if(nd < res.dist_[to]) {
           res.dist_[to] = nd;
@@ -394,6 +420,7 @@ public:
     for(u32 i = 0; i != n; ++i) deg[i] = derived()[i].size();
     return deg;
   }
+  constexpr bool is_dag() const { return derived().vertex_count() == 0 || !topological_sort().empty(); }
   constexpr Vec<u32> topological_sort() const {
     const u32 n = derived().vertex_count();
     Vec<u32> indeg = derived().indegree();
@@ -412,9 +439,10 @@ public:
         if(--indeg[to] == 0) st.push_back(to);
       }
     }
+    if(res.size() != n) return {};
     return res;
   }
-  template<class Comp = Less> constexpr Vec<u32> topological_sort(Comp comp = Comp()) const {
+  template<class Comp = Less> constexpr Vec<u32> minimum_topological_sort(Comp comp = Comp()) const {
     const u32 n = derived().vertex_count();
     Vec<u32> indeg = derived().indegree();
     Heap<u32, Comp> heap(comp);
@@ -431,86 +459,110 @@ public:
         if(--indeg[to] == 0) heap.push(to);
       }
     }
+    if(res.size() != n) return {};
     return res;
   }
-  template<class Comp = Less> constexpr auto longest_path_length_dag(const Comp& comp = Comp()) const {
+  constexpr StronglyConnectedComponents strongly_connected_components() const {
     const u32 n = derived().vertex_count();
-    Vec<weight_type> dp(n, weight_type{});
-    auto ord = topological_sort();
-    for(u32 idx = 0; idx != ord.size(); ++idx) {
-      const u32 v = ord[idx];
-      for(const auto& e : derived()[v]) {
-        const u32 to = e.to();
-        const weight_type w = [&]() {
-          if constexpr(is_weighted) return e.weight();
-          else return static_cast<weight_type>(1);
-        }();
-        const weight_type cand = dp[v] + w;
-        if(std::invoke(comp, dp[to], cand)) dp[to] = cand;
+    const u32 m = derived().edge_count();
+    constexpr u32 npos = 0xffffffffu;
+    Vec<u32> deg(n, 0);
+    for(u32 u = 0; u != n; ++u) {
+      for(const auto& e : derived()[u]) {
+        (void)e;
+        ++deg[u];
       }
     }
-    return dp;
-  }
-  constexpr Vec<Vec<u32>> strongly_connected_components() const {
-    const u32 n = derived().vertex_count();
-    Vec<Vec<u32>> g(n), rg(n);
-    for(u32 v = 0; v != n; ++v) {
-      for(const auto& e : derived()[v]) {
-        const u32 to = e.to();
-        g[v].push_back(to);
-        rg[to].push_back(v);
+    Vec<u32> head(n + 1);
+    head[0] = 0;
+    for(u32 i = 0; i != n; ++i) head[i + 1] = head[i] + deg[i];
+    Vec<u32> cur = head;
+    Vec<u32> to(m);
+    for(u32 u = 0; u != n; ++u) {
+      for(const auto& e : derived()[u]) {
+        const u32 v = e.to();
+        to[cur[u]++] = v;
       }
     }
-    Vec<u8> seen(n, 0);
-    Vec<u32> order;
-    order.reserve(n);
-    Vec<std::pair<u32, u32>> st;
-    st.reserve(n);
+    Vec<u32> dfn(n, 0), low(n, 0);
+    Vec<u8> in_stk(n, 0);
+    Vec<u32> parent(n, npos);
+    Vec<u32> stk(n);
+    u32 sp = 0;
+    Vec<u32> comp_id(n);
+    Vec<u32> comp_list(n);
+    u32 write_ptr = n;
+    Vec<u32> comp_start;
+    Vec<u32> comp_size;
+    comp_start.reserve(n);
+    comp_size.reserve(n);
+    struct Frame {
+      u32 u;
+      u32 ei;
+    };
+    Vec<Frame> dfs;
+    dfs.reserve(n);
+    u32 timer = 0;
     for(u32 s = 0; s != n; ++s) {
-      if(seen[s]) continue;
-      st.clear();
-      st.push_back({s, 0});
-      seen[s] = 1;
-      while(!st.empty()) {
-        auto& top = st.back();
-        const u32 v = top.first;
-        u32& i = top.second;
-        if(i < g[v].size()) {
-          const u32 to = g[v][i++];
-          if(!seen[to]) {
-            seen[to] = 1;
-            st.push_back({to, 0});
+      if(dfn[s]) continue;
+      parent[s] = npos;
+      dfs.clear();
+      dfs.push_back({s, head[s]});
+      dfn[s] = low[s] = ++timer;
+      stk[sp++] = s;
+      in_stk[s] = 1;
+      while(!dfs.empty()) {
+        auto& fr = dfs.back();
+        const u32 u = fr.u;
+        u32& ei = fr.ei;
+        const u32 end = head[u + 1];
+        if(ei < end) {
+          const u32 v = to[ei++];
+          if(!dfn[v]) {
+            parent[v] = u;
+            dfs.push_back({v, head[v]});
+            dfn[v] = low[v] = ++timer;
+            stk[sp++] = v;
+            in_stk[v] = 1;
+          } else if(in_stk[v]) {
+            if(dfn[v] < low[u]) low[u] = dfn[v];
           }
-        } else {
-          order.push_back(v);
-          st.pop_back();
+          continue;
+        }
+        dfs.pop_back();
+        const u32 p = parent[u];
+        if(p != npos) {
+          if(low[u] < low[p]) low[p] = low[u];
+        }
+        if(low[u] == dfn[u]) {
+          u32 sz = 0;
+          while(true) {
+            const u32 v = stk[--sp];
+            in_stk[v] = 0;
+            const u32 cid = comp_start.size();
+            comp_id[v] = cid;
+            comp_list[--write_ptr] = v;
+            ++sz;
+            if(v == u) break;
+          }
+          comp_size.push_back(sz);
+          comp_start.push_back(write_ptr);
         }
       }
     }
-    Vec<Vec<u32>> res;
-    Vec<u8> used(n, 0);
-    Vec<u32> stack;
-    stack.reserve(n);
-    for(u32 k = order.size(); k != 0; --k) {
-      const u32 s = order[k - 1];
-      if(used[s]) continue;
-      res.emplace_back();
-      const u32 gid = res.size() - 1;
-      stack.clear();
-      stack.push_back(s);
-      used[s] = 1;
-      while(!stack.empty()) {
-        const u32 v = stack.back();
-        stack.pop_back();
-        res[gid].push_back(v);
-        for(u32 to : rg[v]) {
-          if(used[to]) continue;
-          used[to] = 1;
-          stack.push_back(to);
-        }
+    const u32 comp_cnt = comp_start.size();
+    for(u32 v = 0; v != n; ++v) comp_id[v] = (comp_cnt - 1) - comp_id[v];
+    {
+      Vec<u32> new_start(comp_cnt), new_size(comp_cnt);
+      for(u32 old = 0; old != comp_cnt; ++old) {
+        const u32 nw = (comp_cnt - 1) - old;
+        new_start[nw] = comp_start[old];
+        new_size[nw] = comp_size[old];
       }
+      comp_start = std::move(new_start);
+      comp_size = std::move(new_size);
     }
-    return res;
+    return StronglyConnectedComponents(n, comp_cnt, std::move(comp_id), std::move(comp_start), std::move(comp_size), std::move(comp_list));
   }
 };
 template<class D, class W> class UndirectedGraphInterface : public GraphInterface<D, W> {
@@ -596,7 +648,7 @@ public:
   }
   constexpr Vec<bool> bipartite_graph_coloring() const {
     const u32 n = derived().vertex_count();
-    Vec<i32> col(n, -1);
+    Vec<i8> col(n, -1);
     Vec<u32> q;
     q.reserve(n);
     for(u32 s = 0; s != n; ++s) {
@@ -613,7 +665,7 @@ public:
             col[to] = col[v] ^ 1;
             q.push_back(to);
           } else if(col[to] == col[v]) {
-            throw Exception("gsh::GraphInterface::bipartite_graph_coloring / The graph is not bipartite.");
+            return {};
           }
         }
       }
@@ -621,32 +673,6 @@ public:
     Vec<bool> res(n);
     for(u32 i = 0; i != n; ++i) res[i] = static_cast<bool>(col[i]);
     return res;
-  }
-  constexpr bool is_bipartite_graph() const {
-    const u32 n = derived().vertex_count();
-    Vec<i32> col(n, -1);
-    Vec<u32> q;
-    q.reserve(n);
-    for(u32 s = 0; s != n; ++s) {
-      if(col[s] != -1) continue;
-      u32 head = 0;
-      q.clear();
-      q.push_back(s);
-      col[s] = 0;
-      while(head < q.size()) {
-        const u32 v = q[head++];
-        for(const auto& e : derived()[v]) {
-          const u32 to = e.to();
-          if(col[to] == -1) {
-            col[to] = col[v] ^ 1;
-            q.push_back(to);
-          } else if(col[to] == col[v]) {
-            return false;
-          }
-        }
-      }
-    }
-    return true;
   }
 };
 }

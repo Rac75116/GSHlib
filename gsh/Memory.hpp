@@ -1,6 +1,7 @@
 #pragma once
 #include "Exception.hpp"
 #include "TypeDef.hpp"
+#include "internal/UtilMacro.hpp"
 #include <cstdlib>
 #include <iterator>
 #include <limits>
@@ -191,5 +192,52 @@ public:
   }
   constexpr Alloc& get_allocator() noexcept { return alloc; }
   template<class U> friend constexpr bool operator==(const ConstexprAllocator& a, const ConstexprAllocator<U>& b) noexcept(noexcept(a.alloc == b.alloc)) { return a.alloc == b.alloc; }
+};
+template<class T> class Mem {
+  u32 sz;
+  T* ptr;
+  GSH_INTERNAL_INLINE constexpr void copy(const Mem& v) {
+    sz = v.sz;
+    ptr = std::allocator<T>{}.allocate(sz);
+    for(u32 i = 0; i != sz; ++i) ptr[i] = v[i];
+  }
+  GSH_INTERNAL_INLINE constexpr void move(Mem& v) {
+    sz = v.sz;
+    ptr = v.ptr;
+    v.sz = 0;
+    v.ptr = nullptr;
+  }
+public:
+  constexpr Mem() : sz(0), ptr(nullptr) {}
+  constexpr Mem(u32 n) : sz(n), ptr(std::allocator<T>().allocate(n)) {}
+  constexpr Mem(u32 n, const T& value) : sz(n), ptr(std::allocator<T>().allocate(n)) {
+    for(u32 i = 0; i != n; ++i) std::construct_at(ptr + i, value);
+  }
+  constexpr Mem(const Mem& v) { copy(v); }
+  constexpr Mem(Mem&& v) { move(v); }
+  constexpr ~Mem() noexcept { clear(); }
+  GSH_INTERNAL_INLINE constexpr Mem& operator=(const Mem& v) {
+    clear(), copy(v);
+    return *this;
+  }
+  GSH_INTERNAL_INLINE constexpr Mem& operator=(Mem&& v) noexcept {
+    clear(), move(v);
+    return *this;
+  }
+  GSH_INTERNAL_INLINE constexpr void clear() noexcept {
+    if(ptr != nullptr) {
+      if constexpr(!std::is_trivially_destructible_v<T>)
+        for(u32 i = 0; i != sz; ++i) std::destroy_at(ptr + i);
+      std::allocator<T>().deallocate(ptr, sz);
+      sz = 0;
+      ptr = nullptr;
+    }
+  }
+  GSH_INTERNAL_INLINE constexpr u32 size() const { return sz; }
+  GSH_INTERNAL_INLINE constexpr bool empty() const { return sz == 0; }
+  GSH_INTERNAL_INLINE constexpr T* data() { return ptr; }
+  GSH_INTERNAL_INLINE constexpr const T* data() const { return ptr; }
+  GSH_INTERNAL_INLINE constexpr T& operator[](u32 n) { return *(ptr + n); }
+  GSH_INTERNAL_INLINE constexpr const T& operator[](u32 n) const { return *(ptr + n); }
 };
 } // namespace gsh

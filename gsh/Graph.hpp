@@ -2,6 +2,7 @@
 #include "Algorithm.hpp"
 #include "Exception.hpp"
 #include "Heap.hpp"
+#include "Memory.hpp"
 #include "UnionFind.hpp"
 #include <algorithm>
 #include <iterator>
@@ -58,6 +59,7 @@ template<class W, bool IsConst> class AdjacencyList : public ViewInterface<Adjac
   u32 idx;
   template<class W2> friend class CRS;
   constexpr AdjacencyList(storage_ptr_type p, u32 i) : storage_ptr(p), idx(i) {}
+  class sentinel_impl {};
   template<bool IterIsConst> class iterator_impl {
     storage_ptr_type storage_ptr;
     u32 current_idx;
@@ -81,11 +83,13 @@ template<class W, bool IsConst> class AdjacencyList : public ViewInterface<Adjac
       operator++();
       return copy;
     }
-    friend constexpr bool operator==(const iterator_impl& a, const iterator_impl& b) noexcept { return a.current_idx == b.current_idx; }
+    friend constexpr bool operator==(const iterator_impl& a, const sentinel_impl&) noexcept { return a.current_idx == npos; }
   };
 public:
   using iterator = iterator_impl<IsConst>;
+  using sentinel = sentinel_impl;
   using const_iterator = iterator_impl<true>;
+  using const_sentinel = sentinel_impl;
   constexpr u32 size() const noexcept {
     u32 current_idx = idx;
     u32 cnt = 0;
@@ -97,9 +101,9 @@ public:
   }
   constexpr bool empty() const noexcept { return idx == npos; }
   constexpr iterator begin() noexcept { return iterator(storage_ptr, idx); }
-  constexpr iterator end() noexcept { return iterator(storage_ptr, npos); }
+  constexpr sentinel end() noexcept { return {}; };
   constexpr const_iterator begin() const noexcept { return const_iterator(storage_ptr, idx); }
-  constexpr const_iterator end() const noexcept { return const_iterator(storage_ptr, npos); }
+  constexpr const_sentinel end() const noexcept { return {}; }
 };
 template<class W> class CRS {
   constexpr static u32 npos = 0xffffffffu;
@@ -159,19 +163,15 @@ public:
     return path;
   }
 };
-class StronglyConnectedComponents {
+class ConnectedComponents {
   u32 n_ = 0;
   u32 comp_cnt_ = 0;
-  Vec<u32> comp_id_;
-  Vec<u32> comp_start_;
-  Vec<u32> comp_size_;
-  Vec<u32> comp_list_;
+  Mem<u32> comp_id_, comp_start_, comp_size_, comp_list_;
 public:
-  constexpr StronglyConnectedComponents() = default;
-  constexpr StronglyConnectedComponents(u32 n, u32 comp_cnt, Vec<u32>&& comp_id, Vec<u32>&& comp_start, Vec<u32>&& comp_size, Vec<u32>&& comp_list) : n_(n), comp_cnt_(comp_cnt), comp_id_(std::move(comp_id)), comp_start_(std::move(comp_start)), comp_size_(std::move(comp_size)), comp_list_(std::move(comp_list)) {}
+  constexpr ConnectedComponents() = default;
+  constexpr ConnectedComponents(u32 n, u32 comp_cnt, Mem<u32>&& comp_id, Mem<u32>&& comp_start, Mem<u32>&& comp_size, Mem<u32>&& comp_list) : n_(n), comp_cnt_(comp_cnt), comp_id_(std::move(comp_id)), comp_start_(std::move(comp_start)), comp_size_(std::move(comp_size)), comp_list_(std::move(comp_list)) {}
   constexpr u32 vertex_count() const noexcept { return n_; }
   constexpr u32 size() const noexcept { return comp_cnt_; }
-  constexpr u32 count() const noexcept { return comp_cnt_; }
   constexpr u32 id(u32 v) const noexcept { return comp_id_[v]; }
   constexpr auto operator[](u32 cid) const noexcept {
     auto p = comp_list_.data() + comp_start_[cid];
@@ -179,10 +179,7 @@ public:
   }
   constexpr Vec<Vec<u32>> groups() const {
     Vec<Vec<u32>> res(comp_cnt_);
-    for(u32 cid = 0; cid != comp_cnt_; ++cid) {
-      auto c = (*this)[cid];
-      res[cid].assign_range(c);
-    }
+    for(u32 cid = 0; cid != comp_cnt_; ++cid) res[cid].assign_range((*this)[cid]);
     return res;
   }
 };
@@ -462,107 +459,81 @@ public:
     if(res.size() != n) return {};
     return res;
   }
-  constexpr StronglyConnectedComponents strongly_connected_components() const {
+  constexpr ConnectedComponents strongly_connected_components() const {
     const u32 n = derived().vertex_count();
     const u32 m = derived().edge_count();
+    if(n == 0) return {};
     constexpr u32 npos = 0xffffffffu;
-    Vec<u32> deg(n, 0);
-    for(u32 u = 0; u != n; ++u) {
-      for(const auto& e : derived()[u]) {
-        (void)e;
-        ++deg[u];
-      }
-    }
-    Vec<u32> head(n + 1);
-    head[0] = 0;
-    for(u32 i = 0; i != n; ++i) head[i + 1] = head[i] + deg[i];
-    Vec<u32> cur = head;
-    Vec<u32> to(m);
+    Mem<u32> head(n + 1), to(m), dfn(n, 0), low(n, 0), parent(n, npos), stk(n);
+    Mem<u8> in_stk(n, 0);
+    Mem<u32> comp_id(n), comp_list(n), comp_start(n), comp_size(n);
+    Mem<std::pair<u32, u32>> dfs_buf(n);
+    head[0] = std::ranges::size(derived()[0]);
+    for(u32 u = 1; u != n; ++u) head[u] = head[u - 1] + std::ranges::size(derived()[u]);
+    head[n] = head[n - 1];
     for(u32 u = 0; u != n; ++u) {
       for(const auto& e : derived()[u]) {
         const u32 v = e.to();
-        to[cur[u]++] = v;
+        to[--head[u]] = v;
       }
     }
-    Vec<u32> dfn(n, 0), low(n, 0);
-    Vec<u8> in_stk(n, 0);
-    Vec<u32> parent(n, npos);
-    Vec<u32> stk(n);
-    u32 sp = 0;
-    Vec<u32> comp_id(n);
-    Vec<u32> comp_list(n);
     u32 write_ptr = n;
-    Vec<u32> comp_start;
-    Vec<u32> comp_size;
-    comp_start.reserve(n);
-    comp_size.reserve(n);
-    struct Frame {
-      u32 u;
-      u32 ei;
-    };
-    Vec<Frame> dfs;
-    dfs.reserve(n);
+    u32 sp = 0;
+    u32 comp_cnt = 0;
+    std::pair<u32, u32>* dfs;
     u32 timer = 0;
     for(u32 s = 0; s != n; ++s) {
       if(dfn[s]) continue;
       parent[s] = npos;
-      dfs.clear();
-      dfs.push_back({s, head[s]});
+      dfs = dfs_buf.data();
+      *(dfs++) = {s, head[s]};
       dfn[s] = low[s] = ++timer;
       stk[sp++] = s;
       in_stk[s] = 1;
-      while(!dfs.empty()) {
-        auto& fr = dfs.back();
-        const u32 u = fr.u;
-        u32& ei = fr.ei;
-        const u32 end = head[u + 1];
+      while(dfs != dfs_buf.data()) {
+        u32 u = (dfs - 1)->first;
+        u32& ei = (dfs - 1)->second;
+        u32 end = head[u + 1];
         if(ei < end) {
-          const u32 v = to[ei++];
-          if(!dfn[v]) {
+          u32 v = to[ei++];
+          u32 vdfn = dfn[v];
+          if(vdfn == 0) {
             parent[v] = u;
-            dfs.push_back({v, head[v]});
+            dfs->first = v;
+            dfs->second = head[v];
+            ++dfs;
             dfn[v] = low[v] = ++timer;
             stk[sp++] = v;
             in_stk[v] = 1;
           } else if(in_stk[v]) {
-            if(dfn[v] < low[u]) low[u] = dfn[v];
+            if(vdfn < low[u]) low[u] = vdfn;
           }
           continue;
         }
-        dfs.pop_back();
-        const u32 p = parent[u];
-        if(p != npos) {
-          if(low[u] < low[p]) low[p] = low[u];
-        }
-        if(low[u] == dfn[u]) {
+        --dfs;
+        u32 p = parent[u];
+        u32 lowu = low[u];
+        if(p != npos && lowu < low[p]) low[p] = lowu;
+        if(lowu == dfn[u]) {
           u32 sz = 0;
           while(true) {
             const u32 v = stk[--sp];
             in_stk[v] = 0;
-            const u32 cid = comp_start.size();
-            comp_id[v] = cid;
+            comp_id[v] = comp_cnt;
             comp_list[--write_ptr] = v;
             ++sz;
             if(v == u) break;
           }
-          comp_size.push_back(sz);
-          comp_start.push_back(write_ptr);
+          comp_size[comp_cnt] = sz;
+          comp_start[comp_cnt] = write_ptr;
+          ++comp_cnt;
         }
       }
     }
-    const u32 comp_cnt = comp_start.size();
     for(u32 v = 0; v != n; ++v) comp_id[v] = (comp_cnt - 1) - comp_id[v];
-    {
-      Vec<u32> new_start(comp_cnt), new_size(comp_cnt);
-      for(u32 old = 0; old != comp_cnt; ++old) {
-        const u32 nw = (comp_cnt - 1) - old;
-        new_start[nw] = comp_start[old];
-        new_size[nw] = comp_size[old];
-      }
-      comp_start = std::move(new_start);
-      comp_size = std::move(new_size);
-    }
-    return StronglyConnectedComponents(n, comp_cnt, std::move(comp_id), std::move(comp_start), std::move(comp_size), std::move(comp_list));
+    std::ranges::reverse(comp_size.data(), comp_size.data() + comp_cnt);
+    std::ranges::reverse(comp_start.data(), comp_start.data() + comp_cnt);
+    return {n, comp_cnt, std::move(comp_id), std::move(comp_start), std::move(comp_size), std::move(comp_list)};
   }
 };
 template<class D, class W> class UndirectedGraphInterface : public GraphInterface<D, W> {

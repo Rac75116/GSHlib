@@ -1,5 +1,6 @@
 #pragma once
 #include "Algorithm.hpp"
+#include "Memory.hpp"
 namespace gsh {
 namespace internal {
 template<class V, class E> requires std::is_convertible_v<V, E> struct ReRootingNoOpPutEdge {
@@ -36,56 +37,46 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
   using E = typename Spec::edge_type;
   using V = typename Spec::value_type;
   const u32 m = static_cast<u32>(std::ranges::size(edges));
-  Vec<u32> a(m), b(m);
-  u32 n = (m == 0 ? 1u : 0u);
-  {
-    u32 i = 0;
-    for(auto&& e : edges) {
-      auto&& [x, y] = e;
-      a[i] = static_cast<u32>(x);
-      b[i] = static_cast<u32>(y);
-      n = Max(n, Max(a[i], b[i]) + 1u);
-      ++i;
-    }
-  }
-  Vec<u32> deg(n, 0);
+  u32 n = m + 1;
+  Mem<u32> deg(n, 0);
   u32 max_deg = 0;
-  for(u32 i = 0; i != m; ++i) {
-    ++deg[a[i]];
-    ++deg[b[i]];
+  for(auto&& [a, b] : edges) {
+    ++deg[static_cast<u32>(a)];
+    ++deg[static_cast<u32>(b)];
   }
   for(u32 v = 0; v != n; ++v) Chmax(max_deg, deg[v]);
-  Vec<u32> off(n + 1, 0);
+  Mem<u32> off(n + 1, 0);
   for(u32 v = 0; v != n; ++v) off[v + 1] = off[v] + deg[v];
-  Vec<u32> cur = off;
+  Mem<u32> cur = off;
   struct Adj {
     u32 to;
     u32 edge_idx;
     bool rev;
     u32 rev_idx;
   };
-  Vec<Adj> g(2 * m);
-  for(u32 i = 0; i != m; ++i) {
-    const u32 x = a[i];
-    const u32 y = b[i];
+  Mem<Adj> g(2 * m);
+  for(u32 i = 0; auto&& [a, b] : edges) {
+    const u32 x = static_cast<u32>(a);
+    const u32 y = static_cast<u32>(b);
     const u32 ix = cur[x]++;
     const u32 iy = cur[y]++;
     g[ix] = Adj{y, i, false, iy};
     g[iy] = Adj{x, i, true, ix};
+    ++i;
   }
   constexpr u32 npos = 0xffffffffu;
-  Vec<u32> parent(n, npos);
-  Vec<u32> parent_dir(n, npos);
-  Vec<u32> order(n);
+  Mem<u32> parent(n, npos);
+  Mem<u32> parent_dir(n, npos);
+  Mem<u32> order(n);
+  u32 order_sz = 0;
   {
-    Vec<u32> st(n);
+    Mem<u32> st(n);
     u32 sp = 0;
-    u32 osz = 0;
     parent[0] = 0;
     st[sp++] = 0;
     while(sp) {
       const u32 v = st[--sp];
-      order[osz++] = v;
+      order[order_sz++] = v;
       for(u32 ei = off[v]; ei != off[v + 1]; ++ei) {
         const u32 to = g[ei].to;
         if(to == parent[v]) continue;
@@ -95,11 +86,10 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
         st[sp++] = to;
       }
     }
-    order.resize(osz);
   }
   const V init_v = spec.put_vertex(spec.identity(), 0);
-  Vec<V> msg(2 * m, init_v);
-  for(u32 it = order.size(); it--;) {
+  Mem<V> msg(2 * m, init_v);
+  for(u32 it = order_sz; it--;) {
     const u32 v = order[it];
     E lower = spec.identity();
     for(u32 ei = off[v]; ei != off[v + 1]; ++ei) {
@@ -110,10 +100,10 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
     V branch = spec.put_vertex(lower, v);
     if(v != 0) msg[parent_dir[v]] = std::move(branch);
   }
-  Vec<E> suffix_buf(max_deg, spec.identity());
-  Vec<E> contrib_buf(max_deg, spec.identity());
+  Mem<E> suffix_buf(max_deg, spec.identity());
+  Mem<E> contrib_buf(max_deg, spec.identity());
   Vec<V> res(n, init_v);
-  for(u32 it = 0; it != order.size(); ++it) {
+  for(u32 it = 0; it != order_sz; ++it) {
     const u32 v = order[it];
     const u32 dv = off[v + 1] - off[v];
     E suffix = spec.identity();

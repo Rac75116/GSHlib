@@ -82,8 +82,7 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
       order[order_sz++] = v;
       for(u32 ei = off[v]; ei != off[v + 1]; ++ei) {
         const u32 to = g[ei].to;
-        if(to == parent[v]) continue;
-        if(parent[to] != npos) continue;
+        if(to == parent[v] || parent[to] != npos) continue;
         parent[to] = v;
         parent_dir[to] = g[ei].rev_idx;
         st[sp++] = to;

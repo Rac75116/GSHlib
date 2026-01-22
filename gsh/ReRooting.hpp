@@ -1,189 +1,137 @@
 #pragma once
-#include "Exception.hpp"
-#include "Range.hpp"
-#include "TypeDef.hpp"
-#include "Vec.hpp"
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
+#include "Algorithm.hpp"
 namespace gsh {
 namespace internal {
-template<class Edge> concept HasToMethod = requires(const Edge& e) {
-  { e.to() } -> std::convertible_to<u32>;
+template<class V, class E> requires std::is_convertible_v<V, E> struct ReRootingNoOpPutEdge {
+  constexpr E operator()(const V& x, u32, bool) const { return static_cast<E>(x); }
 };
-template<class Edge> concept IsEdgeLike = HasToMethod<Edge> || std::convertible_to<Edge, u32>;
-template<class Edge> GSH_INTERNAL_INLINE constexpr u32 EdgeTo(const Edge& e) noexcept {
-  if constexpr(HasToMethod<Edge>) return static_cast<u32>(e.to());
-  else return static_cast<u32>(e);
-}
-template<class Adj> concept IsAdjListLike = requires(const Adj& a, u32 i) {
-  { a.size() } -> std::convertible_to<u32>;
-  { a[i] };
-} && IsEdgeLike<std::remove_cvref_t<decltype(std::declval<const Adj&>()[0])>>;
-template<class Graph> concept IsTreeGraphLike = requires(const Graph& g, u32 v) {
-  { g.size() } -> std::convertible_to<u32>;
-  { g[v] };
-} && IsAdjListLike<std::remove_cvref_t<decltype(std::declval<const Graph&>()[0])>>;
-template<class Op, class Id, class Transfer, class AddRoot, class T, class Edge> concept IsValidReRootingSpec = std::invocable<Id> && requires(Op op, Id id, Transfer tr, AddRoot add, const T& a, const T& b, u32 from, u32 to, u32 v, const Edge& e) {
-  { std::invoke(id) } -> std::convertible_to<T>;
-  { std::invoke(op, a, b) } -> std::convertible_to<T>;
-  { std::invoke(tr, a, from, to, e) } -> std::convertible_to<T>;
-  { std::invoke(add, a, v) } -> std::convertible_to<T>;
+template<class E, class V> requires std::is_convertible_v<E, V> struct ReRootingNoOpPutVertex {
+  constexpr V operator()(const E& x, u32) const { return static_cast<V>(x); }
 };
-template<class T, class Op, class Id, class Transfer, class AddRoot> class DefaultReRootingSpec {
-  [[no_unique_address]] mutable Op op_func;
-  [[no_unique_address]] mutable Id id_func;
-  [[no_unique_address]] mutable Transfer transfer_func;
-  [[no_unique_address]] mutable AddRoot add_root_func;
+template<class E, class V, class Merge, class Identity, class PutEdge, class PutVertex> class DefaultReRootingSpec {
+  [[no_unique_address]] mutable Merge merge_func;
+  [[no_unique_address]] mutable Identity id_func;
+  [[no_unique_address]] mutable PutEdge put_edge_func;
+  [[no_unique_address]] mutable PutVertex put_vertex_func;
 public:
-  using value_type = T;
+  using edge_type = E;
+  using value_type = V;
   constexpr DefaultReRootingSpec() = default;
-  constexpr DefaultReRootingSpec(Op op, Id id, Transfer tr, AddRoot add) : op_func(op), id_func(id), transfer_func(tr), add_root_func(add) {}
-  constexpr value_type op(const value_type& a, const value_type& b) const noexcept(noexcept(std::is_nothrow_invocable_v<Op, const value_type&, const value_type&>)) { return static_cast<value_type>(std::invoke(op_func, a, b)); }
-  constexpr value_type e() const noexcept(noexcept(std::is_nothrow_invocable_v<Id>)) { return static_cast<value_type>(std::invoke(id_func)); }
-  template<class Edge> constexpr value_type transfer(const value_type& x, u32 from, u32 to, const Edge& e) const noexcept(noexcept(std::is_nothrow_invocable_v<Transfer, const value_type&, u32, u32, const Edge&>)) { return static_cast<value_type>(std::invoke(transfer_func, x, from, to, e)); }
-  constexpr value_type add_root(const value_type& x, u32 v) const noexcept(noexcept(std::is_nothrow_invocable_v<AddRoot, const value_type&, u32>)) { return static_cast<value_type>(std::invoke(add_root_func, x, v)); }
-};
-template<class Spec, class Edge> concept IsReRootingSpecImplemented = requires(Spec spec, const typename Spec::value_type& a, const typename Spec::value_type& b, u32 from, u32 to, u32 v, const Edge& e) {
-  typename Spec::value_type;
-  { spec.op(a, b) } -> std::same_as<typename Spec::value_type>;
-  { spec.e() } -> std::same_as<typename Spec::value_type>;
-  { spec.transfer(a, from, to, e) } -> std::same_as<typename Spec::value_type>;
-  { spec.add_root(a, v) } -> std::same_as<typename Spec::value_type>;
+  constexpr DefaultReRootingSpec(const Merge& merge, const Identity& id, const PutEdge& put_edge, const PutVertex& put_vertex) : merge_func(merge), id_func(id), put_edge_func(put_edge), put_vertex_func(put_vertex) {}
+  constexpr E merge(const E& a, const E& b) const { return static_cast<E>(std::invoke(merge_func, a, b)); }
+  constexpr E identity() const noexcept(noexcept(std::is_nothrow_invocable_v<Identity>)) { return static_cast<E>(std::invoke(id_func)); }
+  constexpr E put_edge(const V& x, u32 edge_idx, bool edge_rev) const {
+    if constexpr(requires { std::invoke(put_edge_func, x, edge_idx, edge_rev); }) return static_cast<E>(std::invoke(put_edge_func, x, edge_idx, edge_rev));
+    else if constexpr(requires { std::invoke(put_edge_func, x, edge_idx); }) return static_cast<E>(std::invoke(put_edge_func, x, edge_idx));
+    else return static_cast<E>(std::invoke(put_edge_func, x));
+  }
+  constexpr V put_vertex(const E& x, u32 v) const {
+    if constexpr(requires { std::invoke(put_vertex_func, x, v); }) return static_cast<V>(std::invoke(put_vertex_func, x, v));
+    else return static_cast<V>(std::invoke(put_vertex_func, x));
+  }
 };
 } // namespace internal
-template<class T, class Op, class Id, class Transfer, class AddRoot> constexpr internal::DefaultReRootingSpec<T, Op, Id, Transfer, AddRoot> MakeReRootingSpec() { return {}; }
-template<class T, class Op, class Id, class Transfer, class AddRoot> constexpr internal::DefaultReRootingSpec<T, Op, Id, Transfer, AddRoot> MakeReRootingSpec(Op op, Id id, Transfer tr, AddRoot add) { return {op, id, tr, add}; }
-template<class Spec> class ReRooting : public ViewInterface<ReRooting<Spec>, typename Spec::value_type> {
-  [[no_unique_address]] Spec spec;
-public:
-  using value_type = typename Spec::value_type;
-  using size_type = u32;
-  using difference_type = i32;
-private:
-  size_type n = 0;
-  Vec<value_type> res;
-public:
-  constexpr ReRooting() = default;
-  constexpr explicit ReRooting(Spec spec) : spec(spec) {}
-  template<class Graph> requires internal::IsTreeGraphLike<Graph> constexpr ReRooting(const Graph& g, Spec spec = Spec(), u32 root = 0) : spec(spec) { build(g, root); }
-  constexpr auto begin() const { return res.cbegin(); }
-  constexpr auto end() const { return res.cend(); }
-  constexpr auto cbegin() const { return res.cbegin(); }
-  constexpr auto cend() const { return res.cend(); }
-  constexpr bool empty() const { return n == 0; }
-  constexpr size_type size() const { return n; }
-  constexpr const value_type& operator[](size_type i) const {
-#ifndef NDEBUG
-    if(i >= n) throw Exception("ReRooting::operator[]: index ", i, " is out of range [0, ", n, ")");
-#endif
-    return res[i];
+template<class E, class V = E, class Merge, class Identity, class PutEdge = internal::ReRootingNoOpPutEdge<V, E>, class PutVertex = internal::ReRootingNoOpPutVertex<E, V>> constexpr internal::DefaultReRootingSpec<E, V, Merge, Identity, PutEdge, PutVertex> MakeReRootingSpec(const Merge& merge = Merge(), const Identity& id = Identity(), const PutEdge& put_edge = PutEdge(), const PutVertex& put_vertex = PutVertex()) { return {merge, id, put_edge, put_vertex}; }
+template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges::sized_range<EdgeRange> constexpr Vec<typename Spec::value_type> ReRooting(const EdgeRange& edges, Spec spec = Spec()) {
+  using E = typename Spec::edge_type;
+  using V = typename Spec::value_type;
+  const u32 m = static_cast<u32>(std::ranges::size(edges));
+  Vec<u32> a(m), b(m);
+  u32 n = (m == 0 ? 1u : 0u);
+  {
+    u32 i = 0;
+    for(auto&& e : edges) {
+      auto&& [x, y] = e;
+      a[i] = static_cast<u32>(x);
+      b[i] = static_cast<u32>(y);
+      n = Max(n, Max(a[i], b[i]) + 1u);
+      ++i;
+    }
   }
-  constexpr const value_type& get(size_type i) const { return (*this)[i]; }
-  constexpr const Vec<value_type>& data() const { return res; }
-  template<class Graph> requires internal::IsTreeGraphLike<Graph> constexpr void build(const Graph& g, u32 root = 0) {
-    n = static_cast<u32>(g.size());
-    res.clear();
-    if(n == 0) return;
-#ifndef NDEBUG
-    if(root >= n) throw Exception("ReRooting::build: root ", root, " is out of range [0, ", n, ")");
-#endif
-    using adj_type = std::remove_cvref_t<decltype(g[0])>;
-    using edge_type = std::remove_cvref_t<decltype(std::declval<const adj_type&>()[0])>;
-    static_assert(internal::IsReRootingSpecImplemented<Spec, edge_type>, "ReRooting: Spec is not implemented for given edge type.");
-    const u32 NONE = 0xffffffffu;
-    Vec<u32> parent(n, NONE);
-    Vec<u32> parent_idx(n, NONE);
-    Vec<u32> order;
-    order.reserve(n);
-    Vec<u32> st;
-    st.reserve(n);
-    parent[root] = root;
-    st.push_back(root);
-    while(!st.empty()) {
-      const u32 v = st.back();
-      st.pop_back();
-      order.push_back(v);
-      const auto& adj = g[v];
-      const u32 deg = static_cast<u32>(adj.size());
-      for(u32 i = 0; i < deg; ++i) {
-        const auto& e = adj[i];
-        const u32 to = internal::EdgeTo(e);
-        if(to >= n) {
-#ifndef NDEBUG
-          throw Exception("ReRooting::build: edge endpoint ", to, " is out of range [0, ", n, ")");
-#else
-          continue;
-#endif
-        }
-        if(parent[to] != NONE) continue;
+  Vec<u32> deg(n, 0);
+  u32 max_deg = 0;
+  for(u32 i = 0; i != m; ++i) {
+    ++deg[a[i]];
+    ++deg[b[i]];
+  }
+  for(u32 v = 0; v != n; ++v) Chmax(max_deg, deg[v]);
+  Vec<u32> off(n + 1, 0);
+  for(u32 v = 0; v != n; ++v) off[v + 1] = off[v] + deg[v];
+  Vec<u32> cur = off;
+  struct Adj {
+    u32 to;
+    u32 edge_idx;
+    bool rev;
+    u32 rev_idx;
+  };
+  Vec<Adj> g(2 * m);
+  for(u32 i = 0; i != m; ++i) {
+    const u32 x = a[i];
+    const u32 y = b[i];
+    const u32 ix = cur[x]++;
+    const u32 iy = cur[y]++;
+    g[ix] = Adj{y, i, false, iy};
+    g[iy] = Adj{x, i, true, ix};
+  }
+  constexpr u32 npos = 0xffffffffu;
+  Vec<u32> parent(n, npos);
+  Vec<u32> parent_dir(n, npos);
+  Vec<u32> order(n);
+  {
+    Vec<u32> st(n);
+    u32 sp = 0;
+    u32 osz = 0;
+    parent[0] = 0;
+    st[sp++] = 0;
+    while(sp) {
+      const u32 v = st[--sp];
+      order[osz++] = v;
+      for(u32 ei = off[v]; ei != off[v + 1]; ++ei) {
+        const u32 to = g[ei].to;
+        if(to == parent[v]) continue;
+        if(parent[to] != npos) continue;
         parent[to] = v;
-        // Find reverse edge index at 'to' that points to 'v'
-        const auto& adj_to = g[to];
-        const u32 deg_to = static_cast<u32>(adj_to.size());
-        u32 rev = NONE;
-        for(u32 j = 0; j < deg_to; ++j) {
-          if(internal::EdgeTo(adj_to[j]) == v) {
-            rev = j;
-            break;
-          }
-        }
-#ifndef NDEBUG
-        if(rev == NONE) throw Exception("ReRooting::build: missing reverse edge for (", v, " -> ", to, ")");
-#endif
-        parent_idx[to] = rev;
-        st.push_back(to);
+        parent_dir[to] = g[ei].rev_idx;
+        st[sp++] = to;
       }
     }
-#ifndef NDEBUG
-    if(order.size() != n) throw Exception("ReRooting::build: graph is not connected as a tree (visited=", order.size(), ", n=", n, ")");
-#endif
-    Vec<value_type> dp_sub(n, spec.e());
-    for(i32 k = static_cast<i32>(n) - 1; k >= 0; --k) {
-      const u32 v = order[static_cast<u32>(k)];
-      value_type agg = spec.e();
-      const auto& adj = g[v];
-      const u32 deg = static_cast<u32>(adj.size());
-      for(u32 i = 0; i < deg; ++i) {
-        const u32 to = internal::EdgeTo(adj[i]);
-        if(v != root && to == parent[v]) continue;
-        // 'to' is a child in the rooted tree
-        const auto& e_child_to_v = g[to][parent_idx[to]];
-        agg = spec.op(agg, spec.transfer(dp_sub[to], to, v, e_child_to_v));
-      }
-      dp_sub[v] = spec.add_root(agg, v);
-    }
-    res.assign(n, spec.e());
-    Vec<value_type> from_parent(n, spec.e());
-    from_parent[root] = spec.e();
-    for(u32 idx = 0; idx < n; ++idx) {
-      const u32 v = order[idx];
-      const auto& adj = g[v];
-      const u32 deg = static_cast<u32>(adj.size());
-      Vec<value_type> contrib(deg, spec.e());
-      for(u32 i = 0; i < deg; ++i) {
-        const u32 to = internal::EdgeTo(adj[i]);
-        if(v != root && to == parent[v]) {
-          contrib[i] = from_parent[v];
-        } else {
-          const auto& e_child_to_v = g[to][parent_idx[to]];
-          contrib[i] = spec.transfer(dp_sub[to], to, v, e_child_to_v);
-        }
-      }
-      Vec<value_type> pref(deg + 1, spec.e());
-      for(u32 i = 0; i < deg; ++i) pref[i + 1] = spec.op(pref[i], contrib[i]);
-      Vec<value_type> suf(deg + 1, spec.e());
-      for(i32 i = static_cast<i32>(deg) - 1; i >= 0; --i) suf[static_cast<u32>(i)] = spec.op(contrib[static_cast<u32>(i)], suf[static_cast<u32>(i) + 1]);
-      res[v] = spec.add_root(pref[deg], v);
-      for(u32 i = 0; i < deg; ++i) {
-        const u32 to = internal::EdgeTo(adj[i]);
-        if(parent[to] != v) continue;
-        const value_type excl = spec.op(pref[i], suf[i + 1]);
-        const value_type dp_excl = spec.add_root(excl, v);
-        from_parent[to] = spec.transfer(dp_excl, v, to, adj[i]);
-      }
-    }
+    order.resize(osz);
   }
-};
+  const V init_v = spec.put_vertex(spec.identity(), 0);
+  Vec<V> msg(2 * m, init_v);
+  for(u32 it = order.size(); it--;) {
+    const u32 v = order[it];
+    E lower = spec.identity();
+    for(u32 ei = off[v]; ei != off[v + 1]; ++ei) {
+      const u32 to = g[ei].to;
+      if(v != 0 && to == parent[v]) continue;
+      lower = spec.merge(lower, spec.put_edge(msg[g[ei].rev_idx], g[ei].edge_idx, g[ei].rev));
+    }
+    V branch = spec.put_vertex(lower, v);
+    if(v != 0) msg[parent_dir[v]] = std::move(branch);
+  }
+  Vec<E> suffix_buf(max_deg, spec.identity());
+  Vec<E> contrib_buf(max_deg, spec.identity());
+  Vec<V> res(n, init_v);
+  for(u32 it = 0; it != order.size(); ++it) {
+    const u32 v = order[it];
+    const u32 dv = off[v + 1] - off[v];
+    E suffix = spec.identity();
+    for(u32 k = dv; k--;) {
+      const u32 ei = off[v] + k;
+      suffix_buf[k] = suffix;
+      contrib_buf[k] = spec.put_edge(msg[g[ei].rev_idx], g[ei].edge_idx, g[ei].rev);
+      suffix = spec.merge(contrib_buf[k], suffix);
+    }
+    E prefix = spec.identity();
+    for(u32 k = 0; k != dv; ++k) {
+      const u32 ei = off[v] + k;
+      E upper = spec.merge(prefix, suffix_buf[k]);
+      msg[ei] = spec.put_vertex(upper, v);
+      prefix = spec.merge(prefix, contrib_buf[k]);
+    }
+    res[v] = spec.put_vertex(prefix, v);
+  }
+  return res;
+}
 } // namespace gsh

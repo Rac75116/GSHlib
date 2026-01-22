@@ -39,29 +39,32 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
   const u32 m = static_cast<u32>(std::ranges::size(edges));
   u32 n = m + 1;
   Mem<u32> deg(n, 0);
-  u32 max_deg = 0;
   for(auto&& [a, b] : edges) {
     ++deg[static_cast<u32>(a)];
     ++deg[static_cast<u32>(b)];
   }
-  for(u32 v = 0; v != n; ++v) Chmax(max_deg, deg[v]);
-  Mem<u32> off(n + 1, 0);
-  for(u32 v = 0; v != n; ++v) off[v + 1] = off[v] + deg[v];
-  Mem<u32> cur = off;
+  Mem<u32> off(n + 1);
+  u32 max_deg = deg[0];
+  off[0] = max_deg;
+  for(u32 v = 1; v != n; ++v) {
+    u32 d = deg[v];
+    max_deg = std::max(max_deg, d);
+    off[v] = off[v - 1] + d;
+  }
+  off[n] = off[n - 1];
   struct Adj {
     u32 to;
     u32 edge_idx;
-    bool rev;
     u32 rev_idx;
   };
   Mem<Adj> g(2 * m);
   for(u32 i = 0; auto&& [a, b] : edges) {
     const u32 x = static_cast<u32>(a);
     const u32 y = static_cast<u32>(b);
-    const u32 ix = cur[x]++;
-    const u32 iy = cur[y]++;
-    g[ix] = Adj{y, i, false, iy};
-    g[iy] = Adj{x, i, true, ix};
+    const u32 ix = --off[x];
+    const u32 iy = --off[y];
+    std::construct_at(&g[ix], y, i, iy);
+    std::construct_at(&g[iy], x, i + m, ix);
     ++i;
   }
   constexpr u32 npos = 0xffffffffu;
@@ -95,7 +98,8 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
     for(u32 ei = off[v]; ei != off[v + 1]; ++ei) {
       const u32 to = g[ei].to;
       if(v != 0 && to == parent[v]) continue;
-      lower = spec.merge(lower, spec.put_edge(msg[g[ei].rev_idx], g[ei].edge_idx, g[ei].rev));
+      u32 idx = g[ei].edge_idx;
+      lower = spec.merge(lower, spec.put_edge(msg[g[ei].rev_idx], idx >= m ? idx - m : idx, idx >= m));
     }
     V branch = spec.put_vertex(lower, v);
     if(v != 0) msg[parent_dir[v]] = std::move(branch);
@@ -110,7 +114,8 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
     for(u32 k = dv; k--;) {
       const u32 ei = off[v] + k;
       suffix_buf[k] = suffix;
-      contrib_buf[k] = spec.put_edge(msg[g[ei].rev_idx], g[ei].edge_idx, g[ei].rev);
+      u32 idx = g[ei].edge_idx;
+      contrib_buf[k] = spec.put_edge(msg[g[ei].rev_idx], idx >= m ? idx - m : idx, idx >= m);
       suffix = spec.merge(contrib_buf[k], suffix);
     }
     E prefix = spec.identity();

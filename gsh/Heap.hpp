@@ -44,7 +44,7 @@ private:
   }
   template<bool Min, bool SetMax> GSH_INTERNAL_INLINE constexpr void push_down(u32 idx) noexcept(nothrow_op) {
     u32 lim = (data.size() + 1) / 4 - 1;
-    auto comp = [&](auto&& a, auto&& b) GSH_INTERNAL_INLINE {
+    auto comp = [&](auto&& a, auto&& b) GSH_INTERNAL_INLINE_LAMBDA {
       if constexpr(Min) return static_cast<bool>(std::invoke(comp_func, a, b));
       else return static_cast<bool>(std::invoke(comp_func, b, a));
     };
@@ -52,7 +52,7 @@ private:
     T tmp = std::move(data[idx]);
     while(true) {
       u32 grdch = (cur + 1) * 4 - 1;
-      if(cur >= lim) {
+      if(cur >= lim) [[unlikely]] {
         u32 ch = (cur + 1) * 2 - 1;
         if(grdch < data.size()) {
           u32 m = ch + comp(data[ch + 1], data[ch]);
@@ -121,22 +121,21 @@ private:
       u32 p = (c + 1) / 2 - 1;
       T cv = std::move(data[c]);
       T tmp2 = std::move(data[p]);
-      if(!comp(cv, tmp)) {
-        data[cur] = std::move(tmp);
-        if constexpr(SetMax) {
-          Assume(data.size() >= 3);
-          set_mx();
-        }
-        return;
+      if(comp(cv, tmp)) {
+        data[cur] = std::move(cv);
+        cur = c;
+        bool f = comp(tmp2, tmp);
+        data[p] = std::move(f ? tmp : tmp2);
+        tmp = std::move(f ? tmp2 : tmp);
+        continue;
       }
-      data[cur] = std::move(cv);
-      cur = c;
-      if(comp(tmp2, tmp)) {
-        data[p] = std::move(tmp);
-        tmp = std::move(tmp2);
-      } else {
-        data[p] = std::move(tmp2);
+      data[cur] = std::move(tmp);
+      data[p] = std::move(tmp2);
+      if constexpr(SetMax) {
+        Assume(data.size() >= 3);
+        set_mx();
       }
+      return;
     }
   }
   GSH_INTERNAL_INLINE constexpr void pop_min_impl() noexcept(nothrow_op) {

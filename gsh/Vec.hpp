@@ -59,8 +59,8 @@ public:
     } else {
       if(x.len == 0) [[unlikely]]
         return;
-      len = x.len, cap = x.cap;
-      ptr = traits::allocate(alloc, len);
+      len = x.len, cap = x.len;
+      ptr = traits::allocate(alloc, cap);
       for(u32 i = 0; i != len; ++i) traits::construct(alloc, ptr + i, std::move(*(x.ptr + i)));
       traits::deallocate(x.alloc, x.ptr, x.cap);
       x.ptr = nullptr, x.len = 0, x.cap = 0;
@@ -132,7 +132,7 @@ public:
   constexpr void resize(const u32 sz, const T& c) {
     if(cap < sz) {
       T* new_ptr = traits::allocate(alloc, sz);
-      for(u32 i = len; i != sz; ++i) traits::construct(alloc, ptr + i, c);
+      for(u32 i = len; i != sz; ++i) traits::construct(alloc, new_ptr + i, c);
       if(cap != 0) {
         for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move(*(ptr + i)));
         for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
@@ -200,7 +200,7 @@ public:
   constexpr void assign(const u32 n, const T& t) {
     if(n > cap) {
       T* new_ptr = traits::allocate(alloc, n);
-      for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + i, t);
+      for(u32 i = 0; i != n; ++i) traits::construct(alloc, new_ptr + i, t);
       if(cap != 0) {
         for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         traits::deallocate(alloc, ptr, cap);
@@ -245,12 +245,10 @@ public:
     if(len == cap) {
       u32 new_cap = cap * 2 + 8;
       T* new_ptr = traits::allocate(alloc, new_cap);
-      if(cap != 0) {
-        for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
-        traits::construct(alloc, new_ptr + len, std::forward<Args>(args)...);
-        for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
-        traits::deallocate(alloc, ptr, cap);
-      }
+      for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+      traits::construct(alloc, new_ptr + len, std::forward<Args>(args)...);
+      for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
+      if(cap != 0) traits::deallocate(alloc, ptr, cap);
       ptr = new_ptr, cap = new_cap;
     } else traits::construct(alloc, ptr + len, std::forward<Args>(args)...);
     return *(ptr + (len++));

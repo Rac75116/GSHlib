@@ -6,8 +6,6 @@
 #include "Util.hpp"
 #include "internal/UtilMacro.hpp"
 namespace gsh {
-struct NoInit_ {};
-constexpr NoInit_ NoInit;
 template<class T, class Alloc = std::allocator<T>> requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)class Vec : public ViewInterface<Vec<T, Alloc>, T> {
   using traits = std::allocator_traits<Alloc>;
 public:
@@ -29,12 +27,6 @@ public:
     ptr = traits::allocate(alloc, n);
     len = n, cap = n;
     for(u32 i = 0; i != n; ++i) traits::construct(alloc, ptr + i);
-  }
-  constexpr explicit Vec(NoInit_, u32 n, const Alloc& a = Alloc()) : alloc(a) {
-    if(n == 0) [[unlikely]]
-      return;
-    ptr = traits::allocate(alloc, n);
-    len = n, cap = n;
   }
   constexpr explicit Vec(const u32 n, const T& value, const allocator_type& a = Alloc()) : alloc(a) {
     if(n == 0) [[unlikely]]
@@ -241,30 +233,21 @@ public:
 #endif
     return ptr[n];
   }
-private:
-  constexpr void extend_one() {
+public:
+  constexpr void push_back(const T& x) { emplace_back(x); }
+  constexpr void push_back(T&& x) { emplace_back(std::move(x)); }
+  template<class... Args> constexpr T& emplace_back(Args&&... args) {
     if(len == cap) {
-      T* new_ptr = traits::allocate(alloc, cap * 2 + 8);
+      u32 new_cap = cap * 2 + 8;
+      T* new_ptr = traits::allocate(alloc, new_cap);
       if(cap != 0) {
         for(u32 i = 0; i != len; ++i) traits::construct(alloc, new_ptr + i, std::move_if_noexcept(*(ptr + i)));
+        traits::construct(alloc, new_ptr + len, std::forward<Args>(args)...);
         for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
         traits::deallocate(alloc, ptr, cap);
       }
-      ptr = new_ptr, cap = cap * 2 + 8;
-    }
-  }
-public:
-  constexpr void push_back(const T& x) {
-    extend_one();
-    traits::construct(alloc, ptr + (len++), x);
-  }
-  constexpr void push_back(T&& x) {
-    extend_one();
-    traits::construct(alloc, ptr + (len++), std::move(x));
-  }
-  template<class... Args> constexpr T& emplace_back(Args&&... args) {
-    extend_one();
-    traits::construct(alloc, ptr + len, std::forward<Args>(args)...);
+      ptr = new_ptr, cap = new_cap;
+    } else traits::construct(alloc, ptr + len, std::forward<Args>(args)...);
     return *(ptr + (len++));
   }
   constexpr void pop_back() {
@@ -546,7 +529,6 @@ public:
       ptr = nullptr, len = 0, cap = 0;
     }
   }
-  constexpr void abandon() noexcept { ptr = nullptr, len = 0, cap = 0; }
   constexpr allocator_type get_allocator() const noexcept { return alloc; }
   friend constexpr void swap(Vec& x, Vec& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
 };

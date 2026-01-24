@@ -217,10 +217,12 @@ public:
   constexpr Mem(Mem&& v) { move(v); }
   constexpr ~Mem() noexcept { clear(); }
   GSH_INTERNAL_INLINE constexpr Mem& operator=(const Mem& v) {
+    if(ptr == v.ptr) return;
     clear(), copy(v);
     return *this;
   }
   GSH_INTERNAL_INLINE constexpr Mem& operator=(Mem&& v) noexcept {
+    if(ptr == v.ptr) return;
     clear(), move(v);
     return *this;
   }

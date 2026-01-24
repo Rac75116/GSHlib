@@ -74,7 +74,7 @@ public:
     }
   }
   constexpr Vec& operator=(const Vec& x) {
-    if(&x == this) return *this;
+    if(x.ptr == ptr) return *this;
     for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
     if(traits::propagate_on_container_copy_assignment::value || cap < x.len) {
       if(cap != 0) traits::deallocate(alloc, ptr, cap);
@@ -87,7 +87,7 @@ public:
     return *this;
   }
   constexpr Vec& operator=(Vec&& x) noexcept(traits::propagate_on_container_move_assignment::value || traits::is_always_equal::value) {
-    if(&x == this) return *this;
+    if(x.ptr == ptr) return *this;
     if(cap != 0) {
       for(u32 i = 0; i != len; ++i) traits::destroy(alloc, ptr + i);
       traits::deallocate(alloc, ptr, cap);

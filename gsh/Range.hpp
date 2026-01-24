@@ -1,9 +1,10 @@
 #pragma once
 #include "Exception.hpp"
 #include "Functional.hpp"
+#include "Memory.hpp"
 #include "TypeDef.hpp"
-#include "internal/ArrVecFwd.hpp"
 #include "internal/Operation.hpp"
+#include "internal/VecFwd.hpp"
 #include <algorithm>
 #include <cctype>
 #include <ranges>
@@ -50,7 +51,6 @@ template<class D, class V> requires std::is_class_v<D> && std::same_as<D, std::r
 #endif
   }
   using derived_type = D;
-  using noinitarr_type = NoInitArr<V, std::allocator<V>>;
   using vec_type = Vec<V, std::allocator<V>>;
 public:
   using value_type = V;
@@ -308,7 +308,7 @@ public:
     auto sent = end();
     auto loc_begin = std::ranges::begin(location);
     u32 size = std::ranges::distance(itr, sent);
-    noinitarr_type tmp(size);
+    Mem<V> tmp(size);
     for(u32 i = 0; i != size; ++i) std::construct_at(&tmp[*(loc_begin++)], std::move(*(itr++)));
     itr = begin();
     for(u32 i = 0; i != size; ++i) *(itr++) = std::move(tmp[i]);

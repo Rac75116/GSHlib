@@ -63,26 +63,27 @@ template<class T> constexpr Point3<T> Cross(const Point3<T>& a, const Point3<T>&
 template<class T, class U> constexpr T NormSquare(const Point3<U>& a) { return static_cast<T>(a.x) * static_cast<T>(a.x) + static_cast<T>(a.y) * static_cast<T>(a.y) + static_cast<T>(a.z) * static_cast<T>(a.z); }
 template<class T, class U> constexpr T Dot(const Point3<U>& a, const Point3<U>& b) { return static_cast<T>(a.x) * static_cast<T>(b.x) + static_cast<T>(a.y) * static_cast<T>(b.y) + static_cast<T>(a.z) * static_cast<T>(b.z); }
 template<class T, class U> constexpr Point3<T> Cross(const Point3<U>& a, const Point3<U>& b) { return {static_cast<T>(a.y) * static_cast<T>(b.z) - static_cast<T>(a.z) * static_cast<T>(b.y), static_cast<T>(a.z) * static_cast<T>(b.x) - static_cast<T>(a.x) * static_cast<T>(b.z), static_cast<T>(a.x) * static_cast<T>(b.y) - static_cast<T>(a.y) * static_cast<T>(b.x)}; }
+constexpr u64 ArgumentOrder(i32 x, i32 y) {
+  u64 ord = 0;
+  const bool xs = (x >= 0), ys = (y >= 0);
+  const u64 xu = (xs ? x : -x), yu = (ys ? y : -y);
+  const u64 mx = (xu < yu ? yu : xu), mn = (xu < yu ? xu : yu);
+  const bool rev = (xs ^ ys) ^ (xu < yu);
+  const u64 id = ys * 4ull + (xs ^ ys) * 2ull + rev;
+  if(x == 0 && y == 0) ord = 4ull << 61;
+  else {
+    constexpr u64 li = (1ull << 61) - 1;
+    u128 m = u128(mn) * li;
+    u64 hi = m >> 64, lo = m;
+    const u64 tmp = internal::Divu128(hi, lo, mx).first;
+    ord = id << 61 | (rev ? li - tmp : tmp);
+  }
+  return ord;
+}
+constexpr u64 ArgumentOrder(const Point2<i32>& p) { return ArgumentOrder(p.x, p.y); }
 template<std::ranges::input_range T> requires std::same_as<std::ranges::range_value_t<T>, Point2<i32>> constexpr Vec<Point2<i32>> ArgumentSort(T&& r) {
   Vec<u128> v(std::ranges::size(r));
-  for(u32 i = 0; auto&& p : r) {
-    auto [x, y] = p;
-    u64 ord = 0;
-    const bool xs = (x >= 0), ys = (y >= 0);
-    const u64 xu = (xs ? x : -x), yu = (ys ? y : -y);
-    const u64 mx = (xu < yu ? yu : xu), mn = (xu < yu ? xu : yu);
-    const bool rev = (xs ^ ys) ^ (xu < yu);
-    const u64 id = ys * 4ull + (xs ^ ys) * 2ull + rev;
-    if(x == 0 && y == 0) ord = 4ull << 61;
-    else {
-      constexpr u64 li = (1ull << 61) - 1;
-      u128 m = u128(mn) * li;
-      u64 hi = m >> 64, lo = m;
-      const u64 tmp = internal::Divu128(hi, lo, mx).first;
-      ord = id << 61 | (rev ? li - tmp : tmp);
-    }
-    v[i++] = static_cast<u128>(std::bit_cast<u64>(p)) << 64 | ord;
-  }
+  for(u32 i = 0; const auto& p : r) v[i++] = static_cast<u128>(std::bit_cast<u64>(p)) << 64 | ArgumentOrder(p);
   v.sort({}, [](u128 x) { return static_cast<u64>(x); });
   Vec<Point2<i32>> res(v.size());
   for(u32 i = 0, j = v.size(); i != j; ++i) res[i] = std::bit_cast<Point2<i32>>(static_cast<u64>(v[i] >> 64));

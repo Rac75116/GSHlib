@@ -80,7 +80,7 @@ public:
     }
     u32 h = std::ranges::distance(itr, sent);
     u32 w = std::ranges::size(*itr);
-    prefix_sum.assign(w * h);
+    prefix_sum.assign(w * h, T{});
     row_size = w;
     u32 idx = 0;
     while(itr != sent) {
@@ -157,7 +157,7 @@ public:
     u32 h = std::ranges::distance(itr, sent);
     u32 w = std::ranges::size(*itr);
     u32 d = std::ranges::size(*std::ranges::begin(*itr));
-    prefix_sum.assign(h * w * d);
+    prefix_sum.assign(h * w * d, T{});
     y_size = w;
     z_size = d;
     u32 idx = 0;

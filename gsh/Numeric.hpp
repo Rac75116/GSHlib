@@ -1,9 +1,10 @@
 #pragma once
-#include "Arr.hpp"
+#include "Memory.hpp"
 #include "Modint.hpp"
 #include "TypeDef.hpp"
 #include <cmath>
 #include <new>
+#include <ranges>
 #include <type_traits>
 namespace gsh {
 constexpr u32 CharLength32(u32 x) {
@@ -437,10 +438,10 @@ public:
 namespace internal {
 template<class T> class BinCoeffTable {
   T mint;
-  Vec<typename T::value_type, std::allocator<typename T::value_type>> fac, finv;
+  Mem<typename T::value_type> fac, finv;
 public:
   using value_type = typename T::value_type;
-  constexpr BinCoeffTable(u32 mx, value_type mod) : fac(mx), finv(mx) {
+  constexpr BinCoeffTable(u32 mx, value_type mod) : fac(mx, value_type{}), finv(mx, value_type{}) {
     if(mx > mod) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
     mint.set(mod);
     fac[0] = mint.raw(1), finv[0] = mint.raw(1);
@@ -467,10 +468,10 @@ public:
 };
 template<IsStaticModint T> class BinCoeffTable<T> {
   [[no_unique_address]] T mint;
-  Vec<typename T::value_type, std::allocator<typename T::value_type>> fac, finv;
+  Mem<typename T::value_type> fac, finv;
 public:
   using value_type = typename T::value_type;
-  constexpr BinCoeffTable(u32 mx) : fac(mx), finv(mx) {
+  constexpr BinCoeffTable(u32 mx) : fac(mx, value_type{}), finv(mx, value_type{}) {
     if(mx > mint.mod()) throw Exception("gsh::internal::BinCoeffTable:::BinCoeffTable / The table size cannot be larger than mod.");
     fac[0] = mint.raw(1), finv[0] = mint.raw(1);
     if(mx > 1) {

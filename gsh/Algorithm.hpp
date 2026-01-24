@@ -1,6 +1,6 @@
 #pragma once
-#include "Arr.hpp"
 #include "Functional.hpp"
+#include "Memory.hpp"
 #include "Range.hpp"
 #include "TypeDef.hpp"
 #include "Vec.hpp"
@@ -91,24 +91,24 @@ template<class R, class F> constexpr void AdjacentDifferenceImpl(R&& r, F&& f) {
 }
 template<class R> constexpr void ReverseImpl(R&& r) { std::ranges::reverse(std::forward<R>(r)); }
 template<class T, class Proj = Identity> void SortUnsigned8(T* const p, const u32 n, Proj&& proj = {}) {
-  std::unique_ptr<u32[]> cnt(new u32[1 << 8]{});
+  Mem<u32> cnt(1 << 8, 0);
   for(u32 i = 0; i != n; ++i) ++cnt[std::invoke(proj, p[i]) & 0xff];
   for(u32 i = 0; i != (1 << 8) - 1; ++i) cnt[i + 1] += cnt[i];
-  NoInitArr<T> tmp(n);
-  for(u32 i = n; i--;) tmp.construct(&tmp[--cnt[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
+  Mem<T> tmp(n);
+  for(u32 i = n; i--;) std::construct_at(&tmp[--cnt[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
   for(u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
 }
 template<class T, class Proj = Identity> void SortUnsigned16(T* const p, const u32 n, Proj&& proj = {}) {
-  std::unique_ptr<u32[]> cnt(new u32[1 << 16]{});
+  Mem<u32> cnt(1 << 16, 0);
   for(u32 i = 0; i != n; ++i) ++cnt[std::invoke(proj, p[i]) & 0xffff];
   for(u32 i = 0; i != (1 << 16) - 1; ++i) cnt[i + 1] += cnt[i];
-  NoInitArr<T> tmp(n);
-  for(u32 i = n; i--;) tmp.construct(&tmp[--cnt[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
+  Mem<T> tmp(n);
+  for(u32 i = n; i--;) std::construct_at(&tmp[--cnt[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
   for(u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
 }
 template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const u32 n, Proj&& proj = {}) {
-  std::unique_ptr<u32[]> cnt(new u32[2 * (1 << 16)]{});
-  u32 *const cnt1 = cnt.get(), *const cnt2 = cnt.get() + (1 << 16);
+  Mem<u32> cnt(2 * (1 << 16));
+  u32 *const cnt1 = cnt.data(), *const cnt2 = cnt.data() + (1 << 16);
   for(u32 i = 0; i != n; ++i) {
     auto tmp = std::invoke(proj, p[i]);
     const u16 a = tmp & 0xffff;
@@ -120,8 +120,8 @@ template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const u
     cnt1[i + 1] += cnt1[i];
     cnt2[i + 1] += cnt2[i];
   }
-  NoInitArr<T> tmp(n);
-  for(u32 i = n; i--;) tmp.construct(&tmp[--cnt1[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
+  Mem<T> tmp(n);
+  for(u32 i = n; i--;) std::construct_at(&tmp[--cnt1[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
   if(cnt2[0] == n) {
     for(u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
     return;
@@ -129,8 +129,8 @@ template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const u
   for(u32 i = n; i--;) p[--cnt2[std::invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
 }
 template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const u32 n, Proj&& proj = {}) {
-  std::unique_ptr<u32[]> cnt(new u32[4 * (1 << 16)]{});
-  u32 *const cnt1 = cnt.get(), *const cnt2 = cnt.get() + (1 << 16), *const cnt3 = cnt.get() + 2 * (1 << 16), *const cnt4 = cnt.get() + 3 * (1 << 16);
+  Mem<u32> cnt(4 * (1 << 16));
+  u32 *const cnt1 = cnt.data(), *const cnt2 = cnt.data() + (1 << 16), *const cnt3 = cnt.data() + 2 * (1 << 16), *const cnt4 = cnt.data() + 3 * (1 << 16);
   for(u32 i = 0; i != n; ++i) {
     auto tmp = std::invoke(proj, p[i]);
     const u16 a = tmp & 0xffff;
@@ -148,8 +148,8 @@ template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const u
     cnt3[i + 1] += cnt3[i];
     cnt4[i + 1] += cnt4[i];
   }
-  NoInitArr<T> tmp(n);
-  for(u32 i = n; i--;) tmp.construct(&tmp[--cnt1[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
+  Mem<T> tmp(n);
+  for(u32 i = n; i--;) std::construct_at(&tmp[--cnt1[std::invoke(proj, p[i]) & 0xffff]], std::move(p[i]));
   if(cnt2[0] == n) {
     for(u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
     return;
@@ -301,31 +301,31 @@ template<class R, class Comp, class Proj> constexpr void SortImpl(R&& r, Comp&& 
     for(u32 i = 0, blocks = n / minrun; i != blocks; ++i) { SortBlock(p + rem + i * minrun, comp, proj); }
     if(n <= 16) return;
     rem = rem == 0 ? 16 : rem;
-    NoInitArr<value_type> tmp(n);
+    Mem<value_type> tmp(n);
     auto merge_seq = [&](value_type* a, u32 a_size, value_type* b, u32 b_size, value_type* dst, auto construct) {
       constexpr bool construct_v = std::same_as<decltype(construct), std::true_type>;
       u32 i = 0, j = 0, k = 0;
       while(i != a_size && j != b_size) {
         bool f = std::invoke(comp, std::invoke(proj, a[i]), std::invoke(proj, b[j]));
-        if constexpr(construct_v) tmp.construct(&dst[k], std::move(f ? a[i] : b[j]));
+        if constexpr(construct_v) std::construct_at(&dst[k], std::move(f ? a[i] : b[j]));
         else dst[k] = std::move(f ? a[i] : b[j]);
         i += f;
         j += !f;
         k += 1;
       }
       for(; i != a_size; ++i, ++k) {
-        if constexpr(construct_v) tmp.construct(&dst[k], std::move(a[i]));
+        if constexpr(construct_v) std::construct_at(&dst[k], std::move(a[i]));
         else dst[k] = std::move(a[i]);
       }
       for(; j != b_size; ++j, ++k) {
-        if constexpr(construct_v) tmp.construct(&dst[k], std::move(b[j]));
+        if constexpr(construct_v) std::construct_at(&dst[k], std::move(b[j]));
         else dst[k] = std::move(b[j]);
       }
     };
     merge_seq(p, rem, p + rem, minrun, tmp.data(), std::true_type());
     u32 i = rem + minrun;
     for(; i + 2 * minrun <= n; i += 2 * minrun) { merge_seq(p + i, minrun, p + i + minrun, minrun, tmp.data() + i, std::true_type()); }
-    for(; i < n; ++i) tmp.construct(tmp.data() + i, std::move(p[i]));
+    for(; i < n; ++i) std::construct_at(tmp.data() + i, std::move(p[i]));
     value_type *from = tmp.data(), *to = p;
     u32 run = 2 * minrun;
     while(true) {

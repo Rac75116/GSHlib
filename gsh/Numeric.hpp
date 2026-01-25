@@ -115,40 +115,42 @@ template<class T> constexpr T Factorial(const T& n) {
   for(++cnt; cnt != n; ++cnt) res *= cnt;
   return res;
 }
-// @brief Find the greatest common divisor as in std::gcd. (https://lpha-z.hatenablog.com/entry/2020/05/24/231500)
-template<class T, class U> constexpr std::common_type_t<T, U> GCD(T x, U y) {
-  static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool> && std::is_integral_v<T> && std::is_integral_v<U>, "gsh::GCD / The input must be an integral type.");
-  if constexpr(std::is_same_v<T, U>) {
-    if constexpr(std::is_unsigned_v<T>) {
-      if(x == 0 || y == 0) return x | y;
-      const i32 n = std::countr_zero(x);
-      const i32 m = std::countr_zero(y);
-      const i32 l = n < m ? n : m;
-      x >>= n;
-      y >>= m;
-      while(x != y) {
-        const T a = y - x, b = x - y;
-        const i32 m = std::countr_zero(a), n = std::countr_zero(b);
-        Assume(m == n);
-        const T s = y < x ? b : a;
-        const T t = x < y ? x : y;
-        x = s >> m;
-        y = t;
+constexpr struct GCDFunc {
+  template<class T, class U> constexpr std::common_type_t<T, U> operator()(T x, U y) {
+    static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool> && std::is_integral_v<T> && std::is_integral_v<U>, "gsh::GCD / The input must be an integral type.");
+    if constexpr(std::is_same_v<T, U>) {
+      if constexpr(std::is_unsigned_v<T>) {
+        if(x == 0 || y == 0) return x | y;
+        const i32 n = std::countr_zero(x);
+        const i32 m = std::countr_zero(y);
+        const i32 l = n < m ? n : m;
+        x >>= n;
+        y >>= m;
+        while(x != y) {
+          const T a = y - x, b = x - y;
+          const i32 m = std::countr_zero(a), n = std::countr_zero(b);
+          Assume(m == n);
+          const T s = y < x ? b : a;
+          const T t = x < y ? x : y;
+          x = s >> m;
+          y = t;
+        }
+        return x << l;
+      } else {
+        return static_cast<T>(operator()<std::make_unsigned_t<T>, std::make_unsigned_t<T>>((x < 0 ? -x : x), (y < 0 ? -y : y)));
       }
-      return x << l;
     } else {
-      return static_cast<T>(GCD<std::make_unsigned_t<T>, std::make_unsigned_t<T>>((x < 0 ? -x : x), (y < 0 ? -y : y)));
+      return operator()<std::common_type_t<T, U>, std::common_type_t<T, U>>(x, y);
     }
-  } else {
-    return GCD<std::common_type_t<T, U>, std::common_type_t<T, U>>(x, y);
   }
-}
-// Find the greatest common divisor of multiple numbers.
-template<class T, class... Args> constexpr auto GCD(T x, Args... y) { return GCD(x, GCD(y...)); }
-// Find the least common multiple as in std::lcm.
-template<class T, class U> constexpr auto LCM(T x, U y) { return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y); }
-// Find the least common multiple of multiple numbers.
-template<class T, class... Args> constexpr auto LCM(T x, Args... y) { return LCM(x, LCM(y...)); }
+  template<class T, class... Args> constexpr auto operator()(T x, Args... y) { return (*this)(x, (*this)(y...)); }
+  using is_transparent = void;
+} GCD;
+constexpr struct LCMFunc {
+  template<class T, class U> constexpr auto operator()(T x, U y) { return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y); }
+  template<class T, class... Args> constexpr auto operator()(T x, Args... y) { return (*this)(x, (*this)(y...)); }
+  using is_transparent = void;
+} LCM;
 namespace internal {
 template<class R, class Proj> constexpr auto GCDImpl(R&& r, Proj&& proj) {
   auto itr = std::ranges::begin(r);

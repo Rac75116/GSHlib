@@ -214,7 +214,7 @@ public:
     }
   }
 };
-template<class T = i64, class F = Plus, class I = Negate> class PotentializedUnionFind : public internal::UnionFindImpl<PotentializedUnionFind<T, F, I>> {
+template<class T = i64, class F = PlusFunc, class I = NegateFunc> class PotentializedUnionFind : public internal::UnionFindImpl<PotentializedUnionFind<T, F, I>> {
   friend class internal::UnionFindImpl<PotentializedUnionFind<T, F, I>>;
   Vec<i32> parent;
   Vec<T> diff;

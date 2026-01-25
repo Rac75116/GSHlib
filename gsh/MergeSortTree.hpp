@@ -62,7 +62,7 @@ public:
   constexpr NoAux(Comp comp) : comp_func(comp) {}
   constexpr bool comp(const T& a, const T& b) const { return std::invoke(comp_func, a, b); }
 };
-template<class T, class Op = Plus> class PrefixSum {
+template<class T, class Op = PlusFunc> class PrefixSum {
   [[no_unique_address]] mutable Op op_func;
 public:
   using value_type = T;

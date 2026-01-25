@@ -143,7 +143,7 @@ template<class T> concept CustomizedHashCallable = requires(T x) {
 // Copyright 2022 Peter Dimov
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
-class Hash {
+constexpr class HashFunc {
 public:
   template<class T> GSH_INTERNAL_INLINE constexpr u64 operator()(const T& v) const {
     using Type = std::remove_cvref_t<T>;
@@ -222,40 +222,37 @@ public:
   }
   using is_transparent = void;
   using is_avalanching = void;
-};
-class Plus {
-public:
+} Hash;
+constexpr struct PlusFunc {
   template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) + std::forward<U>(u))) { return std::forward<T>(t) + std::forward<U>(u); }
   using is_transparent = void;
-};
-class Minus {
-public:
+} Plus;
+constexpr struct MinusFunc {
   template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) - std::forward<U>(u))) { return std::forward<T>(t) - std::forward<U>(u); }
   using is_transparent = void;
-};
-class Multiplies {
-public:
+} Minus;
+constexpr struct MultipliesFunc {
   template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) * std::forward<U>(u))) { return std::forward<T>(t) * std::forward<U>(u); }
   using is_transparent = void;
-};
-class Divides {
-public:
+} Multiplies;
+constexpr struct DividesFunc {
   template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) / std::forward<U>(u))) { return std::forward<T>(t) / std::forward<U>(u); }
   using is_transparent = void;
-};
-class Negate {
-public:
+} Divides;
+constexpr struct NegateFunc {
   template<class T> constexpr decltype(auto) operator()(T&& t) const noexcept(noexcept(-std::forward<T>(t))) { return -std::forward<T>(t); }
   using is_transparent = void;
-};
-class True {
-public:
-  template<class... Args> constexpr bool operator()(Args&&...) noexcept { return true; }
+} Negate;
+constexpr struct OrFunc {
+  template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) | std::forward<U>(u))) { return std::forward<T>(t) | std::forward<U>(u); }
   using is_transparent = void;
-};
-class False {
-public:
-  template<class... Args> constexpr bool operator()(Args&&...) noexcept { return false; }
+} Or;
+constexpr struct AndFunc {
+  template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) & std::forward<U>(u))) { return std::forward<T>(t) & std::forward<U>(u); }
   using is_transparent = void;
-};
+} And;
+constexpr struct XorFunc {
+  template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) & std::forward<U>(u))) { return std::forward<T>(t) & std::forward<U>(u); }
+  using is_transparent = void;
+} Xor;
 } // namespace gsh

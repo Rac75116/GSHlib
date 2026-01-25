@@ -7,10 +7,14 @@
 #include <algorithm>
 #include <cmath>
 namespace gsh {
-template<class T, class U> constexpr std::common_type_t<T, U> Min(const T& a, const U& b) { return a < b ? a : b; }
-template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto Min(const T& x, const Args&... args) { return Min(x, Min(args...)); }
-template<class T, class U> constexpr std::common_type_t<T, U> Max(const T& a, const U& b) { return a < b ? b : a; }
-template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto Max(const T& x, const Args&... args) { return Max(x, Max(args...)); }
+constexpr struct MinFunc {
+  template<class T, class U> constexpr std::common_type_t<T, U> operator()(const T& a, const U& b) { return a < b ? a : b; }
+  template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto operator()(const T& x, const Args&... args) { return (*this)(x, (*this)(args...)); }
+} Min;
+constexpr struct MaxFunc {
+  template<class T, class U> constexpr std::common_type_t<T, U> operator()(const T& a, const U& b) { return a < b ? b : a; }
+  template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto operator()(const T& x, const Args&... args) { return (*this)(x, (*this)(args...)); }
+} Max;
 template<class T, class U> constexpr bool Chmin(T& a, const U& b) {
   const bool f = b < a;
   a = f ? b : a;

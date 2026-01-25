@@ -1,7 +1,7 @@
 #pragma once
 #include "Vec.hpp"
 namespace gsh {
-template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum {
+template<class T, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<T>> class StaticSum {
   Vec<T, Alloc> prefix_sum;
   [[no_unique_address]] F func;
   [[no_unique_address]] I inv;
@@ -47,12 +47,12 @@ public:
     return std::invoke(func, prefix_sum[r - 1], std::invoke(inv, prefix_sum[l - 1]));
   }
 };
-template<std::ranges::forward_range R, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<std::ranges::range_value_t<R>>> StaticSum(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum<std::ranges::range_value_t<R>, F, I, Alloc>;
+template<std::ranges::forward_range R, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<std::ranges::range_value_t<R>>> StaticSum(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum<std::ranges::range_value_t<R>, F, I, Alloc>;
 namespace internal {
 template<class R> concept Range2D = std::ranges::forward_range<R> && std::ranges::forward_range<std::ranges::range_value_t<R>>;
 template<class R> concept Range3D = std::ranges::forward_range<R> && Range2D<std::ranges::range_value_t<R>>;
 } // namespace internal
-template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum2D {
+template<class T, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<T>> class StaticSum2D {
   Vec<T, Alloc> prefix_sum;
   u32 row_size = 0;
   [[no_unique_address]] F func;
@@ -125,8 +125,8 @@ public:
     return res;
   }
 };
-template<internal::Range2D R, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<std::ranges::range_value_t<std::ranges::range_value_t<R>>>> StaticSum2D(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum2D<std::ranges::range_value_t<std::ranges::range_value_t<R>>, F, I, Alloc>;
-template<class T, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<T>> class StaticSum3D {
+template<internal::Range2D R, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<std::ranges::range_value_t<std::ranges::range_value_t<R>>>> StaticSum2D(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum2D<std::ranges::range_value_t<std::ranges::range_value_t<R>>, F, I, Alloc>;
+template<class T, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<T>> class StaticSum3D {
   Vec<T, Alloc> prefix_sum;
   u32 y_size = 0;
   u32 z_size = 0;
@@ -230,5 +230,5 @@ public:
     return res;
   }
 };
-template<internal::Range3D R, class F = gsh::Plus, class I = gsh::Negate, class Alloc = std::allocator<std::ranges::range_value_t<std::ranges::range_value_t<std::ranges::range_value_t<R>>>>> StaticSum3D(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum3D<std::ranges::range_value_t<std::ranges::range_value_t<std::ranges::range_value_t<R>>>, F, I, Alloc>;
+template<internal::Range3D R, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<std::ranges::range_value_t<std::ranges::range_value_t<std::ranges::range_value_t<R>>>>> StaticSum3D(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum3D<std::ranges::range_value_t<std::ranges::range_value_t<std::ranges::range_value_t<R>>>, F, I, Alloc>;
 } // namespace gsh

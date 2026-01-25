@@ -309,7 +309,7 @@ public:
       s.emplace_hint(nxt, value_type{p, b, old_value});
     }
   }
-  template<class K, class F = Plus> void slide(const K& k, F func = F()) {
+  template<class K, class F = PlusFunc> void slide(const K& k, F func = F()) {
     Vec<value_type> v;
     v.reserve(size());
     for(const auto& seg : s) {

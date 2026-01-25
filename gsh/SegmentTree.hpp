@@ -1,4 +1,5 @@
 #pragma once
+#include "Algorithm.hpp"
 #include "Exception.hpp"
 #include "Functional.hpp"
 #include "Numeric.hpp"
@@ -23,23 +24,23 @@ template<class T, class Op, class Id> requires IsValidSegmentSpec<Op, Id> class 
 public:
   using value_type = T;
   constexpr DefaultSegmentSpec() = default;
-  constexpr DefaultSegmentSpec(Op op, Id id) : op_func(op), id_func(id) {}
+  constexpr DefaultSegmentSpec(const Op& op, const Id& id) : op_func(op), id_func(id) {}
   constexpr value_type op(const value_type& a, const value_type& b) const noexcept(noexcept(std::is_nothrow_invocable_v<Op, const value_type&, const value_type&>)) { return static_cast<value_type>(std::invoke(op_func, a, b)); }
   constexpr value_type e() const noexcept(noexcept(std::is_nothrow_invocable_v<Id>)) { return static_cast<value_type>(std::invoke(id_func)); }
 };
 }
-template<class T, class Op, class Id> constexpr internal::DefaultSegmentSpec<T, Op, Id> MakeSegmentSpec() { return {}; }
-template<class T, class Op, class Id> constexpr internal::DefaultSegmentSpec<T, Op, Id> MakeSegmentSpec(Op op, Id id) { return {op, id}; }
+template<class T, class Op, class Id> constexpr internal::DefaultSegmentSpec<T, Op, Id> MakeSegmentSpec(const Op& op = Op(), const Id& id = Id()) { return {op, id}; }
 namespace segment_specs {
-template<class T> class RangePlus : public decltype(internal::DefaultSegmentSpec(gsh::Plus(), []() -> T { return static_cast<T>(0); })){};
-template<class T> class RangeMultiplies : public decltype(internal::DefaultSegmentSpec(gsh::Multiplies(), []() -> T { return static_cast<T>(1); })){};
-template<class T> class RangeOr : public decltype(internal::DefaultSegmentSpec([](const T& a, const T& b) { return a | b; }, []() -> T { return static_cast<T>(0); })){};
-template<class T> class RangeAnd : public decltype(internal::DefaultSegmentSpec([](const T& a, const T& b) { return a & b; }, []() -> T { return ~static_cast<T>(0); })){};
-template<class T> class RangeMin : public decltype(internal::DefaultSegmentSpec([](const T& a, const T& b) { return std::min(a, b); }, []() -> T { return std::numeric_limits<T>::max(); })){};
-template<class T> class RangeMax : public decltype(internal::DefaultSegmentSpec([](const T& a, const T& b) { return std::max(a, b); }, []() -> T { return std::numeric_limits<T>::min(); })){};
-template<class T> class RangeGCD : public decltype(internal::DefaultSegmentSpec([](const T& a, const T& b) { return gsh::GCD(a, b); }, []() -> T { return static_cast<T>(0); })){};
-template<class T> class RangeLCM : public decltype(internal::DefaultSegmentSpec([](const T& a, const T& b) { return gsh::LCM(a, b); }, []() -> T { return static_cast<T>(1); })){};
-template<class T> class RangeComposite : public decltype(internal::DefaultSegmentSpec([](const std::pair<T, T>& a, const std::pair<T, T>& b) { return std::pair{a.first * b.first, a.second * b.first + b.second}; }, []() { return std::pair{static_cast<T>(1), static_cast<T>(0)}; })){};
+template<class T> class RangePlus : public decltype(MakeSegmentSpec<T>(Plus, []() -> T { return static_cast<T>(0); })) {};
+template<class T> class RangeMultiplies : public decltype(MakeSegmentSpec<T>(Multiplies, []() -> T { return static_cast<T>(1); })) {};
+template<class T> class RangeOr : public decltype(MakeSegmentSpec<T>(Or, []() -> T { return static_cast<T>(0); })) {};
+template<class T> class RangeAnd : public decltype(MakeSegmentSpec<T>(And, []() -> T { return ~static_cast<T>(0); })) {};
+template<class T> class RangeXor : public decltype(MakeSegmentSpec<T>(Xor, []() -> T { return static_cast<T>(0); })) {};
+template<class T> class RangeMin : public decltype(MakeSegmentSpec<T>(Min, []() -> T { return std::numeric_limits<T>::max(); })) {};
+template<class T> class RangeMax : public decltype(MakeSegmentSpec<T>(Max, []() -> T { return std::numeric_limits<T>::min(); })) {};
+template<class T> class RangeGCD : public decltype(MakeSegmentSpec<T>(GCD, []() -> T { return static_cast<T>(0); })) {};
+template<class T> class RangeLCM : public decltype(MakeSegmentSpec<T>(LCM, []() -> T { return static_cast<T>(1); })) {};
+template<class T> class RangeComposite : public decltype(MakeSegmentSpec<T>([](const std::pair<T, T>& a, const std::pair<T, T>& b) { return std::pair{a.first * b.first, a.second * b.first + b.second}; }, []() { return std::pair{static_cast<T>(1), static_cast<T>(0)}; })) {};
 } // namespace segment_specs
 template<class Spec> requires internal::IsSegmentSpecImplemented<Spec> class SegmentTree : public ViewInterface<SegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;

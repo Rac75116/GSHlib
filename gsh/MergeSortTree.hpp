@@ -23,7 +23,7 @@ template<class Spec> concept IsMergeSortTreeSpecImplemented = requires(Spec spec
   //   - aux(level, node_index)
   //   - comp(value, value)
 };
-template<class T, class BuildAux, class Comp = Less> class DefaultMergeSortTreeSpec {
+template<class T, class BuildAux, class Comp> class DefaultMergeSortTreeSpec {
   [[no_unique_address]] mutable BuildAux build_aux_func;
   [[maybe_unused]] mutable Comp comp_func;
 public:
@@ -35,7 +35,7 @@ private:
   Vec<aux_type> aux_tree;
 public:
   constexpr DefaultMergeSortTreeSpec() = default;
-  constexpr DefaultMergeSortTreeSpec(BuildAux build_aux, Comp comp = Comp()) : build_aux_func(build_aux), comp_func(comp) {}
+  constexpr DefaultMergeSortTreeSpec(const BuildAux& build_aux, const Comp& comp) : build_aux_func(build_aux), comp_func(comp) {}
   constexpr void on_build_begin(u32 depth, u32 n) {
     level_base.assign(depth + 1u, 0u);
     u32 total = 0;
@@ -51,8 +51,7 @@ public:
   constexpr bool comp(const value_type& a, const value_type& b) const { return std::invoke(comp_func, a, b); }
 };
 }
-template<class T, class BuildAux> constexpr internal::DefaultMergeSortTreeSpec<T, BuildAux> MakeMergeSortTreeSpec() { return {}; }
-template<class T, class BuildAux> constexpr internal::DefaultMergeSortTreeSpec<T, BuildAux> MakeMergeSortTreeSpec(BuildAux build_aux) { return internal::DefaultMergeSortTreeSpec<T, BuildAux>(build_aux); }
+template<class T, class BuildAux, class Comp = Less> constexpr internal::DefaultMergeSortTreeSpec<T, BuildAux, Comp> MakeMergeSortTreeSpec(const BuildAux& build_aux = BuildAux(), const Comp& comp = Comp()) { return {build_aux, comp}; }
 namespace merge_sort_tree_specs {
 template<class T, class Comp = Less> class NoAux {
   [[maybe_unused]] mutable Comp comp_func;

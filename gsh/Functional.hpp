@@ -252,7 +252,7 @@ constexpr struct AndFunc {
   using is_transparent = void;
 } And;
 constexpr struct XorFunc {
-  template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) & std::forward<U>(u))) { return std::forward<T>(t) & std::forward<U>(u); }
+  template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) ^ std::forward<U>(u))) { return std::forward<T>(t) ^ std::forward<U>(u); }
   using is_transparent = void;
 } Xor;
 } // namespace gsh

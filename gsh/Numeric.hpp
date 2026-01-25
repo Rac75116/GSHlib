@@ -116,7 +116,7 @@ template<class T> constexpr T Factorial(const T& n) {
   return res;
 }
 constexpr struct GCDFunc {
-  template<class T, class U> constexpr std::common_type_t<T, U> operator()(T x, U y) {
+  template<class T, class U> constexpr std::common_type_t<T, U> operator()(T x, U y) const {
     static_assert(!std::is_same_v<T, bool> && !std::is_same_v<U, bool> && std::is_integral_v<T> && std::is_integral_v<U>, "gsh::GCD / The input must be an integral type.");
     if constexpr(std::is_same_v<T, U>) {
       if constexpr(std::is_unsigned_v<T>) {
@@ -143,12 +143,12 @@ constexpr struct GCDFunc {
       return operator()<std::common_type_t<T, U>, std::common_type_t<T, U>>(x, y);
     }
   }
-  template<class T, class... Args> constexpr auto operator()(T x, Args... y) { return (*this)(x, (*this)(y...)); }
+  template<class T, class... Args> constexpr auto operator()(T x, Args... y) const { return (*this)(x, (*this)(y...)); }
   using is_transparent = void;
 } GCD;
 constexpr struct LCMFunc {
-  template<class T, class U> constexpr auto operator()(T x, U y) { return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y); }
-  template<class T, class... Args> constexpr auto operator()(T x, Args... y) { return (*this)(x, (*this)(y...)); }
+  template<class T, class U> constexpr auto operator()(T x, U y) const { return static_cast<std::common_type_t<T, U>>(x < 0 ? -x : x) / GCD(x, y) * static_cast<std::common_type_t<T, U>>(y < 0 ? -y : y); }
+  template<class T, class... Args> constexpr auto operator()(T x, Args... y) const { return (*this)(x, (*this)(y...)); }
   using is_transparent = void;
 } LCM;
 namespace internal {

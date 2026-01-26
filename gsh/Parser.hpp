@@ -41,8 +41,6 @@ template<class Stream> constexpr u32 Parseu8dig(Stream&& stream) {
   stream.skip(tmp + 1);
   return v;
 }
-template<class Stream> constexpr u8 Parseu8(Stream&& stream) { return Parseu4dig(stream); }
-template<class Stream> constexpr u16 Parseu16(Stream&& stream) { return Parseu8dig(stream); }
 template<class Stream> constexpr u32 Parseu32(Stream&& stream) {
   u32 res = 0;
   u64 buf[2];
@@ -192,137 +190,41 @@ template<class Stream> constexpr u128 Parseu128(Stream&& stream) {
   }
   return res * pw + res2;
 }
+template<class T, u32 Reload, auto Func> struct UnsignedParser {
+  using value_type = T;
+  template<class Stream> constexpr T operator()(Stream&& stream) const {
+    stream.reload(Reload);
+    return Func(stream);
+  }
+};
+template<class T, u32 Reload, auto Func> struct SignedParser {
+  using value_type = T;
+  template<class Stream> constexpr T operator()(Stream&& stream) const {
+    stream.reload(Reload);
+    bool neg = *stream.current() == '-';
+    stream.skip(neg);
+    T tmp = Func(stream);
+    if(neg) tmp = -tmp;
+    return tmp;
+  }
+};
 } // namespace internal
-template<> class Parser<u8> {
-public:
-  template<class Stream> constexpr u8 operator()(Stream&& stream) const {
-    stream.reload(8);
-    return internal::Parseu8(stream);
-  }
-};
-template<> class Parser<i8> {
-public:
-  template<class Stream> constexpr i8 operator()(Stream&& stream) const {
-    stream.reload(8);
-    bool neg = *stream.current() == '-';
-    stream.skip(neg);
-    i8 tmp = internal::Parseu8(stream);
-    if(neg) tmp = -tmp;
-    return tmp;
-  }
-};
-template<> class Parser<u16> {
-public:
-  template<class Stream> constexpr u16 operator()(Stream&& stream) const {
-    stream.reload(8);
-    return internal::Parseu16(stream);
-  }
-};
-template<> class Parser<i16> {
-public:
-  template<class Stream> constexpr i16 operator()(Stream&& stream) const {
-    stream.reload(8);
-    bool neg = *stream.current() == '-';
-    stream.skip(neg);
-    i16 tmp = internal::Parseu16(stream);
-    if(neg) tmp = -tmp;
-    return tmp;
-  }
-};
-template<> class Parser<u32> {
-public:
-  template<class Stream> constexpr u32 operator()(Stream&& stream) const {
-    stream.reload(16);
-    return internal::Parseu32(stream);
-  }
-};
-template<> class Parser<i32> {
-public:
-  template<class Stream> constexpr i32 operator()(Stream&& stream) const {
-    stream.reload(16);
-    bool neg = *stream.current() == '-';
-    stream.skip(neg);
-    i32 tmp = internal::Parseu32(stream);
-    if(neg) tmp = -tmp;
-    return tmp;
-  }
-};
-template<> class Parser<u64> {
-public:
-  template<class Stream> constexpr u64 operator()(Stream&& stream) const {
-    stream.reload(32);
-    return internal::Parseu64(stream);
-  }
-};
-template<> class Parser<i64> {
-public:
-  template<class Stream> constexpr i64 operator()(Stream&& stream) const {
-    stream.reload(32);
-    bool neg = *stream.current() == '-';
-    stream.skip(neg);
-    i64 tmp = internal::Parseu64(stream);
-    if(neg) tmp = -tmp;
-    return tmp;
-  }
-};
-template<> class Parser<u128> {
-public:
-  template<class Stream> constexpr u128 operator()(Stream&& stream) const {
-    stream.reload(64);
-    return internal::Parseu128(stream);
-  }
-};
-template<> class Parser<i128> {
-public:
-  template<class Stream> constexpr i128 operator()(Stream&& stream) const {
-    stream.reload(64);
-    bool neg = *stream.current() == '-';
-    stream.skip(neg);
-    i128 tmp = internal::Parseu128(stream);
-    if(neg) tmp = -tmp;
-    return tmp;
-  }
-};
-template<> class Parser<io::u4dig> {
-public:
-  using value_type = u16;
-  template<class Stream> constexpr u16 operator()(Stream&& stream) const {
-    stream.reload(8);
-    return internal::Parseu4dig(stream);
-  }
-};
-template<> class Parser<io::i4dig> {
-public:
-  using value_type = i16;
-  template<class Stream> constexpr i16 operator()(Stream&& stream) const {
-    stream.reload(8);
-    bool neg = *stream.current() == '-';
-    stream.skip(neg);
-    i16 tmp = internal::Parseu4dig(stream);
-    if(neg) tmp = -tmp;
-    return tmp;
-  }
-};
-template<> class Parser<io::u8dig> {
-public:
-  using value_type = u32;
-  template<class Stream> constexpr u32 operator()(Stream&& stream) const {
-    stream.reload(16);
-    return internal::Parseu8dig(stream);
-  }
-};
-template<> class Parser<io::i8dig> {
-public:
-  using value_type = i32;
-  template<class Stream> constexpr i32 operator()(Stream&& stream) const {
-    stream.reload(16);
-    bool neg = *stream.current() == '-';
-    stream.skip(neg);
-    i32 tmp = internal::Parseu8dig(stream);
-    if(neg) tmp = -tmp;
-    return tmp;
-  }
-};
+template<> class Parser<u8> : public internal::UnsignedParser<u8, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
+template<> class Parser<i8> : public internal::SignedParser<i8, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
+template<> class Parser<u16> : public internal::UnsignedParser<u16, 8, [](auto& s) { return internal::Parseu8dig(s); }> {};
+template<> class Parser<i16> : public internal::SignedParser<i16, 8, [](auto& s) { return internal::Parseu8dig(s); }> {};
+template<> class Parser<u32> : public internal::UnsignedParser<u32, 16, [](auto& s) { return internal::Parseu32(s); }> {};
+template<> class Parser<i32> : public internal::SignedParser<i32, 16, [](auto& s) { return internal::Parseu32(s); }> {};
+template<> class Parser<u64> : public internal::UnsignedParser<u64, 32, [](auto& s) { return internal::Parseu64(s); }> {};
+template<> class Parser<i64> : public internal::SignedParser<i64, 32, [](auto& s) { return internal::Parseu64(s); }> {};
+template<> class Parser<u128> : public internal::UnsignedParser<u128, 64, [](auto& s) { return internal::Parseu128(s); }> {};
+template<> class Parser<i128> : public internal::SignedParser<i128, 64, [](auto& s) { return internal::Parseu128(s); }> {};
+template<> class Parser<io::u4dig> : public internal::UnsignedParser<u16, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
+template<> class Parser<io::i4dig> : public internal::SignedParser<i16, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
+template<> class Parser<io::u8dig> : public internal::UnsignedParser<u32, 16, [](auto& s) { return internal::Parseu8dig(s); }> {};
+template<> class Parser<io::i8dig> : public internal::SignedParser<i32, 16, [](auto& s) { return internal::Parseu8dig(s); }> {};
+template<> class Parser<io::u16dig> : public internal::UnsignedParser<u64, 32, [](auto& s) { return internal::Parseu64(s); }> {};
+template<> class Parser<io::i16dig> : public internal::SignedParser<i64, 32, [](auto& s) { return internal::Parseu64(s); }> {};
 template<> class Parser<c8> {
 public:
   template<class Stream> constexpr c8 operator()(Stream&& stream) const {

@@ -4,8 +4,7 @@
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include <bit>
-#include <cerrno>
-#include <cstdlib>
+#include <charconv>
 #include <ranges>
 namespace gsh {
 namespace io {
@@ -208,6 +207,25 @@ template<class T, u32 Reload, auto Func> struct SignedParser {
     return tmp;
   }
 };
+template<class T> struct FloatParser {
+  using value_type = T;
+  template<class Stream> constexpr T operator()(Stream&& stream) const {
+    stream.reload(32);
+    const c8* cur = stream.current();
+    T res;
+    auto [ptr, err] = std::from_chars(cur, cur + stream.avail(), res, std::chars_format::general);
+    if(err != std::errc{}) [[unlikely]] {
+      stream.reload();
+      cur = stream.current();
+      auto [ptr2, err2] = std::from_chars(cur, cur + stream.avail(), res, std::chars_format::general);
+      if(err2 != std::errc{}) throw Exception("gsh::internal::FloatParser::operator() / Failed to parse.");
+      stream.skip(static_cast<u32>(ptr2 - cur + 1));
+      return res;
+    }
+    stream.skip(static_cast<u32>(ptr - cur + 1));
+    return res;
+  }
+};
 } // namespace internal
 template<> class Parser<u8> : public internal::UnsignedParser<u8, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
 template<> class Parser<i8> : public internal::SignedParser<i8, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
@@ -276,42 +294,30 @@ public:
     return s;
   }
 };
-template<> class Parser<float> {
-public:
-  template<class Stream> constexpr float operator()(Stream&& stream) const {
-    stream.reload(128);
-    const c8* cur = stream.current();
-    c8* end = nullptr;
-    float res = std::strtof(cur, &end);
-    if(errno) { throw Exception("gsh::Parser<float>::operator() / Failed to parse."); }
-    stream.skip(end - cur + 1);
-    return res;
-  }
-};
-template<> class Parser<double> {
-public:
-  template<class Stream> constexpr double operator()(Stream&& stream) const {
-    stream.reload(128);
-    const c8* cur = stream.current();
-    c8* end = nullptr;
-    double res = std::strtod(cur, &end);
-    if(errno) { throw Exception("gsh::Parser<double>::operator() / Failed to parse."); }
-    stream.skip(end - cur + 1);
-    return res;
-  }
-};
-template<> class Parser<long double> {
-public:
-  template<class Stream> constexpr long double operator()(Stream&& stream) const {
-    stream.reload(128);
-    const c8* cur = stream.current();
-    c8* end = nullptr;
-    long double res = std::strtold(cur, &end);
-    if(errno) { throw Exception("gsh::Parser<long double>::operator() / Failed to parse."); }
-    stream.skip(end - cur + 1);
-    return res;
-  }
-};
+template<> class Parser<float> : public internal::FloatParser<float> {};
+template<> class Parser<double> : public internal::FloatParser<double> {};
+template<> class Parser<long double> : public internal::FloatParser<long double> {};
+#ifdef __STDCPP_FLOAT16_T__
+template<> class Parser<std::float16_t> : public internal::FloatParser<std::float16_t> {};
+#endif
+#ifdef __STDCPP_FLOAT32_T__
+template<> class Parser<std::float32_t> : public internal::FloatParser<std::float32_t> {};
+#endif
+#ifdef __STDCPP_FLOAT64_T__
+template<> class Parser<std::float64_t> : public internal::FloatParser<std::float64_t> {};
+#endif
+#ifdef __STDCPP_FLOAT128_T__
+template<> class Parser<std::float128_t> : public internal::FloatParser<std::float128_t> {};
+#endif
+#ifdef __STDCPP_BFLOAT16_T__
+template<> class Parser<std::bfloat16_t> : public internal::FloatParser<std::bfloat16_t> {};
+#endif
+#ifdef __SIZEOF_FLOAT128__
+template<> class Parser<__float128> : public internal::FloatParser<__float128> {};
+#endif
+template<> class Parser<InvalidFloat16Tag> {};
+template<> class Parser<InvalidFloat128Tag> {};
+template<> class Parser<InvalidBfloat16Tag> {};
 namespace internal {
 template<class T, class P, class Stream, class... Args> struct ParsingIterator {
   using value_type = T;

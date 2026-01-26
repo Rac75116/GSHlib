@@ -7,11 +7,11 @@
 #include <algorithm>
 #include <cmath>
 namespace gsh {
-constexpr struct MinFunc {
+[[maybe_unused]] constexpr struct MinFunc {
   template<class T, class U> constexpr std::common_type_t<T, U> operator()(const T& a, const U& b) const { return a < b ? a : b; }
   template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto operator()(const T& x, const Args&... args) const { return (*this)(x, (*this)(args...)); }
 } Min;
-constexpr struct MaxFunc {
+[[maybe_unused]] constexpr struct MaxFunc {
   template<class T, class U> constexpr std::common_type_t<T, U> operator()(const T& a, const U& b) const { return a < b ? b : a; }
   template<class T, class... Args> requires (sizeof...(Args) >= 2) constexpr auto operator()(const T& x, const Args&... args) const { return (*this)(x, (*this)(args...)); }
 } Max;

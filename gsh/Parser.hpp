@@ -349,17 +349,26 @@ public:
     return R(iter(0, &p, &stream, &a), iter(len, nullptr, nullptr, nullptr));
   }
 };
-/*
 namespace internal {
-    template<class T, class U> constexpr bool ParsableTupleImpl = false;
-    template<class T, std::size_t... I> constexpr bool ParsableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Parser<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
-}  // namespace internal
+template<class T, class U> constexpr bool ParsableTupleImpl = false;
+template<class T, std::size_t... I> constexpr bool ParsableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Parser<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
+} // namespace internal
 template<class T> concept ParsableTuple = requires { std::tuple_size<T>::value; } && internal::ParsableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
-template<ParsableTuple T>
-    requires(!ParsableRange<T>)
-class Parser<T> {
+template<ParsableTuple T> requires (!ParsableRange<T>) class Parser<T> {
+  template<u32 I, class Stream, class U> constexpr void parse_element(Stream&& stream, U&& x) const {
+    using std::get;
+    using element_type = std::decay_t<std::tuple_element_t<I, T>>;
+    if constexpr(requires { x.template get<I>(); }) x.template get<I>() = Parser<element_type>()(stream);
+    else get<I>(x) = Parser<element_type>()(stream);
+  }
+  template<class Stream, class U> constexpr void parse(Stream&& stream, U&& x) const {
+    [&]<u32... I>(std::integer_sequence<u32, I...>) { (..., parse_element<I>(stream, x)); }(std::make_integer_sequence<u32, std::tuple_size_v<T>>());
+  }
 public:
-    template<class Stream> constexpr T operator()(Stream&&& stream) const {}
+  template<class Stream> constexpr T operator()(Stream&& stream) const {
+    T x{};
+    parse(stream, x);
+    return x;
+  }
 };
-*/
 } // namespace gsh

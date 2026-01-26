@@ -105,7 +105,7 @@ private:
       u64 vr;
     };
     Vec<Node> st;
-    st.push_back(Node{0u, l, r, 0ull, (1ull << lg_)});
+    st.emplace_back(0u, l, r, 0ull, (1ull << lg_));
     u32 ans = 0;
     while(!st.empty()) {
       const Node cur = st.back();
@@ -127,8 +127,8 @@ private:
       const u32 l1 = mid_[level] + cl1;
       const u32 r1 = mid_[level] + cr1;
       // push right then left (stack -> left first)
-      st.push_back(Node{level + 1u, l1, r1, vm, cur.vr});
-      st.push_back(Node{level + 1u, l0, r0, cur.vl, vm});
+      st.emplace_back(level + 1u, l1, r1, vm, cur.vr);
+      st.emplace_back(level + 1u, l0, r0, cur.vl, vm);
     }
     return ans;
   }
@@ -266,7 +266,7 @@ public:
   }
   constexpr bool empty() const noexcept { return n_ == 0; }
   constexpr u32 size() const noexcept { return n_; }
-  // access(T, i): returns original value at position i
+  // access(T, i): returns original value at position i (O(b))
   constexpr value_type operator[](u32 i) const {
     check_pos_on_debug(i);
     if(lg_ == 0) return vals_.empty() ? value_type{} : vals_[0];
@@ -285,7 +285,7 @@ public:
     }
     return vals_[id];
   }
-  // rank(c, pos): occurrences of c in [0, pos)
+  // rank(c, pos): occurrences of c in [0, pos) (O(b))
   constexpr u32 rank(const value_type& c, u32 pos) const {
 #ifndef NDEBUG
     if(pos > n_) { throw Exception("gsh::WaveletMatrix / The position is out of range. ( pos=", pos, ", size=", n_, " )"); }
@@ -298,14 +298,14 @@ public:
     if(pos == n_) return begin_[id + 1u] - begin_[id];
     return rank_id_range(id, 0, pos);
   }
-  // rank(c, l, r): occurrences of c in [l, r)
+  // rank(c, l, r): occurrences of c in [l, r) (O(b))
   constexpr u32 rank(const value_type& c, u32 l, u32 r) const {
     check_range_on_debug(l, r);
     const u32 id = id_of_existing(c);
     if(id == sigma()) return 0;
     return rank_id_range(id, l, r);
   }
-  // quantile(l, r, k): k-th smallest in [l, r) (0-indexed)
+  // quantile(l, r, k): k-th smallest in [l, r) (0-indexed) (O(b))
   constexpr value_type quantile(u32 l, u32 r, u32 k) const {
     check_range_on_debug(l, r);
 #ifndef NDEBUG
@@ -333,7 +333,7 @@ public:
     }
     return vals_[id];
   }
-  // range_freq(l, r, x, y): count of values v with x <= v < y in [l, r)
+  // range_freq(l, r, x, y): count of values v with x <= v < y in [l, r) (O(b))
   constexpr u32 range_freq(u32 l, u32 r, const value_type& x, const value_type& y) const {
     check_range_on_debug(l, r);
     const u32 xid = lower_bound_id(x);
@@ -341,7 +341,7 @@ public:
     if(xid >= yid) return 0;
     return range_freq_id(l, r, xid, yid);
   }
-  // range_list(l, r, x, y): enumerate (value, freq) for x <= v < y in [l, r)
+  // range_list(l, r, x, y): enumerate (value, freq) for x <= v < y in [l, r) (O(b + m), m<=N)
   constexpr Vec<std::pair<value_type, u32>> range_list(u32 l, u32 r, const value_type& x, const value_type& y) const {
     check_range_on_debug(l, r);
     Vec<std::pair<value_type, u32>> out;
@@ -350,7 +350,7 @@ public:
     const u32 yid = lower_bound_id(y);
     if(xid >= yid) return out;
     if(lg_ == 0) {
-      out.push_back({vals_[0], r - l});
+      out.emplace_back(vals_[0], r - l);
       return out;
     }
     const u64 ql = static_cast<u64>(xid);
@@ -363,7 +363,7 @@ public:
       u64 vr;
     };
     Vec<Node> st;
-    st.push_back(Node{0u, l, r, 0ull, (1ull << lg_)});
+    st.emplace_back(0u, l, r, 0ull, (1ull << lg_));
     while(!st.empty()) {
       const Node cur = st.back();
       st.pop_back();
@@ -371,7 +371,7 @@ public:
       if(qr <= cur.vl || cur.vr <= ql) continue;
       if(cur.level == lg_) {
         const u32 id = static_cast<u32>(cur.vl);
-        if(id < sigma() && xid <= id && id < yid) out.push_back({vals_[id], cur.r - cur.l});
+        if(id < sigma() && xid <= id && id < yid) out.emplace_back(vals_[id], cur.r - cur.l);
         continue;
       }
       const u64 vm = (cur.vl + cur.vr) >> 1;
@@ -384,46 +384,44 @@ public:
       const u32 l1 = mid_[level] + cl1;
       const u32 r1 = mid_[level] + cr1;
       // right then left (stack -> left first)
-      st.push_back(Node{level + 1u, l1, r1, vm, cur.vr});
-      st.push_back(Node{level + 1u, l0, r0, cur.vl, vm});
+      st.emplace_back(level + 1u, l1, r1, vm, cur.vr);
+      st.emplace_back(level + 1u, l0, r0, cur.vl, vm);
     }
     return out;
   }
-  // next_value(l, r, x, y): min v with x <= v < y in [l, r)
-  constexpr std::optional<value_type> next_value(u32 l, u32 r, const value_type& x, const value_type& y) const {
+  // next_value(l, r, x): min v with x <= v in [l, r) (O(b))
+  constexpr std::optional<value_type> next_value(u32 l, u32 r, const value_type& x) const {
     check_range_on_debug(l, r);
     if(l == r || sigma() == 0) return std::nullopt;
     const u32 xid = lower_bound_id(x);
-    const u32 yid = lower_bound_id(y);
-    if(xid >= yid) return std::nullopt;
+    if(xid >= sigma()) return std::nullopt;
     if(lg_ == 0) return vals_[0];
     u32 id = 0;
     const u64 ql = static_cast<u64>(xid);
-    const u64 qr = static_cast<u64>(yid);
-    if(!next_id_impl(0u, l, r, 0ull, (1ull << lg_), ql, qr, xid, yid, id)) return std::nullopt;
+    const u64 qr = static_cast<u64>(sigma());
+    if(!next_id_impl(0u, l, r, 0ull, (1ull << lg_), ql, qr, xid, sigma(), id)) return std::nullopt;
     return vals_[id];
   }
-  // prev_value(l, r, x, y): max v with x <= v < y in [l, r)
-  constexpr std::optional<value_type> prev_value(u32 l, u32 r, const value_type& x, const value_type& y) const {
+  // prev_value(l, r, x): max v with v < x in [l, r) (O(b))
+  constexpr std::optional<value_type> prev_value(u32 l, u32 r, const value_type& x) const {
     check_range_on_debug(l, r);
     if(l == r || sigma() == 0) return std::nullopt;
-    const u32 xid = lower_bound_id(x);
-    const u32 yid = lower_bound_id(y);
-    if(xid >= yid) return std::nullopt;
+    const u32 yid = lower_bound_id(x);
+    if(yid == 0) return std::nullopt;
     if(lg_ == 0) return vals_[0];
     u32 id = 0;
-    const u64 ql = static_cast<u64>(xid);
+    const u64 ql = 0ull;
     const u64 qr = static_cast<u64>(yid);
-    if(!prev_id_impl(0u, l, r, 0ull, (1ull << lg_), ql, qr, xid, yid, id)) return std::nullopt;
+    if(!prev_id_impl(0u, l, r, 0ull, (1ull << lg_), ql, qr, 0u, yid, id)) return std::nullopt;
     return vals_[id];
   }
-  // topk(l, r, k): return (value, freq) in descending freq
+  // topk(l, r, k): return (value, freq) in descending freq (O((b + k) log N))
   constexpr Vec<std::pair<value_type, u32>> topk(u32 l, u32 r, u32 k) const {
     check_range_on_debug(l, r);
     Vec<std::pair<value_type, u32>> out;
     if(l == r || k == 0 || sigma() == 0) return out;
     if(lg_ == 0) {
-      out.push_back({vals_[0], r - l});
+      out.emplace_back(vals_[0], r - l);
       return out;
     }
     struct Node {
@@ -437,14 +435,14 @@ public:
       constexpr bool operator()(const Node& a, const Node& b) const noexcept { return a.cnt < b.cnt; }
     };
     Heap<Node, LessCnt> pq;
-    pq.push(Node{r - l, 0u, l, r, 0u});
+    pq.emplace(r - l, 0u, l, r, 0u);
     while(!pq.empty() && out.size() < k) {
       const Node cur = pq.max();
       pq.pop_max();
       if(cur.cnt == 0) continue;
       if(cur.level == lg_) {
         const u32 id = cur.id_prefix;
-        if(id < sigma()) out.push_back({vals_[id], cur.cnt});
+        if(id < sigma()) out.emplace_back(vals_[id], cur.cnt);
         continue;
       }
       const u32 level = cur.level;
@@ -458,12 +456,12 @@ public:
       const u32 c0 = r0 - l0;
       const u32 c1 = r1 - l1;
       const u32 bit = 1u << (lg_ - 1u - level);
-      if(c0) pq.push(Node{c0, level + 1u, l0, r0, cur.id_prefix});
-      if(c1) pq.push(Node{c1, level + 1u, l1, r1, cur.id_prefix | bit});
+      if(c0) pq.emplace(c0, level + 1u, l0, r0, cur.id_prefix);
+      if(c1) pq.emplace(c1, level + 1u, l1, r1, cur.id_prefix | bit);
     }
     return out;
   }
-  // sum(l, r): sum of values in [l, r) (wraps in u64 if overflow)
+  // sum(l, r): sum of values in [l, r) (wraps in u64 if overflow) (O(b + m), m<=N)
   constexpr u64 sum(u32 l, u32 r) const {
     check_range_on_debug(l, r);
     if(l == r || sigma() == 0) return 0;
@@ -476,7 +474,7 @@ public:
       u64 vr;
     };
     Vec<Node> st;
-    st.push_back(Node{0u, l, r, 0ull, (1ull << lg_)});
+    st.emplace_back(0u, l, r, 0ull, (1ull << lg_));
     u64 ans = 0;
     while(!st.empty()) {
       const Node cur = st.back();
@@ -497,19 +495,19 @@ public:
       const u32 l1 = mid_[level] + cl1;
       const u32 r1 = mid_[level] + cr1;
       // right then left
-      st.push_back(Node{level + 1u, l1, r1, vm, cur.vr});
-      st.push_back(Node{level + 1u, l0, r0, cur.vl, vm});
+      st.emplace_back(level + 1u, l1, r1, vm, cur.vr);
+      st.emplace_back(level + 1u, l0, r0, cur.vl, vm);
     }
     return ans;
   }
-  // intersect([l1, r1), [l2, r2)): return (value, freq1, freq2)
+  // intersect([l1, r1), [l2, r2)): return (value, freq1, freq2) (O(b + m), m<=N)
   constexpr Vec<std::tuple<value_type, u32, u32>> intersect(u32 l1, u32 r1, u32 l2, u32 r2) const {
     check_range_on_debug(l1, r1);
     check_range_on_debug(l2, r2);
     Vec<std::tuple<value_type, u32, u32>> out;
     if(l1 == r1 || l2 == r2 || sigma() == 0) return out;
     if(lg_ == 0) {
-      out.push_back(std::tuple<value_type, u32, u32>(vals_[0], r1 - l1, r2 - l2));
+      out.emplace_back(vals_[0], r1 - l1, r2 - l2);
       return out;
     }
     struct Node {
@@ -521,14 +519,14 @@ public:
       u32 id_prefix;
     };
     Vec<Node> st;
-    st.push_back(Node{0u, l1, r1, l2, r2, 0u});
+    st.emplace_back(0u, l1, r1, l2, r2, 0u);
     while(!st.empty()) {
       const Node cur = st.back();
       st.pop_back();
       if(cur.l1 == cur.r1 || cur.l2 == cur.r2) continue;
       if(cur.level == lg_) {
         const u32 id = cur.id_prefix;
-        if(id < sigma()) out.push_back(std::tuple<value_type, u32, u32>(vals_[id], cur.r1 - cur.l1, cur.r2 - cur.l2));
+        if(id < sigma()) out.emplace_back(vals_[id], cur.r1 - cur.l1, cur.r2 - cur.l2);
         continue;
       }
       const u32 level = cur.level;
@@ -547,8 +545,8 @@ public:
       const u32 b10 = mid_[level] + b_l1;
       const u32 b11 = mid_[level] + b_r1;
       // right then left (so left processed first)
-      if((a11 - a10) && (b11 - b10)) st.push_back(Node{level + 1u, a10, a11, b10, b11, cur.id_prefix | bit});
-      if((a01 - a00) && (b01 - b00)) st.push_back(Node{level + 1u, a00, a01, b00, b01, cur.id_prefix});
+      if((a11 - a10) && (b11 - b10)) st.emplace_back(level + 1u, a10, a11, b10, b11, cur.id_prefix | bit);
+      if((a01 - a00) && (b01 - b00)) st.emplace_back(level + 1u, a00, a01, b00, b01, cur.id_prefix);
     }
     return out;
   }

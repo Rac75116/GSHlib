@@ -3,7 +3,7 @@
 #include "TypeDef.hpp"
 #include <bit>
 #include <ctime>
-#include <immintrin.h>
+#include <random>
 #include <ranges>
 namespace gsh {
 namespace internal {
@@ -13,8 +13,7 @@ constexpr u64 Splitmix(u64 x) {
   z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
   return z ^ (z >> 31);
 }
-} // namespace internal
-// @brief 64bit pseudo random number generator using xoroshiro128+
+}
 class Rand64 {
   u64 s0, s1;
 public:
@@ -42,7 +41,6 @@ public:
   }
   friend constexpr bool operator==(Rand64 x, Rand64 y) { return x.s0 == y.s0 && x.s1 == y.s1; }
 };
-// @brief 32bit pseudo random number generator using Permuted congruential generator
 class Rand32 {
   u64 val;
 public:
@@ -96,13 +94,16 @@ public:
   constexpr void seed(result_type value = default_seed) { val = internal::Splitmix(value); }
   friend constexpr bool operator==(FastRand32 x, FastRand32 y) { return x.val == y.val; }
 };
-// @brief Generate 32bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
+constexpr u64 Seed() {
+  if(std::is_constant_evaluated()) {
+    return internal::Splitmix(__TIME__[0] * 36000 + __TIME__[1] * 3600 + __TIME__[3] * 600 + __TIME__[4] * 60 + __TIME__[6] * 10 + __TIME__[7]);
+  } else {
+    return internal::Splitmix(std::random_device{}());
+  }
+}
 template<class URBG> constexpr u32 Uniform32(URBG&& g, u32 max) { return (static_cast<u64>(std::invoke(g) & 4294967295u) * max) >> 32; }
-// @brief Generate 32bit uniform random numbers in [min, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr u32 Uniform32(URBG&& g, u32 min, u32 max) { return static_cast<u32>((static_cast<u64>(std::invoke(g) & 4294967295u) * (max - min)) >> 32) + min; }
-// @brief Generate 64bit uniform random numbers in [0, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr u64 Uniform64(URBG&& g, u64 max) { return (static_cast<u128>(std::invoke(g)) * max) >> 64; }
-// @brief Generate 64bit uniform random numbers in [min, max) (https://www.pcg-random.org/posts/bounded-rands.html)
 template<class URBG> constexpr u64 Uniform64(URBG&& g, u64 min, u64 max) { return static_cast<u64>((static_cast<u128>(std::invoke(g)) * (max - min)) >> 64) + min; }
 template<std::ranges::random_access_range R, class URBG> constexpr void Shuffle(R&& r, URBG&& g) {
   u32 sz = std::ranges::size(r);

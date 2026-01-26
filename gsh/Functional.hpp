@@ -223,6 +223,7 @@ public:
   using is_transparent = void;
   using is_avalanching = void;
 } Hash;
+template<class T> concept Hashable = requires(T v) { Hash(std::forward<T>(v)); };
 [[maybe_unused]] constexpr struct PlusFunc {
   template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) + std::forward<U>(u))) { return std::forward<T>(t) + std::forward<U>(u); }
   using is_transparent = void;

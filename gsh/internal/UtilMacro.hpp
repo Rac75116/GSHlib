@@ -11,7 +11,7 @@
 #define GSH_INTERNAL_STR(s) #s
 #define GSH_INTERNAL_CONCAT(a, b) a##b
 #define GSH_INTERNAL_VA_SIZE(...) GSH_INTERNAL_SELECT8(__VA_ARGS__, 7, 6, 5, 4, 3, 2, 1, 0)
-#if defined(__clang__) || defined(__ICC)
+#ifdef __clang__
 #define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(unroll n))
 #elif defined __GNUC__
 #define GSH_INTERNAL_UNROLL(n) _Pragma(GSH_INTERNAL_STR(GCC unroll n))
@@ -34,7 +34,7 @@
 #define GSH_INTERNAL_INLINE_LAMBDA
 #define GSH_INTERNAL_NOINLINE_LAMBDA
 #endif
-#if defined(__GNUC__) || defined(__ICC)
+#ifdef __GNUC__
 #define GSH_INTERNAL_RESTRICT __restrict__
 #elif defined _MSC_VER
 #define GSH_INTERNAL_RESTRICT __restrict
@@ -50,4 +50,14 @@
 #else
 #define GSH_INTERNAL_PUSH_ATTRIBUTE(apply, ...)
 #define GSH_INTERNAL_POP_ATTRIBUTE
+#endif
+#ifdef __clang__
+#define GSH_INTERNAL_DIAGNOSTIC_IGNORED(gcc_name, clang_name) _Pragma("clang diagnostic push") _Pragma(GSH_INTERNAL_STR(clang diagnostic ignored clang_name))
+#define GSH_INTERNAL_DIAGNOSTIC_RETURN _Pragma("clang diagnostic pop")
+#elif defined __GNUC__
+#define GSH_INTERNAL_DIAGNOSTIC_IGNORED(gcc_name, clang_name) _Pragma("GCC diagnostic push") _Pragma(GSH_INTERNAL_STR(GCC diagnostic ignored gcc_name))
+#define GSH_INTERNAL_DIAGNOSTIC_RETURN _Pragma("GCC diagnostic pop")
+#else
+#define GSH_INTERNAL_DIAGNOSTIC_IGNORED(gcc_name, clang_name)
+#define GSH_INTERNAL_DIAGNOSTIC_RETURN
 #endif

@@ -26,30 +26,33 @@ public:
   constexpr u32 weight() const noexcept requires (!is_weighted) { return 1; }
   constexpr operator u32() const noexcept { return t; }
 };
-} // namespace gsh
-namespace std {
-template<class W> struct tuple_size<gsh::Edge<W>> : integral_constant<size_t, 2> {};
-template<std::size_t M, class W> struct tuple_element<M, gsh::Edge<W>> {
-  static_assert(M < 2, "std::tuple_element<gsh::Edge> / The index is out of range.");
-  using type = std::conditional_t<M == 0, gsh::u32, W>;
-};
-} // namespace std
-namespace gsh {
-template<std::size_t M, class W> auto get(const Edge<W>& e) {
+template<std::size_t M, class W> decltype(auto) get(const Edge<W>& e) {
   static_assert(M <= 1, "gsh::get(gsh::Edge) / The index is out of range.");
   if constexpr(M == 0) return e.to();
   else return e.weight();
 }
-template<std::size_t M, class W> auto get(Edge<W>& e) {
+template<std::size_t M, class W> decltype(auto) get(Edge<W>& e) {
   static_assert(M <= 1, "gsh::get(gsh::Edge) / The index is out of range.");
   if constexpr(M == 0) return e.to();
   else return e.weight();
 }
-template<std::size_t M, class W> auto get(Edge<W>&& e) {
+template<std::size_t M, class W> decltype(auto) get(Edge<W>&& e) {
   static_assert(M <= 1, "gsh::get(gsh::Edge) / The index is out of range.");
   if constexpr(M == 0) return e.to();
   else return std::move(e.weight());
 }
+}
+namespace std {
+template<class W> struct tuple_size<gsh::Edge<W>> : integral_constant<std::size_t, 2> {};
+template<class W> struct tuple_size<const gsh::Edge<W>> : integral_constant<std::size_t, 2> {};
+template<std::size_t M, class W> requires (M < 2) struct tuple_element<M, gsh::Edge<W>> {
+  using type = std::conditional_t<M == 0, gsh::u32, W>;
+};
+template<std::size_t M, class W> requires (M < 2) struct tuple_element<M, const gsh::Edge<W>> {
+  using type = std::conditional_t<M == 0, const gsh::u32, const W>;
+};
+}
+namespace gsh {
 namespace internal {
 template<class W, bool IsConst> class AdjacencyList : public ViewInterface<AdjacencyList<W, IsConst>, Edge<W>> {
   constexpr static u32 npos = 0xffffffffu;

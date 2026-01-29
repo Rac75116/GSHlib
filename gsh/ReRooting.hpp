@@ -31,7 +31,7 @@ public:
     else return static_cast<V>(std::invoke(put_vertex_func, x));
   }
 };
-} // namespace internal
+}
 template<class E, class V = E, class Merge, class Identity, class PutEdge = internal::ReRootingNoOpPutEdge<V, E>, class PutVertex = internal::ReRootingNoOpPutVertex<E, V>> constexpr internal::DefaultReRootingSpec<E, V, Merge, Identity, PutEdge, PutVertex> MakeReRootingSpec(const Merge& merge = Merge(), const Identity& id = Identity(), const PutEdge& put_edge = PutEdge(), const PutVertex& put_vertex = PutVertex()) { return {merge, id, put_edge, put_vertex}; }
 template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges::sized_range<EdgeRange> constexpr Vec<typename Spec::value_type> ReRooting(const EdgeRange& edges, Spec spec = Spec()) {
   using E = typename Spec::edge_type;
@@ -128,4 +128,4 @@ template<class Spec, std::ranges::forward_range EdgeRange> requires std::ranges:
   }
   return res;
 }
-} // namespace gsh
+}

@@ -29,7 +29,7 @@ constexpr FormatterOption operator|(FormatterOption a, FormatterOption b) noexce
 [[maybe_unused]] constexpr auto General = static_cast<FormatterOption>(std::chars_format::general);
 [[maybe_unused]] constexpr auto Hex = static_cast<FormatterOption>(std::chars_format::hex);
 [[maybe_unused]] constexpr auto Scientific = static_cast<FormatterOption>(std::chars_format::scientific);
-} // namespace io
+}
 template<class T> class Formatter;
 namespace internal {
 template<bool Flag> constexpr auto InttoStr = [] {
@@ -198,7 +198,7 @@ template<class T> struct FloatFormatter {
     }
   }
 };
-} // namespace internal
+}
 template<> class Formatter<u8> : public internal::UnsignedFormatter<u8, 4, [](auto& s, u8 n) { internal::Formatu4dig(s, n); }> {};
 template<> class Formatter<i8> : public internal::SignedFormatter<i8, 4, [](auto& s, i8 n) { internal::Formatu4dig(s, n); }> {};
 template<> class Formatter<u16> : public internal::UnsignedFormatter<u16, 8, [](auto& s, u16 n) { internal::Formatu16(s, n); }> {};
@@ -317,7 +317,7 @@ public:
 namespace internal {
 template<class T, class U> constexpr bool FormatableTupleImpl = false;
 template<class T, std::size_t... I> constexpr bool FormatableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Formatter<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
-} // namespace internal
+}
 template<class T> concept FormatableTuple = requires { std::tuple_size<T>::value; } && internal::FormatableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
 template<FormatableTuple T> requires (!FormatableRange<T>) class Formatter<T> {
   template<u32 I, class Stream, class U, class Sep> constexpr void print_element(Stream&& stream, U&& x, Sep&& sep) const {
@@ -334,4 +334,4 @@ public:
   template<class Stream, class U> constexpr void operator()(Stream&& stream, U&& x) const { print(std::forward<Stream>(stream), std::forward<U>(x), ' '); }
   template<class Stream, class U, class Sep> constexpr void operator()(Stream&& stream, U&& x, Sep&& sep) const { print(std::forward<Stream>(stream), std::forward<U>(x), std::forward<Sep>(sep)); }
 };
-} // namespace gsh
+}

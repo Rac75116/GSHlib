@@ -26,4 +26,4 @@ public:
     cnt1 = cnt2 = 0;
   }
 };
-} // namespace gsh
+}

@@ -141,7 +141,7 @@ struct IsPrime64 {
     } else return test3(2ull, 325ull, 9375ull) && test4(28178ull, 450775ull, 9780504ull, 1795265022ull);
   }
 };
-} // namespace internal
+}
 // @brief Prime number determination
 constexpr bool IsPrime(const u64 x) noexcept {
   if(x < 256u) {
@@ -370,7 +370,7 @@ inline u64* FactorizeSub64(u64 n, u64* res) noexcept {
     return res;
   } else return FactorizeSub64(m, res);
 }
-} // namespace internal
+}
 inline auto Factorize(u64 n) {
   thread_local u64 res[64];
   if(n <= 1) [[unlikely]]
@@ -435,4 +435,4 @@ inline auto Factorize(u64 n) {
   }
   return Subrange(res, p);
 }
-} // namespace gsh
+}

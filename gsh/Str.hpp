@@ -106,4 +106,4 @@ template<class T> constexpr T StrToNum(const StrView& str, const i32 base = 10) 
   return res;
 }
 template<class T> constexpr T StrToNum(const Str& str, const i32 base = 10) { return StrToNum<T>(StrView(str), base); }
-} // namespace gsh
+}

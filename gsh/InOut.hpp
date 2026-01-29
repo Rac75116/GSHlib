@@ -14,7 +14,7 @@
 #include <sys/stat.h> // stat, fstat
 #endif
 namespace gsh {
-namespace internal { template<class D> class IstreamInterface; } // namespace internal
+namespace internal { template<class D> class IstreamInterface; }
 template<class D, class Types, class... Args> class ParsingChain;
 class NoParsingResult {
   template<class D, class Types, class... Args> friend class ParsingChain;
@@ -85,15 +85,15 @@ template<class D> class IstreamInterface {
 public:
   template<class T, class... Types> [[nodiscard]] constexpr auto read() { return ParsingChain<D, TypeArr<T, Types...>>(derived(), std::tuple<>()); }
 };
-} // namespace internal
-} // namespace gsh
+}
+}
 namespace std {
 template<class D, class... Types, class... Args> class tuple_size<gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> : public integral_constant<size_t, sizeof...(Types)> {};
 template<size_t N, class D, class... Types, class... Args> class tuple_element<N, gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>> {
 public:
   using type = decltype(get<N>(std::declval<const gsh::ParsingChain<D, gsh::TypeArr<Types...>, Args...>&>()));
 };
-} // namespace std
+}
 namespace gsh {
 namespace internal {
 template<class D> class OstreamInterface {
@@ -118,7 +118,7 @@ public:
     Formatter<c8>()(derived(), '\n');
   }
 };
-} // namespace internal
+}
 template<u32 Bufsize = (1 << 18)> class BasicReader : public internal::IstreamInterface<BasicReader<Bufsize>> {
   i32 fd = 0;
   c8 buf[Bufsize + 1] = {};
@@ -238,4 +238,4 @@ public:
   const c8* current() const { return cur; }
   void skip(u32 n) { cur += n; }
 };
-} // namespace gsh
+}

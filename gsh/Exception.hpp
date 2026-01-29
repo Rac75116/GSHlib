@@ -50,4 +50,4 @@ public:
   }
   const char* what() const noexcept { return str; }
 };
-} // namespace gsh
+}

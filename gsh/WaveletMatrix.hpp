@@ -551,4 +551,4 @@ public:
     return out;
   }
 };
-} // namespace gsh
+}

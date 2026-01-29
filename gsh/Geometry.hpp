@@ -155,4 +155,4 @@ template<std::ranges::random_access_range T> requires std::same_as<std::remove_c
   return result_type{*std::ranges::next(bg, maxi), *std::ranges::next(bg, maxj)};
 }
 template<std::ranges::range T> auto FurthestPair(T&& r) { return ConvexDiameter(ConvexHull(r)); }
-} // namespace gsh
+}

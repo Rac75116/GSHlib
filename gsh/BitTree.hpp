@@ -443,4 +443,4 @@ public:
     return idx * 64 + std::countr_zero(f);
   }
 };
-} // namespace gsh
+}

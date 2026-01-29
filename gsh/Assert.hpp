@@ -23,8 +23,7 @@ template<u32> GSH_INTERNAL_INLINE constexpr void Assert(const bool cond, const c
     }
   }
 }
-} // namespace internal
-} // namespace gsh
+}}
 // clang-format off
 #define GSH_INTERNAL_ASSERT1(cond)          gsh::internal::Assert<0>(cond, #cond)
 #define GSH_INTERNAL_ASSERT2(cond, message) gsh::internal::Assert<0>(cond, message)

@@ -67,8 +67,7 @@ public:
   constexpr OutputAdapter(T& r) : ref(r) {}
   template<class... Args> constexpr void operator()(Args&&... args) const { ref.writeln(std::forward<Args>(args)...); }
 };
-} // namespace internal
-} // namespace gsh
+}}
 // clang-format off
 #define DECLARE_INPUT_STREAM(name) [[maybe_unused]] const gsh::internal::InputAdapter GSH_INTERNAL_INPUT{ name }; []{}()
 #define DECLARE_OUTPUT_STREAM(name) [[maybe_unused]] const gsh::internal::OutputAdapter GSH_INTERNAL_OUTPUT{ name }; []{}()

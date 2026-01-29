@@ -135,4 +135,4 @@ template<class URBG> constexpr f32 Uniformf32(URBG&& g, f32 min, f32 max) { retu
 template<class URBG> constexpr f64 Canocicaled64(URBG&& g) { return std::bit_cast<f64>((1023ull << 52) | (static_cast<u64>(std::invoke(g)) & 0xfffffffffffffull)) - 1.0; }
 template<class URBG> constexpr f64 Uniformf64(URBG&& g, f64 max) { return Canocicaled64(g) * max; }
 template<class URBG> constexpr f64 Uniformf64(URBG&& g, f64 min, f64 max) { return Canocicaled64(g) * (max - min) + min; }
-} // namespace gsh
+}

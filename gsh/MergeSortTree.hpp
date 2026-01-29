@@ -102,7 +102,7 @@ public:
     return aux_type(prefix.data() + off, prefix.data() + off + len + 1u);
   }
 };
-} // namespace merge_sort_tree_specs
+}
 template<class Spec> requires internal::IsMergeSortTreeSpecImplemented<Spec> class MergeSortTree {
   [[no_unique_address]] Spec spec;
 public:
@@ -242,4 +242,4 @@ public:
     return ans;
   }
 };
-} // namespace gsh
+}

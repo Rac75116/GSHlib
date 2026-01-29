@@ -293,4 +293,4 @@ public:
   friend constexpr BitVector operator|(BitVector a, const BitVector& b) { return a |= b; }
   friend constexpr BitVector operator^(BitVector a, const BitVector& b) { return a ^= b; }
 };
-} // namespace gsh
+}

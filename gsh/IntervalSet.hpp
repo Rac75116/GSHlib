@@ -444,4 +444,4 @@ template<class InputIterator, class Pair = typename std::iterator_traits<InputIt
   };
 } IntervalSet(InputIterator, InputIterator, Allocator) -> IntervalSet<Key, std::monostate, Less, EqualTo, Allocator>;
 template<class Key, class Allocator = SingleAllocator<Interval<Key, std::monostate>>> IntervalSet(std::initializer_list<std::pair<Key, Key>>, Allocator) -> IntervalSet<Key, std::monostate, Less, EqualTo, Allocator>;
-} // namespace gsh
+}

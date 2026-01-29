@@ -18,7 +18,7 @@ namespace internal {
 template<typename T, typename U> concept LessPtrCmp = requires(T&& t, U&& u) {
   { t < u } -> std::same_as<bool>;
 } && std::convertible_to<T, const volatile void*> && std::convertible_to<U, const volatile void*> && (!requires(T&& t, U&& u) { operator<(std::forward<T>(t), std::forward<U>(u)); } && !requires(T&& t, U&& u) { std::forward<T>(t).operator<(std::forward<U>(u)); });
-} // namespace internal
+}
 class Less {
 public:
   template<class T, class U> requires std::totally_ordered_with<T, U> GSH_INTERNAL_INLINE constexpr bool operator()(T&& t, U&& u) const noexcept(noexcept(std::declval<T>() < std::declval<U>())) {
@@ -139,7 +139,7 @@ template<std::random_access_iterator It> requires IsCharType<typename std::itera
 template<class T> concept CustomizedHashCallable = requires(T x) {
   { CustomizedHash<T>{}(x) } -> std::integral;
 };
-} // namespace internal
+}
 // Copyright 2022 Peter Dimov
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
@@ -256,4 +256,4 @@ template<class T> concept Hashable = requires(T v) { Hash(std::forward<T>(v)); }
   template<class T, class U> constexpr decltype(auto) operator()(T&& t, U&& u) const noexcept(noexcept(std::forward<T>(t) ^ std::forward<U>(u))) { return std::forward<T>(t) ^ std::forward<U>(u); }
   using is_transparent = void;
 } Xor;
-} // namespace gsh
+}

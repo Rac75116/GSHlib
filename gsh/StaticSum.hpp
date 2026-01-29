@@ -51,7 +51,7 @@ template<std::ranges::forward_range R, class F = PlusFunc, class I = NegateFunc,
 namespace internal {
 template<class R> concept Range2D = std::ranges::forward_range<R> && std::ranges::forward_range<std::ranges::range_value_t<R>>;
 template<class R> concept Range3D = std::ranges::forward_range<R> && Range2D<std::ranges::range_value_t<R>>;
-} // namespace internal
+}
 template<class T, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<T>> class StaticSum2D {
   Vec<T, Alloc> prefix_sum;
   u32 row_size = 0;
@@ -231,4 +231,4 @@ public:
   }
 };
 template<internal::Range3D R, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<std::ranges::range_value_t<std::ranges::range_value_t<std::ranges::range_value_t<R>>>>> StaticSum3D(R&&, F = F(), I = I(), Alloc = Alloc()) -> StaticSum3D<std::ranges::range_value_t<std::ranges::range_value_t<std::ranges::range_value_t<R>>>, F, I, Alloc>;
-} // namespace gsh
+}

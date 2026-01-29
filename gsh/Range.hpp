@@ -32,7 +32,7 @@ template<class R, class Equal> constexpr auto IsPalindromeImpl(R&& r, Equal&& eq
 // These functions are defined in gsh/Numeric.hpp
 template<class R, class Proj> constexpr auto GCDImpl(R&& r, Proj&& proj);
 template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj);
-} // namespace internal
+}
 template<std::input_or_output_iterator I, std::sentinel_for<I> S, RangeKind K> requires (K == RangeKind::Sized || !std::sized_sentinel_for<S, I>) class Subrange;
 template<class D, class V> requires std::is_class_v<D> && std::same_as<D, std::remove_cv_t<D>> class ViewInterface {
   constexpr D& derived() noexcept { return *static_cast<D*>(this); }
@@ -329,7 +329,7 @@ template<class T, class U> concept difference_from = std::same_as<std::remove_cv
 template<class From, class To> concept convertible_to_non_slicing = std::convertible_to<From, To> && !(std::is_pointer_v<std::decay_t<From>> && std::is_pointer_v<std::decay_t<To>> && !std::convertible_to<std::remove_pointer_t<std::decay_t<From>> (*)[], std::remove_pointer_t<std::decay_t<To>> (*)[]>);
 template<class T> concept pair_like = /* tuple-like<T> && */ std::tuple_size_v<std::remove_cvref_t<T>> == 2;
 template<class T, class U, class V> concept pair_like_convertible_from = !std::ranges::range<T> && !std::is_reference_v<T> && pair_like<T> && std::constructible_from<T, U, V> && convertible_to_non_slicing<U, std::tuple_element_t<0, T>> && std::convertible_to<V, std::tuple_element_t<1, T>>;
-} // namespace internal
+}
 template<std::input_or_output_iterator I, std::sentinel_for<I> S = I, RangeKind K = std::sized_sentinel_for<S, I> ? RangeKind::Sized : RangeKind::Unsized> requires (K == RangeKind::Sized || !std::sized_sentinel_for<S, I>) class Subrange : public ViewInterface<Subrange<I, S, K>, std::iter_value_t<I>> {
   I itr;
   S sent;
@@ -384,5 +384,5 @@ template<std::input_or_output_iterator I, std::sentinel_for<I> S> Subrange(I, S)
 template<std::input_or_output_iterator I, std::sentinel_for<I> S> Subrange(I, S, std::make_unsigned_t<std::iter_difference_t<I>>) -> Subrange<I, S, RangeKind::Sized>;
 template<std::ranges::borrowed_range R> Subrange(R&&) -> Subrange<std::ranges::iterator_t<R>, std::ranges::sentinel_t<R>, (std::ranges::sized_range<R> || std::sized_sentinel_for<std::ranges::sentinel_t<R>, std::ranges::iterator_t<R>>) ? RangeKind::Sized : RangeKind::Unsized>;
 template<std::ranges::borrowed_range R> Subrange(R&&, std::make_unsigned_t<std::ranges::range_difference_t<R>>) -> Subrange<std::ranges::iterator_t<R>, std::ranges::sentinel_t<R>, RangeKind::Sized>;
-} // namespace gsh
+}
 namespace std::ranges { template<class I, class S, gsh::RangeKind K> constexpr bool enable_borrowed_range<gsh::Subrange<I, S, K>> = true; }

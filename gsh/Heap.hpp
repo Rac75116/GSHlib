@@ -399,4 +399,4 @@ public:
     }
   }
 };
-} // namespace gsh
+}

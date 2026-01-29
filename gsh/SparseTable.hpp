@@ -37,7 +37,7 @@ template<class T, u32 BlockShift = 2> class RangeMin : public decltype(MakeSpars
 template<class T, u32 BlockShift = 2> class RangeMax : public decltype(MakeSparseSpec<T, BlockShift>(Max, []() -> T { return std::numeric_limits<T>::min(); })) {};
 template<class T, u32 BlockShift = 2> class RangeGCD : public decltype(MakeSparseSpec<T, BlockShift>(GCD, []() -> T { return static_cast<T>(0); })) {};
 template<class T, u32 BlockShift = 2> class RangeLCM : public decltype(MakeSparseSpec<T, BlockShift>(LCM, []() -> T { return static_cast<T>(1); })) {};
-} // namespace sparse_table_specs
+}
 template<class Spec> requires internal::IsSparseSpecImplemented<Spec> class SparseTable : public ViewInterface<SparseTable<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
 public:

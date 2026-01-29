@@ -145,7 +145,7 @@ template<class T, class... Types> class TypeAtImpl<0, T, Types...> {
 public:
   using type = T;
 };
-} // namespace internal
+}
 template<u32 N, class... Types> using TypeAt = typename internal::TypeAtImpl<N, Types...>::type;
 template<class... Types> class TypeArr {
 public:
@@ -157,4 +157,4 @@ public:
   constexpr static u32 size() noexcept { return 0; }
   template<u32 N> using type = void;
 };
-} // namespace gsh
+}

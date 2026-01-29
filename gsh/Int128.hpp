@@ -20,4 +20,4 @@ GSH_INTERNAL_INLINE constexpr std::pair<u64, u64> Divu128(u64 high, u64 low, u64
 }
 using i128 = __int128_t;
 using u128 = __uint128_t;
-} // namespace gsh
+}

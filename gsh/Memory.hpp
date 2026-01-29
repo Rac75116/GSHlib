@@ -116,7 +116,7 @@ template<class Alloc> struct SharedAllocatorImpl<Alloc, true> {
   static inline Alloc* alloc = new Alloc();
   static constexpr Alloc& get() noexcept { return *alloc; }
 };
-} // namespace internal
+}
 template<class Alloc, bool OmitDestruction = false> class SharedAllocator {
   using alloc = internal::SharedAllocatorImpl<Alloc, OmitDestruction>;
   using traits = std::allocator_traits<Alloc>;
@@ -242,4 +242,4 @@ public:
   GSH_INTERNAL_INLINE constexpr T& operator[](u32 n) { return *(ptr + n); }
   GSH_INTERNAL_INLINE constexpr const T& operator[](u32 n) const { return *(ptr + n); }
 };
-} // namespace gsh
+}

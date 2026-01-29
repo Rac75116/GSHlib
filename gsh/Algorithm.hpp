@@ -415,7 +415,7 @@ template<class Iter, class Sent, class T, class Proj, class Comp> constexpr auto
   }
   return first;
 }
-} // namespace internal
+}
 template<std::ranges::input_range R1, std::ranges::input_range R2, class Proj = Identity, class Comp = EqualTo> constexpr u32 HammingDistance(R1&& r1, R2&& r2, Comp&& comp = {}, Proj&& proj = {}) {
   auto itr1 = std::ranges::begin(r1);
   auto itr2 = std::ranges::begin(r2);
@@ -538,4 +538,4 @@ template<std::ranges::forward_range R> constexpr auto Majority(R&& r) {
   for(i = std::ranges::begin(r); i != j; ++i) c += static_cast<bool>(*i == *k);
   return (2 * c >= len ? k : j);
 }
-} // namespace gsh
+}

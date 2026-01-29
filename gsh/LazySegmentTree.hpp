@@ -52,7 +52,7 @@ template<class T> class RangeXorRangeXor : public decltype(MakeLazySegmentSpec<s
 template<class T> class RangeOrRangeOr : public decltype(MakeLazySegmentSpec<T, T>(Or, []() -> T { return static_cast<T>(0); }, Or, Or, []() -> T { return static_cast<T>(0); })) {};
 template<class T> class RangeAndRangeAnd : public decltype(MakeLazySegmentSpec<T, T>(And, []() -> T { return ~static_cast<T>(0); }, And, And, []() -> T { return ~static_cast<T>(0); })) {};
 template<class T> class RangeAffineRangeSum : public decltype(MakeLazySegmentSpec<std::pair<T, u32>, std::pair<T, T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::pair<T, T>& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{f.first * x.first + f.second * static_cast<T>(x.second), x.second}; }, [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{f.first * g.first, f.first * g.second + f.second}; }, []() -> std::pair<T, T> { return {static_cast<T>(1), static_cast<T>(0)}; })) {};
-} // namespace segment_specs
+}
 template<class Spec> requires internal::IsLazySegmentSpecImplemented<Spec> class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
 public:
@@ -293,4 +293,4 @@ public:
     return 0;
   }
 };
-} // namespace gsh
+}

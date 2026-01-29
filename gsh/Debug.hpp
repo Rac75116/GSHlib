@@ -25,8 +25,7 @@ template<class... Args> constexpr void DebugPrint(std::source_location loc, Args
     DebugPrintImpl(loc, std::forward<Args>(args)...);
   }
 }
-} // namespace internal
-} // namespace gsh
+}}
 #endif
 // clang-format off
 #ifdef NDEBUG

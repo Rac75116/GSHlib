@@ -41,7 +41,7 @@ template<class T> class RangeMax : public decltype(MakeSegmentSpec<T>(Max, []() 
 template<class T> class RangeGCD : public decltype(MakeSegmentSpec<T>(GCD, []() -> T { return static_cast<T>(0); })) {};
 template<class T> class RangeLCM : public decltype(MakeSegmentSpec<T>(LCM, []() -> T { return static_cast<T>(1); })) {};
 template<class T> class RangeComposite : public decltype(MakeSegmentSpec<T>([](const std::pair<T, T>& a, const std::pair<T, T>& b) { return std::pair{a.first * b.first, a.second * b.first + b.second}; }, []() { return std::pair{static_cast<T>(1), static_cast<T>(0)}; })) {};
-} // namespace segment_specs
+}
 template<class Spec> requires internal::IsSegmentSpecImplemented<Spec> class SegmentTree : public ViewInterface<SegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
 public:
@@ -210,4 +210,4 @@ public:
     return 0;
   }
 };
-} // namespace gsh
+}

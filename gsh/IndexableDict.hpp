@@ -68,4 +68,4 @@ public:
   constexpr const BitVector& vector() const { return bv_; }
   constexpr operator const BitVector&() const { return bv_; }
 };
-} // namespace gsh
+}

@@ -19,4 +19,4 @@ public:
     Formatter<c8>{}(stream, 's');
   }
 };
-} // namespace gsh
+}

@@ -168,7 +168,7 @@ template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj) {
   for(++itr; itr != sent; ++itr) res = LCM(res, Invoke(proj, *itr));
   return res;
 }
-} // namespace internal
+}
 namespace internal {
 template<u32> struct KthRootImpl {
   // clang-format off
@@ -285,7 +285,7 @@ default : return 1;
     // clang-format on
   }
 };
-} // namespace internal
+}
 constexpr u64 KthRoot(u64 n, u64 k) { return internal::KthRootImpl<0>::calc2(n, k); }
 // calc ∑ floor((a × i + b) / m) (0 <= i < n)
 constexpr u64 LinearFloorSum(u32 n, u32 m, u32 a, u32 b) {
@@ -497,10 +497,10 @@ public:
     else return mint.val(mint.mul(mint.mul(fac[n], finv[k]), finv[n - k]));
   }
 };
-} // namespace internal
+}
 using BinCoeffTable32 = internal::BinCoeffTable<internal::DynamicModint32Impl>;
 using BinCoeffTable64 = internal::BinCoeffTable<internal::DynamicModint64Impl>;
 template<u64 mod = 998244353> using BinCoeffTableStaticMod = internal::BinCoeffTable<internal::StaticModintImpl<mod>>;
 template<class T> constexpr T ToRad(const T& deg) { return deg * static_cast<T>(3.14159265358979323846) / static_cast<T>(180); }
 template<class T> constexpr T ToDeg(const T& rad) { return rad * static_cast<T>(180) / static_cast<T>(3.14159265358979323846); }
-} // namespace gsh
+}

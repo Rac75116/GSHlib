@@ -672,5 +672,5 @@ public:
   constexpr u32 edge_count() const noexcept { return base::edge_count() / 2; }
   constexpr void reserve(u32 m) { base::reserve(2 * m); }
 };
-} // namespace gsh
+}
 namespace std::ranges { template<class W, bool IsConst> inline constexpr bool enable_borrowed_range<gsh::internal::AdjacencyList<W, IsConst>> = true; }

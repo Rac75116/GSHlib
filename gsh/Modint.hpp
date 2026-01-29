@@ -512,7 +512,7 @@ public:
   }
   constexpr u64 norm(u64 x) const noexcept { return x >= mod_ ? x - mod_ : x; }
 };
-} // namespace internal
+}
 template<class T> class Parser;
 template<class T> class Formatter;
 template<class T> class Parser<internal::ModintInterface<T>> {
@@ -535,4 +535,4 @@ template<u32 id = 0> using MontgomeryModint64 = internal::ModintInterface<intern
 template<u32 id = 0> using ThreadLocalDynamicModint32 = internal::ModintInterface<internal::DynamicModint32Impl, id, true>;
 template<u32 id = 0> using ThreadLocalDynamicModint64 = internal::ModintInterface<internal::DynamicModint64Impl, id, true>;
 template<u32 id = 0> using ThreadLocalMontgomeryModint64 = internal::ModintInterface<internal::MontgomeryModint64Impl, id, true>;
-} // namespace gsh
+}

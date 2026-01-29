@@ -54,4 +54,4 @@ using wc = wchar_t;
 using utf8 = char8_t;
 using utf16 = char16_t;
 using utf32 = char32_t;
-} // namespace gsh
+}

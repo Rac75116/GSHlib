@@ -74,7 +74,7 @@ constexpr struct _Minimize {
 } minimize;
 constexpr struct _Maximize {
 } maximize;
-} // namespace annealing
+}
 template<class OptType, class TempFunction, class ProgressFunction> class Annealing {
   static_assert(std::is_same<OptType, annealing::_Minimize>::value || std::is_same<OptType, annealing::_Maximize>::value, "Type must be OptimizeType::Minimize or OptimizeType::Maximize");
   constexpr static bool is_minimize = std::is_same<OptType, annealing::_Minimize>::value;
@@ -161,4 +161,4 @@ public:
   }
   bool is_best() { return is_best_updated; }
 };
-} // namespace gsh
+}

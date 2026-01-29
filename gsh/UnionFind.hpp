@@ -85,7 +85,7 @@ public:
     return res;
   }
 };
-} // namespace internal
+}
 class UnionFind : public internal::UnionFindImpl<UnionFind> {
   friend class internal::UnionFindImpl<UnionFind>;
   Vec<i32> parent;
@@ -401,4 +401,4 @@ public:
     return false;
   }
 };
-} // namespace gsh
+}

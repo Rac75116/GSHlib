@@ -14,7 +14,7 @@ struct i8dig;
 struct u8dig;
 struct i16dig;
 struct u16dig;
-} // namespace io
+}
 template<class T> class Parser;
 namespace internal {
 template<class Stream> constexpr u16 Parseu4dig(Stream&& stream) {
@@ -226,7 +226,7 @@ template<class T> struct FloatParser {
     return res;
   }
 };
-} // namespace internal
+}
 template<> class Parser<u8> : public internal::UnsignedParser<u8, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
 template<> class Parser<i8> : public internal::SignedParser<i8, 8, [](auto& s) { return internal::Parseu4dig(s); }> {};
 template<> class Parser<u16> : public internal::UnsignedParser<u16, 8, [](auto& s) { return internal::Parseu8dig(s); }> {};
@@ -338,7 +338,7 @@ template<class T, class P, class Stream, class... Args> struct ParsingIterator {
     return [this]<u32... I>(std::integer_sequence<u32, I...>) -> T { return (*ref)(*stream, std::get<I>(*args)...); }(std::make_integer_sequence<u32, sizeof...(Args)>());
   }
 };
-} // namespace internal
+}
 template<class R> concept ParsableRange = std::ranges::forward_range<R> && requires { sizeof(Parser<std::decay_t<std::ranges::range_value_t<R>>>) != 0; };
 template<ParsableRange R> class Parser<R> {
 public:
@@ -352,7 +352,7 @@ public:
 namespace internal {
 template<class T, class U> constexpr bool ParsableTupleImpl = false;
 template<class T, std::size_t... I> constexpr bool ParsableTupleImpl<T, std::integer_sequence<std::size_t, I...>> = (... && requires { sizeof(Parser<std::decay_t<typename std::tuple_element<I, T>::type>>) != 0; });
-} // namespace internal
+}
 template<class T> concept ParsableTuple = requires { std::tuple_size<T>::value; } && internal::ParsableTupleImpl<T, std::make_index_sequence<std::tuple_size<T>::value>>;
 template<ParsableTuple T> requires (!ParsableRange<T>) class Parser<T> {
   template<u32 I, class Stream, class U> constexpr void parse_element(Stream&& stream, U&& x) const {
@@ -371,4 +371,4 @@ public:
     return x;
   }
 };
-} // namespace gsh
+}

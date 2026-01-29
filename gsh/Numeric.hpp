@@ -169,6 +169,16 @@ template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj) {
   return res;
 }
 }
+// Find x and y that satisfy a * x + b * y = gcd(a, b) and return {gcd(a, b), x, y}.
+template<class T> constexpr std::tuple<T, T, T> ExtendGCD(T a, T b) {
+  T c = static_cast<T>(1), d = {};
+  T x = {}, y = static_cast<T>(1);
+  for(T div = a / b; div * b < a; div = a / b) {
+    T e = a - b * div, f = c - x * div, g = d - y * div;
+    a = b, b = e, c = x, d = y, x = f, y = g;
+  }
+  return {b, x, y};
+}
 namespace internal {
 template<u32> struct KthRootImpl {
   // clang-format off

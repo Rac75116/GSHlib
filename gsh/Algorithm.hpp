@@ -111,7 +111,7 @@ template<class T, class Proj = Identity> void SortUnsigned16(T* const p, const u
   for(u32 i = 0; i != n; ++i) p[i] = std::move(tmp[i]);
 }
 template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const u32 n, Proj&& proj = {}) {
-  Mem<u32> cnt(2 * (1 << 16));
+  Mem<u32> cnt(2 * (1 << 16), 0);
   u32 *const cnt1 = cnt.data(), *const cnt2 = cnt.data() + (1 << 16);
   for(u32 i = 0; i != n; ++i) {
     auto tmp = std::invoke(proj, p[i]);
@@ -133,7 +133,7 @@ template<class T, class Proj = Identity> void SortUnsigned32(T* const p, const u
   for(u32 i = n; i--;) p[--cnt2[std::invoke(proj, tmp[i]) >> 16 & 0xffff]] = std::move(tmp[i]);
 }
 template<class T, class Proj = Identity> void SortUnsigned64(T* const p, const u32 n, Proj&& proj = {}) {
-  Mem<u32> cnt(4 * (1 << 16));
+  Mem<u32> cnt(4 * (1 << 16), 0);
   u32 *const cnt1 = cnt.data(), *const cnt2 = cnt.data() + (1 << 16), *const cnt3 = cnt.data() + 2 * (1 << 16), *const cnt4 = cnt.data() + 3 * (1 << 16);
   for(u32 i = 0; i != n; ++i) {
     auto tmp = std::invoke(proj, p[i]);

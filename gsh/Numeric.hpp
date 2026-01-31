@@ -156,16 +156,16 @@ template<class R, class Proj> constexpr auto GCDImpl(R&& r, Proj&& proj) {
   auto itr = std::ranges::begin(r);
   auto sent = std::ranges::end(r);
   if(!(itr != sent)) throw Exception("The container is empty.");
-  auto res = Invoke(proj, *itr);
-  for(++itr; itr != sent; ++itr) res = GCD(res, Invoke(proj, *itr));
+  auto res = std::invoke(proj, *itr);
+  for(++itr; itr != sent; ++itr) res = GCD(res, std::invoke(proj, *itr));
   return res;
 }
 template<class R, class Proj> constexpr auto LCMImpl(R&& r, Proj&& proj) {
   auto itr = std::ranges::begin(r);
   auto sent = std::ranges::end(r);
   if(!(itr != sent)) throw Exception("The container is empty.");
-  auto res = Invoke(proj, *itr);
-  for(++itr; itr != sent; ++itr) res = LCM(res, Invoke(proj, *itr));
+  auto res = std::invoke(proj, *itr);
+  for(++itr; itr != sent; ++itr) res = LCM(res, std::invoke(proj, *itr));
   return res;
 }
 }

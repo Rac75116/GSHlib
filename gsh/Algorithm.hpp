@@ -497,6 +497,99 @@ template<std::ranges::random_access_range R> constexpr Vec<u32> LongestCommonPre
   }
   return res;
 }
+template<std::ranges::random_access_range R> constexpr Vec<u32> LongestPalindromeArray(R&& r) {
+  const u32 n = std::ranges::size(r);
+  if(n == 0) return {};
+  Vec<u32> res(2 * n - 1);
+  const auto itr = std::ranges::begin(r);
+  u32 longest = 0, root_longest = 0;
+  for(u32 i = 1; i < 2 * n; ++i) {
+    u32 pal;
+    if(i > longest) {
+      pal = 1;
+    } else {
+      const i32 mirror = static_cast<i32>(2 * root_longest) - static_cast<i32>(i);
+      if(mirror <= 0) pal = 0;
+      else pal = Min(longest - i, res[static_cast<u32>(mirror) - 1]);
+    }
+    while(pal < i && i + pal < 2 * n) {
+      const i32 left = (static_cast<i32>(i) - static_cast<i32>(pal) - 2) / 2;
+      const i32 right = static_cast<i32>(i + pal) / 2;
+      if(*std::ranges::next(itr, left) != *std::ranges::next(itr, right)) break;
+      pal += 2;
+    }
+    res[i - 1] = pal;
+    if(i + pal > longest) {
+      longest = i + pal;
+      root_longest = i;
+    }
+  }
+  return res;
+}
+template<std::ranges::forward_range R> requires std::integral<std::ranges::range_value_t<R>> && std::ranges::sized_range<R> Vec<u32> SuffixArray(R&& r) {
+  const u32 n = std::ranges::size(r);
+  Vec<u32> res(n);
+  if(n == 0) return res;
+  Vec<u32> s(n + 2);
+  const auto [mi, ma] = std::ranges::minmax(r);
+  const u32 d = static_cast<u32>(mi) - 1;
+  const u32 m = static_cast<u32>(ma) - d;
+  {
+    auto it = std::ranges::begin(r);
+    for(u32 i = 0; i != n; ++i, ++it) { s[i] = static_cast<u32>(*it) - d; }
+  }
+  s[n] = 0;
+  s[n + 1] = 0;
+  Vec<u32> sa(n + 1);
+  Vec<u32> cnt((Max(n, m) + 1) * 2 + 2);
+  Vec<u32> lms((n + 1) * 2 + 2);
+  Vec<u8> ty((n + 1) * 2 + 2);
+  const auto induced_sort = [&](u32 n, u32 m, const u32* s, u32 o, u32* val, u8* ty, u32* cnt, u32* sa) {
+    u32* c = cnt + m + 1;
+    std::fill(sa, sa + n + 1, 0);
+    std::copy(cnt, cnt + m + 1, c);
+    for(u32 i = o + 1; i-- > 0;) sa[--c[s[val[i]]]] = val[i];
+    std::copy(cnt, cnt + m, c + 1);
+    for(u32 i = 0; i <= n; ++i)
+      if(sa[i] && !ty[sa[i] - 1]) sa[c[s[sa[i] - 1]]++] = sa[i] - 1;
+    std::copy(cnt, cnt + m + 1, c);
+    for(u32 i = n + 1; i-- > 0;)
+      if(sa[i] && ty[sa[i] - 1]) sa[--c[s[sa[i] - 1]]] = sa[i] - 1;
+  };
+  const auto lms_equal = [](u32 x, u32 y, const u32* s, const u8* ty) -> bool {
+    if(s[x] != s[y]) return false;
+    while(s[++x] == s[++y] && ty[x] == ty[y])
+      if(ty[x] == 2) return true;
+    return false;
+  };
+  auto sa_is = [&](auto&& self, u32 n, u32 m, const u32* s, u8* ty, u32* lms, u32* cnt, u32* sa) -> void {
+    i32 o = -1, c = -1;
+    u32* t = sa;
+    ty[n] = 1;
+    for(u32 i = n; i-- > 0;) ty[i] = s[i] == s[i + 1] ? ty[i + 1] : s[i] < s[i + 1];
+    std::fill(cnt, cnt + m + 1, 0);
+    for(u32 i = 0; i <= n; ++i) ++cnt[s[i]];
+    for(u32 i = 0; i < m; ++i) cnt[i + 1] += cnt[i];
+    for(u32 i = 1; i <= n; ++i)
+      if(!ty[i - 1] && ty[i]) ty[i] = 2, lms[++o] = i;
+    induced_sort(n, m, s, static_cast<u32>(o), lms, ty, cnt, sa);
+    for(u32 i = 0; i <= n; ++i)
+      if(ty[sa[i]] == 2) *t++ = sa[i];
+    for(i32 i = 0; i <= o; ++i) {
+      c += c <= 0 || !lms_equal(sa[i], sa[i - 1], s, ty);
+      t[sa[i] >> 1] = c;
+    }
+    for(i32 i = 0; i <= o; ++i) t[i] = t[lms[i] >> 1];
+    if(c < o) self(self, static_cast<u32>(o), static_cast<u32>(c), t, ty + n + 1, lms + o + 1, cnt + m + 1, sa);
+    else
+      for(i32 i = 0; i <= o; ++i) sa[t[i]] = i;
+    for(i32 i = 0; i <= o; ++i) lms[o + 1 + i] = lms[sa[i]];
+    induced_sort(n, m, s, static_cast<u32>(o), lms + o + 1, ty, cnt, sa);
+  };
+  sa_is(sa_is, n, m, s.data(), ty.data(), lms.data(), cnt.data(), sa.data());
+  for(u32 i = 0; i != n; ++i) res[i] = sa[i + 1];
+  return res;
+}
 template<class T = u64, std::ranges::range R> requires std::same_as<std::ranges::range_value_t<R>, u32> constexpr T CountDistinctSubsequences(R&& r) {
   const u32 n = std::ranges::size(r);
   if(n == 0) return 0;

@@ -3,13 +3,25 @@
   "editor.formatOnPaste": true,
   "editor.formatOnType": true,
   "editor.tabSize": 2,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "files.eol": "\n",
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
   "[cpp]": {
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
   "C_Cpp.intelliSenseEngine": "disabled",
   "clangd.arguments": [
     "--clang-tidy",
-    "--function-arg-placeholders=0",
+    "--function-arg-placeholders=0"
   ],
   "files.associations": {
     ".clangd": "yaml",

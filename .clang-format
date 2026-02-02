@@ -17,40 +17,30 @@ AlignTrailingComments:
   Kind: Never
 AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: true
-AllowBreakBeforeNoexceptSpecifier: Always # Always/Never
-AllowShortBlocksOnASingleLine: Always # Never/Always
+AllowBreakBeforeNoexceptSpecifier: Always
+AllowShortBlocksOnASingleLine: Always
 AllowShortCaseExpressionOnASingleLine: true
-AllowShortCaseLabelsOnASingleLine: true # false/true
+AllowShortCaseLabelsOnASingleLine: true
 AllowShortCompoundRequirementOnASingleLine: true
 AllowShortEnumsOnASingleLine: true
-AllowShortFunctionsOnASingleLine: All # Empty/All
+AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
-AllowShortLambdasOnASingleLine: All # Empty/All
+AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: true
-AllowShortNamespacesOnASingleLine: true # false/true
+AllowShortNamespacesOnASingleLine: true
 AlwaysBreakBeforeMultilineStrings: false
 AttributeMacros: []
 BinPackArguments: true
 BinPackLongBracedList: true
 BinPackParameters: BinPack
-BitFieldColonSpacing: None # Both/None
-BracedInitializerIndentWidth: 0 # 2/0
+BitFieldColonSpacing: None
+BracedInitializerIndentWidth: 0
 BreakAdjacentStringLiterals: false
 BreakAfterAttributes: Never
-# BreakAfterOpenBracketBracedList: true
-# BreakAfterOpenBracketFunction: true
-# BreakAfterOpenBracketIf: true
-# BreakAfterOpenBracketLoop: true
-# BreakAfterOpenBracketSwitch: true
 BreakAfterReturnType: ExceptShortType
 BreakArrays: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Attach
-# BreakBeforeCloseBracketBracedList: true
-# BreakBeforeCloseBracketFunction: true
-# BreakBeforeCloseBracketIf: true
-# BreakBeforeCloseBracketLoop: true
-# BreakBeforeCloseBracketSwitch: true
 BreakBeforeConceptDeclarations: Never
 BreakBeforeInlineASMColon: OnlyMultiline
 BreakBeforeTemplateCloser: true
@@ -61,10 +51,10 @@ BreakFunctionDefinitionParameters: false
 BreakInheritanceList: BeforeColon
 BreakStringLiterals: false
 BreakTemplateDeclarations: No
-ColumnLimit: 100000 # 80/100000
-CompactNamespaces: true # false/true
-ConstructorInitializerIndentWidth: 0 # 2/0
-ContinuationIndentWidth: 0 # 2/0
+ColumnLimit: 100000
+CompactNamespaces: true
+ConstructorInitializerIndentWidth: 0
+ContinuationIndentWidth: 0
 Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 DisableFormat: false
@@ -82,16 +72,16 @@ IndentExportBlock: false
 IndentExternBlock: NoIndent
 IndentGotoLabels: false
 IndentPPDirectives: None
-IndentRequiresClause: false # true/false
-IndentWidth: 2 # 4/0
+IndentRequiresClause: false
+IndentWidth: 2
 IndentWrappedFunctionNames: false
 InsertBraces: false
 InsertNewlineAtEOF: true
 InsertTrailingCommas: None
 IntegerLiteralSeparator:
-  Binary: -1 # 8/-1
-  Decimal: -1 # 4/-1
-  Hex: -1 # 4/-1
+  Binary: -1
+  Decimal: -1
+  Hex: -1
 KeepEmptyLines:
   AtEndOfFile: true
   AtStartOfBlock: false
@@ -101,13 +91,8 @@ LambdaBodyIndentation: Signature
 LineEnding: LF
 MacrosSkippedByRemoveParentheses: []
 MainIncludeChar: Quote
-MaxEmptyLinesToKeep: 0 # 1/0
+MaxEmptyLinesToKeep: 0
 NamespaceIndentation: None
-# NumericLiteralCase:
-#   ExponentLetter: Lower
-#   HexDigit: Lower
-#   Prefix: Lower
-#   Suffix: Lower
 PackConstructorInitializers: NextLine
 PointerAlignment: Left
 QualifierAlignment: Leave
@@ -117,9 +102,9 @@ RemoveBracesLLVM: false
 RemoveEmptyLinesInUnwrappedLines: true
 RemoveParentheses: Leave
 RemoveSemicolon: false
-RequiresClausePosition: SingleLine # OwnLineWithBrace/SingleLine
+RequiresClausePosition: SingleLine
 RequiresExpressionIndentation: OuterScope
-SeparateDefinitionBlocks: Never # Leave/Never
+SeparateDefinitionBlocks: Never
 ShortNamespaceLines: 1
 SortIncludes:
   Enabled: true
@@ -130,11 +115,11 @@ SpaceAfterLogicalNot: false
 SpaceAfterOperatorKeyword: false
 SpaceAfterTemplateKeyword: false
 SpaceAroundPointerQualifiers: Default
-SpaceBeforeAssignmentOperators: true # true/false
+SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
 SpaceBeforeCpp11BracedList: false
-SpaceBeforeCtorInitializerColon: true # true/false
-SpaceBeforeInheritanceColon: true # true/false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
   AfterControlStatements: false
@@ -145,13 +130,12 @@ SpaceBeforeParensOptions:
   AfterNot: false
   AfterOverloadedOperator: false
   AfterPlacementOperator: false
-  AfterRequiresInClause: true # true/false
+  AfterRequiresInClause: true
   AfterRequiresInExpression: false
   BeforeNonEmptyParentheses: false
-SpaceBeforeRangeBasedForLoopColon: true # true/false
+SpaceBeforeRangeBasedForLoopColon: true
 SpaceBeforeSquareBrackets: false
-# SpaceInEmptyBraces: Never
-SpacesBeforeTrailingComments: 1 # 1/0
+SpacesBeforeTrailingComments: 1
 SpacesInAngles: Never
 SpacesInContainerLiterals: false
 SpacesInLineCommentPrefix:

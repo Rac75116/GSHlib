@@ -5,47 +5,44 @@
 #include <bit>
 #include <initializer_list>
 #include <iterator>
-#include <memory>
 #include <type_traits>
 namespace gsh {
-template<class T, class Alloc = std::allocator<T>> class RangeSumQuery {
+template<class T> class FenwickTree {
 protected:
-  Vec<T, Alloc> bit;
+  Vec<T> bit;
 public:
   using reference = T&;
   using const_reference = const T&;
   using size_type = u32;
   using difference_type = i32;
   using value_type = T;
-  using allocator_type = Alloc;
-  using pointer = typename std::allocator_traits<Alloc>::pointer;
-  using const_pointer = typename std::allocator_traits<Alloc>::const_pointer;
-  constexpr RangeSumQuery() noexcept(noexcept(Alloc())) : RangeSumQuery(Alloc()) {}
-  constexpr explicit RangeSumQuery(const Alloc& alloc) noexcept : bit(alloc) {}
-  constexpr explicit RangeSumQuery(u32 n, const Alloc& alloc = Alloc()) : bit(n, alloc) {}
-  constexpr RangeSumQuery(u32 n, const T& value, const Alloc& alloc = Alloc()) : bit(alloc) { assign(n, value); }
-  template<class InputIter> constexpr RangeSumQuery(InputIter first, InputIter last, const Alloc& alloc = Alloc()) : bit(alloc) { assign(first, last); }
-  constexpr RangeSumQuery(const RangeSumQuery&) = default;
-  constexpr RangeSumQuery(RangeSumQuery&&) noexcept = default;
-  constexpr RangeSumQuery(const RangeSumQuery& x, const Alloc& alloc) : bit(x.bit, alloc) {}
-  constexpr RangeSumQuery(RangeSumQuery&& x, const Alloc& alloc) : bit(std::move(x.bit), alloc) {}
-  constexpr RangeSumQuery(std::initializer_list<T> il, const Alloc& alloc = Alloc()) : RangeSumQuery(il.begin(), il.end(), alloc) {}
-  constexpr RangeSumQuery& operator=(const RangeSumQuery&) = default;
-  constexpr RangeSumQuery& operator=(RangeSumQuery&&) noexcept(std::allocator_traits<Alloc>::propagate_on_container_move_assignment::value || std::allocator_traits<Alloc>::is_always_equal::value) = default;
-  constexpr RangeSumQuery& operator=(std::initializer_list<T> il) {
+  constexpr FenwickTree() = default;
+  constexpr explicit FenwickTree(u32 n) : bit(n) {}
+  constexpr FenwickTree(u32 n, const T& value) : bit() { assign(n, value); }
+  template<class InputIter> constexpr FenwickTree(InputIter first, InputIter last) : bit() { assign(first, last); }
+  constexpr FenwickTree(const FenwickTree&) = default;
+  constexpr FenwickTree(FenwickTree&&) noexcept = default;
+  constexpr FenwickTree(std::initializer_list<T> il) : FenwickTree(il.begin(), il.end()) {}
+  constexpr FenwickTree& operator=(const FenwickTree&) = default;
+  constexpr FenwickTree& operator=(FenwickTree&&) noexcept = default;
+  constexpr FenwickTree& operator=(std::initializer_list<T> il) {
     assign(il);
     return *this;
   }
   constexpr u32 size() const noexcept { return bit.size(); }
   constexpr void resize(u32 sz) { resize(sz, value_type{}); }
-  /*
-    constexpr void resize(u32 sz, const value_type& c) {
-        u32 n = bit.size();
-        bit.resize(sz);
-        if (n >= sz) return;
-        // TODO
+  constexpr void resize(u32 sz, const value_type& c) {
+    u32 n = bit.size();
+    bit.resize(sz);
+    if(n >= sz) return;
+    if(n == 0) {
+      for(u32 i = 0; i < sz; ++i) bit[i] = c * (static_cast<u32>(i + 1) & -(static_cast<i32>(i + 1)));
+    } else {
+      for(u32 i = n; i < sz; ++i) {
+        for(u32 j = i + 1; j <= sz; j += (j & -j)) bit[j - 1] += c;
+      }
     }
-    */
+  }
   constexpr bool empty() const noexcept { return bit.empty(); }
   constexpr value_type operator[](u32 n) const {
     value_type res = bit[n];
@@ -71,16 +68,15 @@ public:
   }
   constexpr void assign(u32 n, const T& u) {
     if(n == 0) return;
-    bit = Vec<value_type, Alloc>(n, get_allocator());
-    Vec<value_type, Alloc> mul(std::bit_width(n), get_allocator());
+    bit = Vec<value_type>(n);
+    Vec<value_type> mul(std::bit_width(n));
     mul[0] = u;
     for(u32 i = 1, sz = mul.size(); i < sz; ++i) mul[i] = mul[i - 1], mul[i] += mul[i - 1];
     for(u32 i = 0; i != n; ++i) bit[i] = mul[std::countr_zero(i + 1)];
   }
   constexpr void assign(std::initializer_list<T> il) { assign(il.begin(), il.end()); }
-  constexpr void swap(RangeSumQuery& x) noexcept(std::allocator_traits<Alloc>::propagate_on_container_swap::value || std::allocator_traits<Alloc>::is_always_equal::value) { bit.swap(x.bit); };
+  constexpr void swap(FenwickTree& x) noexcept { bit.swap(x.bit); };
   constexpr void clear() { bit.clear(); }
-  constexpr allocator_type get_allocator() const noexcept { return bit.get_allocator(); }
   constexpr void add(u32 n, const value_type& x) {
     for(u32 i = n + 1, sz = size(); i <= sz; i += (i & -i)) bit[i - 1] += x;
   }
@@ -128,6 +124,6 @@ public:
     return res;
   }
 };
-template<class U, class Alloc> constexpr void swap(RangeSumQuery<U, Alloc>& x, RangeSumQuery<U, Alloc>& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
-template<class InputIterator, class Alloc = std::allocator<typename std::iterator_traits<InputIterator>::value_type>> RangeSumQuery(InputIterator, InputIterator, Alloc = Alloc()) -> RangeSumQuery<typename std::iterator_traits<InputIterator>::value_type, Alloc>;
+template<class U> constexpr void swap(FenwickTree<U>& x, FenwickTree<U>& y) noexcept(noexcept(x.swap(y))) { x.swap(y); }
+template<class InputIterator> FenwickTree(InputIterator, InputIterator) -> FenwickTree<typename std::iterator_traits<InputIterator>::value_type>;
 }

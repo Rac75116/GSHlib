@@ -5,21 +5,18 @@
 #include "Range.hpp"
 #include "TypeDef.hpp"
 #include "Vec.hpp"
+#include "internal/UtilMacro.hpp"
 #include <bit>
 #include <concepts>
 #include <initializer_list>
 #include <iterator>
 #include <limits>
 #include <optional>
-#include <type_traits>
+#include <tuple>
 #include <utility>
 namespace gsh {
 namespace internal {
-template<class Op, class E, class Mapping, class Composition, class Id> concept IsValidLazySegmentSpecFunctors = std::invocable<E> && std::invocable<Id> && requires(Op op, Mapping mapping, Composition composition, const std::invoke_result_t<E>& v, const std::invoke_result_t<Id>& f) {
-  { op(v, v) } -> std::convertible_to<std::remove_cvref_t<std::invoke_result_t<E>>>;
-  { mapping(f, v) } -> std::convertible_to<std::remove_cvref_t<std::invoke_result_t<E>>>;
-  { composition(f, f) } -> std::convertible_to<std::remove_cvref_t<std::invoke_result_t<Id>>>;
-};
+template<class T, class Expected> concept IsValueOrOptional = std::same_as<T, Expected> || std::same_as<T, std::optional<Expected>>;
 template<class Spec> concept IsLazySegmentSpecImplemented = requires(Spec spec) {
   typename Spec::value_type;
   typename Spec::operator_type;
@@ -27,14 +24,14 @@ template<class Spec> concept IsLazySegmentSpecImplemented = requires(Spec spec) 
   typename Spec::internal_operator_type;
   { spec.op(std::declval<typename Spec::internal_value_type>(), std::declval<typename Spec::internal_value_type>()) } -> std::same_as<typename Spec::internal_value_type>;
   { spec.e() } -> std::same_as<typename Spec::internal_value_type>;
-  { spec.mapping(std::declval<typename Spec::internal_operator_type>(), std::declval<typename Spec::internal_value_type>()) } -> std::same_as<typename Spec::internal_value_type>;
+  { spec.mapping(std::declval<typename Spec::internal_operator_type>(), std::declval<typename Spec::internal_value_type>()) } -> IsValueOrOptional<typename Spec::internal_value_type>;
   { spec.composition(std::declval<typename Spec::internal_operator_type>(), std::declval<typename Spec::internal_operator_type>()) } -> std::same_as<typename Spec::internal_operator_type>;
   { spec.id() } -> std::same_as<typename Spec::internal_operator_type>;
   { spec.extract(std::declval<typename Spec::internal_value_type>()) } -> std::same_as<typename Spec::value_type>;
   { spec.embed_value(std::declval<typename Spec::value_type>()) } -> std::same_as<typename Spec::internal_value_type>;
   { spec.embed_operator(std::declval<typename Spec::operator_type>()) } -> std::same_as<typename Spec::internal_operator_type>;
 };
-template<class T, class U, class InternalT, class InternalU, class Op, class E, class Mapping, class Composition, class Id, class Extract, class EmbedValue, class EmbedOperator> requires IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
+template<class T, class U, class InternalT, class InternalU, class Op, class E, class Mapping, class Composition, class Id, class Extract, class EmbedValue, class EmbedOperator> class LazySegmentSpec {
   [[no_unique_address]] mutable Op op_func;
   [[no_unique_address]] mutable E e_func;
   [[no_unique_address]] mutable Mapping mapping_func;
@@ -50,14 +47,14 @@ public:
   using internal_operator_type = InternalU;
   constexpr LazySegmentSpec() = default;
   constexpr LazySegmentSpec(const Op& op, const E& e, const Mapping& mapping, const Composition& composition, const Id& id, const Extract& extract, const EmbedValue& embed_value, const EmbedOperator& embed_operator) : op_func(op), e_func(e), mapping_func(mapping), composition_func(composition), id_func(id), extract_func(extract), embed_value_func(embed_value), embed_operator_func(embed_operator) {}
-  constexpr internal_value_type op(const internal_value_type& a, const internal_value_type& b) const { return static_cast<internal_value_type>(std::invoke(op_func, a, b)); }
-  constexpr internal_value_type e() const { return static_cast<internal_value_type>(std::invoke(e_func)); }
-  constexpr internal_value_type mapping(const internal_operator_type& f, const internal_value_type& x) const { return static_cast<internal_value_type>(std::invoke(mapping_func, f, x)); }
-  constexpr internal_operator_type composition(const internal_operator_type& f, const internal_operator_type& g) const { return static_cast<internal_operator_type>(std::invoke(composition_func, f, g)); }
-  constexpr internal_operator_type id() const { return static_cast<internal_operator_type>(std::invoke(id_func)); }
-  constexpr value_type extract(const internal_value_type& x) const { return static_cast<value_type>(std::invoke(extract_func, x)); }
-  constexpr internal_value_type embed_value(const value_type& x) const { return static_cast<internal_value_type>(std::invoke(embed_value_func, x)); }
-  constexpr internal_operator_type embed_operator(const operator_type& x) const { return static_cast<internal_operator_type>(std::invoke(embed_operator_func, x)); }
+  GSH_INTERNAL_INLINE constexpr internal_value_type op(const internal_value_type& a, const internal_value_type& b) const { return static_cast<internal_value_type>(std::invoke(op_func, a, b)); }
+  GSH_INTERNAL_INLINE constexpr internal_value_type e() const { return static_cast<internal_value_type>(std::invoke(e_func)); }
+  GSH_INTERNAL_INLINE constexpr auto mapping(const internal_operator_type& f, const internal_value_type& x) const { return static_cast<internal_value_type>(std::invoke(mapping_func, f, x)); }
+  GSH_INTERNAL_INLINE constexpr internal_operator_type composition(const internal_operator_type& f, const internal_operator_type& g) const { return static_cast<internal_operator_type>(std::invoke(composition_func, f, g)); }
+  GSH_INTERNAL_INLINE constexpr internal_operator_type id() const { return static_cast<internal_operator_type>(std::invoke(id_func)); }
+  GSH_INTERNAL_INLINE constexpr value_type extract(const internal_value_type& x) const { return static_cast<value_type>(std::invoke(extract_func, x)); }
+  GSH_INTERNAL_INLINE constexpr internal_value_type embed_value(const value_type& x) const { return static_cast<internal_value_type>(std::invoke(embed_value_func, x)); }
+  GSH_INTERNAL_INLINE constexpr internal_operator_type embed_operator(const operator_type& x) const { return static_cast<internal_operator_type>(std::invoke(embed_operator_func, x)); }
 };
 }
 template<class T, class U, class InternalT = T, class InternalU = U, class Op, class E, class Mapping, class Composition, class Id, class Extract = Identity, class EmbedValue = Identity, class EmbedOperator = Identity> constexpr auto MakeLazySegmentSpec(const Op& op = Op(), const E& e = E(), const Mapping& mapping = Mapping(), const Composition& composition = Composition(), const Id& id = Id(), const Extract& extract = Extract(), const EmbedValue& embed_value = EmbedValue(), const EmbedOperator& embed_operator = EmbedOperator()) { return internal::LazySegmentSpec<T, U, InternalT, InternalU, Op, E, Mapping, Composition, Id, Extract, EmbedValue, EmbedOperator>{op, e, mapping, composition, id, extract, embed_value, embed_operator}; }
@@ -72,6 +69,74 @@ template<class T> class RangeXorRangeXor : public decltype(MakeLazySegmentSpec<T
 template<class T> class RangeOrRangeOr : public decltype(MakeLazySegmentSpec<T, T>(Or, []() -> T { return static_cast<T>(0); }, Or, Or, []() -> T { return static_cast<T>(0); })) {};
 template<class T> class RangeAndRangeAnd : public decltype(MakeLazySegmentSpec<T, T>(And, []() -> T { return ~static_cast<T>(0); }, And, And, []() -> T { return ~static_cast<T>(0); })) {};
 template<class T> class RangeAffineRangeSum : public decltype(MakeLazySegmentSpec<T, std::pair<T, T>, std::pair<T, u32>, std::pair<T, T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::pair<T, T>& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{f.first * x.first + f.second * static_cast<T>(x.second), x.second}; }, [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{f.first * g.first, f.first * g.second + f.second}; }, []() -> std::pair<T, T> { return {static_cast<T>(1), static_cast<T>(0)}; }, [](const std::pair<T, u32>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, u32> { return {x, 1}; }, [](const std::pair<T, T>& x) -> std::pair<T, T> { return x; })) {};
+}
+namespace internal {
+template<class T> constexpr auto MakeRangeChminRangeSumSpec() {
+  auto op = [](const std::tuple<T, T, T, u32, u32>& a, const std::tuple<T, T, T, u32, u32>& b) {
+    if(std::get<2>(a) == std::numeric_limits<T>::min()) return b;
+    if(std::get<2>(b) == std::numeric_limits<T>::min()) return a;
+    T sum = std::get<0>(a) + std::get<0>(b);
+    T max_val = std::max(std::get<1>(a), std::get<1>(b));
+    T max2_val = std::max({std::get<2>(a), std::get<2>(b), std::min(std::get<1>(a), std::get<1>(b))});
+    u32 max_cnt = 0;
+    if(std::get<1>(a) == max_val) max_cnt += std::get<3>(a);
+    if(std::get<1>(b) == max_val) max_cnt += std::get<3>(b);
+    u32 size = std::get<4>(a) + std::get<4>(b);
+    return std::tuple<T, T, T, u32, u32>{sum, max_val, max2_val, max_cnt, size};
+  };
+  auto e = []() -> std::tuple<T, T, T, u32, u32> { return {static_cast<T>(0), std::numeric_limits<T>::min(), std::numeric_limits<T>::min(), 0, 0}; };
+  auto mapping = [](const T& f, const std::tuple<T, T, T, u32, u32>& x) -> std::optional<std::tuple<T, T, T, u32, u32>> {
+    T sum = std::get<0>(x);
+    T max_val = std::get<1>(x);
+    T max2_val = std::get<2>(x);
+    u32 max_cnt = std::get<3>(x);
+    u32 size = std::get<4>(x);
+    if(max_val <= f) return x;
+    if(max2_val < f) { return std::tuple<T, T, T, u32, u32>{sum + (f - max_val) * static_cast<T>(max_cnt), f, max2_val, max_cnt, size}; }
+    return std::nullopt;
+  };
+  auto composition = [](const T& f, const T& g) { return std::min(f, g); };
+  auto id = []() -> T { return std::numeric_limits<T>::max(); };
+  auto extract = [](const std::tuple<T, T, T, u32, u32>& x) -> T { return std::get<0>(x); };
+  auto embed_value = [](const T& x) -> std::tuple<T, T, T, u32, u32> { return {x, x, std::numeric_limits<T>::min(), 1, 1}; };
+  auto embed_operator = [](const T& x) -> T { return x; };
+  return MakeLazySegmentSpec<T, T, std::tuple<T, T, T, u32, u32>, T>(op, e, mapping, composition, id, extract, embed_value, embed_operator);
+}
+template<class T> constexpr auto MakeRangeChmaxRangeSumSpec() {
+  auto op = [](const std::tuple<T, T, T, u32, u32>& a, const std::tuple<T, T, T, u32, u32>& b) {
+    if(std::get<2>(a) == std::numeric_limits<T>::max()) return b;
+    if(std::get<2>(b) == std::numeric_limits<T>::max()) return a;
+    T sum = std::get<0>(a) + std::get<0>(b);
+    T min_val = std::min(std::get<1>(a), std::get<1>(b));
+    T min2_val = std::min({std::get<2>(a), std::get<2>(b), std::max(std::get<1>(a), std::get<1>(b))});
+    u32 min_cnt = 0;
+    if(std::get<1>(a) == min_val) min_cnt += std::get<3>(a);
+    if(std::get<1>(b) == min_val) min_cnt += std::get<3>(b);
+    u32 size = std::get<4>(a) + std::get<4>(b);
+    return std::tuple<T, T, T, u32, u32>{sum, min_val, min2_val, min_cnt, size};
+  };
+  auto e = []() -> std::tuple<T, T, T, u32, u32> { return {static_cast<T>(0), std::numeric_limits<T>::max(), std::numeric_limits<T>::max(), 0, 0}; };
+  auto mapping = [](const T& f, const std::tuple<T, T, T, u32, u32>& x) -> std::optional<std::tuple<T, T, T, u32, u32>> {
+    T sum = std::get<0>(x);
+    T min_val = std::get<1>(x);
+    T min2_val = std::get<2>(x);
+    u32 min_cnt = std::get<3>(x);
+    u32 size = std::get<4>(x);
+    if(min_val >= f) return x;
+    if(min2_val > f) { return std::tuple<T, T, T, u32, u32>{sum + (f - min_val) * static_cast<T>(min_cnt), f, min2_val, min_cnt, size}; }
+    return std::nullopt;
+  };
+  auto composition = [](const T& f, const T& g) { return std::max(f, g); };
+  auto id = []() -> T { return std::numeric_limits<T>::min(); };
+  auto extract = [](const std::tuple<T, T, T, u32, u32>& x) -> T { return std::get<0>(x); };
+  auto embed_value = [](const T& x) -> std::tuple<T, T, T, u32, u32> { return {x, x, std::numeric_limits<T>::max(), 1, 1}; };
+  auto embed_operator = [](const T& x) -> T { return x; };
+  return MakeLazySegmentSpec<T, T, std::tuple<T, T, T, u32, u32>, T>(op, e, mapping, composition, id, extract, embed_value, embed_operator);
+}
+}
+namespace segment_specs {
+template<class T> class RangeChminRangeSum : public decltype(internal::MakeRangeChminRangeSumSpec<T>()) {};
+template<class T> class RangeChmaxRangeSum : public decltype(internal::MakeRangeChmaxRangeSumSpec<T>()) {};
 }
 template<class Spec> requires internal::IsLazySegmentSpecImplemented<Spec> class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
@@ -88,12 +153,34 @@ private:
   size_type log;
   Vec<internal_value_type> tree;
   Vec<internal_operator_type> lazy;
-  void update(size_type k) { tree[k] = spec.op(tree[2 * k], tree[2 * k + 1]); }
-  void all_apply(size_type k, const internal_operator_type& f) {
-    tree[k] = spec.mapping(f, tree[k]);
-    if(k < sz) lazy[k] = spec.composition(f, lazy[k]);
+  constexpr static bool is_beats = requires(Spec s, internal_operator_type f, internal_value_type x) {
+    { s.mapping(f, x) } -> std::same_as<std::optional<internal_value_type>>;
+  };
+  GSH_INTERNAL_INLINE void update(size_type k) { tree[k] = spec.op(tree[2 * k], tree[2 * k + 1]); }
+  GSH_INTERNAL_INLINE void all_apply(size_type k, const internal_operator_type& f) {
+    if constexpr(is_beats) {
+      auto res = spec.mapping(f, tree[k]);
+      if(res.has_value()) {
+        tree[k] = *res;
+        if(k < sz) lazy[k] = spec.composition(f, lazy[k]);
+      } else {
+        all_apply_failed(k, f);
+      }
+    } else {
+      tree[k] = spec.mapping(f, tree[k]);
+      if(k < sz) lazy[k] = spec.composition(f, lazy[k]);
+    }
   }
-  void push(size_type k) {
+  void all_apply_failed(size_type k, const internal_operator_type& f) requires (is_beats) {
+#ifndef NDEBUG
+    if(k >= sz) [[unlikely]]
+      throw Exception("LazySegmentTree: The operation cannot be applied.");
+#endif
+    lazy[k] = spec.composition(f, lazy[k]);
+    push(k);
+    update(k);
+  }
+  GSH_INTERNAL_INLINE void push(size_type k) {
     all_apply(2 * k, lazy[k]);
     all_apply(2 * k + 1, lazy[k]);
     lazy[k] = spec.id();

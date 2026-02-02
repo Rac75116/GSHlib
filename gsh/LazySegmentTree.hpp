@@ -23,58 +23,73 @@ template<class Op, class E, class Mapping, class Composition, class Id> concept 
 template<class Spec> concept IsLazySegmentSpecImplemented = requires(Spec spec) {
   typename Spec::value_type;
   typename Spec::operator_type;
-  { spec.op(std::declval<typename Spec::value_type>(), std::declval<typename Spec::value_type>()) } -> std::same_as<typename Spec::value_type>;
-  { spec.e() } -> std::same_as<typename Spec::value_type>;
-  { spec.mapping(std::declval<typename Spec::operator_type>(), std::declval<typename Spec::value_type>()) } -> std::same_as<typename Spec::value_type>;
-  { spec.composition(std::declval<typename Spec::operator_type>(), std::declval<typename Spec::operator_type>()) } -> std::same_as<typename Spec::operator_type>;
-  { spec.id() } -> std::same_as<typename Spec::operator_type>;
+  typename Spec::internal_value_type;
+  typename Spec::internal_operator_type;
+  { spec.op(std::declval<typename Spec::internal_value_type>(), std::declval<typename Spec::internal_value_type>()) } -> std::same_as<typename Spec::internal_value_type>;
+  { spec.e() } -> std::same_as<typename Spec::internal_value_type>;
+  { spec.mapping(std::declval<typename Spec::internal_operator_type>(), std::declval<typename Spec::internal_value_type>()) } -> std::same_as<typename Spec::internal_value_type>;
+  { spec.composition(std::declval<typename Spec::internal_operator_type>(), std::declval<typename Spec::internal_operator_type>()) } -> std::same_as<typename Spec::internal_operator_type>;
+  { spec.id() } -> std::same_as<typename Spec::internal_operator_type>;
+  { spec.extract(std::declval<typename Spec::internal_value_type>()) } -> std::same_as<typename Spec::value_type>;
+  { spec.embed_value(std::declval<typename Spec::value_type>()) } -> std::same_as<typename Spec::internal_value_type>;
+  { spec.embed_operator(std::declval<typename Spec::operator_type>()) } -> std::same_as<typename Spec::internal_operator_type>;
 };
-template<class T, class U, class Op, class E, class Mapping, class Composition, class Id> requires IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
+template<class T, class U, class InternalT, class InternalU, class Op, class E, class Mapping, class Composition, class Id, class Extract, class EmbedValue, class EmbedOperator> requires IsValidLazySegmentSpecFunctors<Op, E, Mapping, Composition, Id> class LazySegmentSpec {
   [[no_unique_address]] mutable Op op_func;
   [[no_unique_address]] mutable E e_func;
   [[no_unique_address]] mutable Mapping mapping_func;
   [[no_unique_address]] mutable Composition composition_func;
   [[no_unique_address]] mutable Id id_func;
+  [[no_unique_address]] mutable Extract extract_func;
+  [[no_unique_address]] mutable EmbedValue embed_value_func;
+  [[no_unique_address]] mutable EmbedOperator embed_operator_func;
 public:
   using value_type = T;
   using operator_type = U;
+  using internal_value_type = InternalT;
+  using internal_operator_type = InternalU;
   constexpr LazySegmentSpec() = default;
-  constexpr LazySegmentSpec(const Op& op, const E& e, const Mapping& mapping, const Composition& composition, const Id& id) : op_func(op), e_func(e), mapping_func(mapping), composition_func(composition), id_func(id) {}
-  constexpr value_type op(const value_type& a, const value_type& b) const { return static_cast<value_type>(std::invoke(op_func, a, b)); }
-  constexpr value_type e() const { return static_cast<value_type>(std::invoke(e_func)); }
-  constexpr value_type mapping(const operator_type& f, const value_type& x) const { return static_cast<value_type>(std::invoke(mapping_func, f, x)); }
-  constexpr operator_type composition(const operator_type& f, const operator_type& g) const { return static_cast<operator_type>(std::invoke(composition_func, f, g)); }
-  constexpr operator_type id() const { return static_cast<operator_type>(std::invoke(id_func)); }
+  constexpr LazySegmentSpec(const Op& op, const E& e, const Mapping& mapping, const Composition& composition, const Id& id, const Extract& extract, const EmbedValue& embed_value, const EmbedOperator& embed_operator) : op_func(op), e_func(e), mapping_func(mapping), composition_func(composition), id_func(id), extract_func(extract), embed_value_func(embed_value), embed_operator_func(embed_operator) {}
+  constexpr internal_value_type op(const internal_value_type& a, const internal_value_type& b) const { return static_cast<internal_value_type>(std::invoke(op_func, a, b)); }
+  constexpr internal_value_type e() const { return static_cast<internal_value_type>(std::invoke(e_func)); }
+  constexpr internal_value_type mapping(const internal_operator_type& f, const internal_value_type& x) const { return static_cast<internal_value_type>(std::invoke(mapping_func, f, x)); }
+  constexpr internal_operator_type composition(const internal_operator_type& f, const internal_operator_type& g) const { return static_cast<internal_operator_type>(std::invoke(composition_func, f, g)); }
+  constexpr internal_operator_type id() const { return static_cast<internal_operator_type>(std::invoke(id_func)); }
+  constexpr value_type extract(const internal_value_type& x) const { return static_cast<value_type>(std::invoke(extract_func, x)); }
+  constexpr internal_value_type embed_value(const value_type& x) const { return static_cast<internal_value_type>(std::invoke(embed_value_func, x)); }
+  constexpr internal_operator_type embed_operator(const operator_type& x) const { return static_cast<internal_operator_type>(std::invoke(embed_operator_func, x)); }
 };
 }
-template<class T, class U, class Op, class E, class Mapping, class Composition, class Id> constexpr internal::LazySegmentSpec<T, U, Op, E, Mapping, Composition, Id> MakeLazySegmentSpec(const Op& op = Op(), const E& e = E(), const Mapping& mapping = Mapping(), const Composition& composition = Composition(), const Id& id = Id()) { return {op, e, mapping, composition, id}; }
+template<class T, class U, class InternalT = T, class InternalU = U, class Op, class E, class Mapping, class Composition, class Id, class Extract = Identity, class EmbedValue = Identity, class EmbedOperator = Identity> constexpr auto MakeLazySegmentSpec(const Op& op = Op(), const E& e = E(), const Mapping& mapping = Mapping(), const Composition& composition = Composition(), const Id& id = Id(), const Extract& extract = Extract(), const EmbedValue& embed_value = EmbedValue(), const EmbedOperator& embed_operator = EmbedOperator()) { return internal::LazySegmentSpec<T, U, InternalT, InternalU, Op, E, Mapping, Composition, Id, Extract, EmbedValue, EmbedOperator>{op, e, mapping, composition, id, extract, embed_value, embed_operator}; }
 namespace segment_specs {
 template<class T> class RangeAddRangeMin : public decltype(MakeLazySegmentSpec<T, T>(Min, []() -> T { return std::numeric_limits<T>::max(); }, Plus, Plus, []() -> T { return static_cast<T>(0); })) {};
 template<class T> class RangeAddRangeMax : public decltype(MakeLazySegmentSpec<T, T>(Max, []() -> T { return std::numeric_limits<T>::min(); }, Plus, Plus, []() -> T { return static_cast<T>(0); })) {};
-template<class T> class RangeAddRangeSum : public decltype(MakeLazySegmentSpec<std::pair<T, u32>, T>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{x.first + f * static_cast<T>(x.second), x.second}; }, Plus, []() -> T { return static_cast<T>(0); })) {};
+template<class T> class RangeAddRangeSum : public decltype(MakeLazySegmentSpec<T, T, std::pair<T, u32>, T>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{x.first + f * static_cast<T>(x.second), x.second}; }, Plus, []() -> T { return static_cast<T>(0); }, [](const std::pair<T, u32>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, u32> { return {x, 1}; }, [](const T& x) -> T { return x; })) {};
 template<class T> class RangeSetRangeMin : public decltype(MakeLazySegmentSpec<T, std::optional<T>>(Min, []() -> T { return std::numeric_limits<T>::max(); }, [](const std::optional<T>& f, const T& x) { return f ? *f : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })) {};
 template<class T> class RangeSetRangeMax : public decltype(MakeLazySegmentSpec<T, std::optional<T>>(Max, []() -> T { return std::numeric_limits<T>::min(); }, [](const std::optional<T>& f, const T& x) { return f ? *f : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })) {};
-template<class T> class RangeSetRangeSum : public decltype(MakeLazySegmentSpec<std::pair<T, u32>, std::optional<T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::optional<T>& f, const std::pair<T, u32>& x) { return f ? std::pair<T, u32>{(*f) * static_cast<T>(x.second), x.second} : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })) {};
-template<class T> class RangeXorRangeXor : public decltype(MakeLazySegmentSpec<std::pair<T, bool>, T>([](const std::pair<T, bool>& a, const std::pair<T, bool>& b) { return std::pair<T, u32>{a.first ^ b.first, a.second ^ b.second}; }, []() -> std::pair<T, bool> { return {static_cast<T>(0), false}; }, [](const T& f, const std::pair<T, bool>& x) { return std::pair<T, bool>{static_cast<T>(x.first ^ (x.second ? f : static_cast<T>(0))), x.second}; }, Xor, []() -> T { return static_cast<T>(0); })) {};
+template<class T> class RangeSetRangeSum : public decltype(MakeLazySegmentSpec<T, T, std::pair<T, u32>, std::optional<T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::optional<T>& f, const std::pair<T, u32>& x) { return f ? std::pair<T, u32>{(*f) * static_cast<T>(x.second), x.second} : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; }, [](const std::pair<T, u32>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, u32> { return {x, 1}; }, [](const T& x) -> std::optional<T> { return x; })) {};
+template<class T> class RangeXorRangeXor : public decltype(MakeLazySegmentSpec<T, T, std::pair<T, bool>, T>([](const std::pair<T, bool>& a, const std::pair<T, bool>& b) { return std::pair<T, bool>{a.first ^ b.first, a.second ^ b.second}; }, []() -> std::pair<T, bool> { return {static_cast<T>(0), false}; }, [](const T& f, const std::pair<T, bool>& x) { return std::pair<T, bool>{static_cast<T>(x.first ^ (x.second ? f : static_cast<T>(0))), x.second}; }, Xor, []() -> T { return static_cast<T>(0); }, [](const std::pair<T, bool>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, bool> { return {x, true}; }, [](const T& x) -> T { return x; })) {};
 template<class T> class RangeOrRangeOr : public decltype(MakeLazySegmentSpec<T, T>(Or, []() -> T { return static_cast<T>(0); }, Or, Or, []() -> T { return static_cast<T>(0); })) {};
 template<class T> class RangeAndRangeAnd : public decltype(MakeLazySegmentSpec<T, T>(And, []() -> T { return ~static_cast<T>(0); }, And, And, []() -> T { return ~static_cast<T>(0); })) {};
-template<class T> class RangeAffineRangeSum : public decltype(MakeLazySegmentSpec<std::pair<T, u32>, std::pair<T, T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::pair<T, T>& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{f.first * x.first + f.second * static_cast<T>(x.second), x.second}; }, [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{f.first * g.first, f.first * g.second + f.second}; }, []() -> std::pair<T, T> { return {static_cast<T>(1), static_cast<T>(0)}; })) {};
+template<class T> class RangeAffineRangeSum : public decltype(MakeLazySegmentSpec<T, std::pair<T, T>, std::pair<T, u32>, std::pair<T, T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::pair<T, T>& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{f.first * x.first + f.second * static_cast<T>(x.second), x.second}; }, [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{f.first * g.first, f.first * g.second + f.second}; }, []() -> std::pair<T, T> { return {static_cast<T>(1), static_cast<T>(0)}; }, [](const std::pair<T, u32>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, u32> { return {x, 1}; }, [](const std::pair<T, T>& x) -> std::pair<T, T> { return x; })) {};
 }
 template<class Spec> requires internal::IsLazySegmentSpecImplemented<Spec> class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;
 public:
   using value_type = typename Spec::value_type;
   using operator_type = typename Spec::operator_type;
+  using internal_value_type = typename Spec::internal_value_type;
+  using internal_operator_type = typename Spec::internal_operator_type;
   using size_type = u32;
   using difference_type = i32;
 private:
   size_type n;
   size_type sz;
   size_type log;
-  Vec<value_type> tree;
-  Vec<operator_type> lazy;
+  Vec<internal_value_type> tree;
+  Vec<internal_operator_type> lazy;
   void update(size_type k) { tree[k] = spec.op(tree[2 * k], tree[2 * k + 1]); }
-  void all_apply(size_type k, const operator_type& f) {
+  void all_apply(size_type k, const internal_operator_type& f) {
     tree[k] = spec.mapping(f, tree[k]);
     if(k < sz) lazy[k] = spec.composition(f, lazy[k]);
   }
@@ -101,12 +116,13 @@ public:
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
       auto it = first;
-      for(size_type i = 0; i < n; ++i, ++it) tree[sz + i] = *it;
+      for(size_type i = 0; i < n; ++i, ++it) tree[sz + i] = spec.embed_value(*it);
       for(size_type i = sz - 1; i >= 1; --i) update(i);
     }
   }
   constexpr LazySegmentTree(size_type n, const value_type& value, Spec spec = Spec()) : LazySegmentTree(n, spec) {
-    for(size_type i = 0; i < n; ++i) tree[sz + i] = value;
+    internal_value_type embedded = spec.embed_value(value);
+    for(size_type i = 0; i < n; ++i) tree[sz + i] = embedded;
     for(size_type i = sz - 1; i >= 1; --i) update(i);
   }
   constexpr LazySegmentTree(std::initializer_list<value_type> init, Spec spec = Spec()) : LazySegmentTree(init.begin(), init.end(), spec) {}
@@ -123,7 +139,7 @@ public:
   }
   constexpr bool empty() const { return n == 0; }
   constexpr size_type size() const { return n; }
-  constexpr void resize(size_type n) { resize(n, spec.e()); }
+  constexpr void resize(size_type n) { resize(n, spec.extract(spec.e())); }
   constexpr void resize(size_type n, const value_type& c) {
     Vec<value_type> tmp;
     tmp.reserve(this->n);
@@ -139,7 +155,7 @@ public:
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
       auto it = first;
-      for(size_type i = 0; i < n; ++i, ++it) tree[sz + i] = *it;
+      for(size_type i = 0; i < n; ++i, ++it) tree[sz + i] = spec.embed_value(*it);
       for(size_type i = sz - 1; i >= 1; --i) update(i);
     } else {
       tree.clear();
@@ -153,7 +169,8 @@ public:
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
-      for(size_type i = 0; i < n; ++i) tree[sz + i] = u;
+      internal_value_type embedded = spec.embed_value(u);
+      for(size_type i = 0; i < n; ++i) tree[sz + i] = embedded;
       for(size_type i = sz - 1; i >= 1; --i) update(i);
     } else {
       tree.clear();
@@ -176,46 +193,46 @@ public:
 #endif
     p += sz;
     for(size_type i = log; i >= 1; --i) push(p >> i);
-    tree[p] = x;
+    tree[p] = spec.embed_value(x);
     for(size_type i = 1; i <= log; ++i) update(p >> i);
   }
-  constexpr const value_type& get(size_type p) {
+  constexpr value_type get(size_type p) {
 #ifndef NDEBUG
     if(p >= n) throw Exception("LazySegmentTree::get: index ", p, " is out of range [0, ", n, ")");
 #endif
     p += sz;
     for(size_type i = log; i >= 1; --i) push(p >> i);
-    return tree[p];
+    return spec.extract(tree[p]);
   }
-  constexpr const value_type& operator[](size_type p) { return get(p); }
+  constexpr value_type operator[](size_type p) { return get(p); }
   constexpr value_type prod(size_type l, size_type r) {
 #ifndef NDEBUG
     if(l > r || r > n) throw Exception("LazySegmentTree::prod: invalid range [", l, ", ", r, ") with size ", n);
 #endif
-    if(l == r) return spec.e();
+    if(l == r) return spec.extract(spec.e());
     l += sz;
     r += sz;
     for(size_type i = log; i >= 1; --i) {
       if(((l >> i) << i) != l) push(l >> i);
       if(((r >> i) << i) != r) push((r - 1) >> i);
     }
-    value_type sml = spec.e(), smr = spec.e();
+    internal_value_type sml = spec.e(), smr = spec.e();
     while(l < r) {
       if(l & 1) sml = spec.op(sml, tree[l++]);
       if(r & 1) smr = spec.op(tree[--r], smr);
       l >>= 1;
       r >>= 1;
     }
-    return spec.op(sml, smr);
+    return spec.extract(spec.op(sml, smr));
   }
-  constexpr value_type all_prod() const { return n > 0 ? tree[1] : spec.e(); }
+  constexpr value_type all_prod() const { return n > 0 ? spec.extract(tree[1]) : spec.extract(spec.e()); }
   constexpr void apply(size_type p, const operator_type& f) {
 #ifndef NDEBUG
     if(p >= n) throw Exception("LazySegmentTree::apply: index ", p, " is out of range [0, ", n, ")");
 #endif
     p += sz;
     for(size_type i = log; i >= 1; --i) push(p >> i);
-    tree[p] = spec.mapping(f, tree[p]);
+    tree[p] = spec.mapping(spec.embed_operator(f), tree[p]);
     for(size_type i = 1; i <= log; ++i) update(p >> i);
   }
   constexpr void apply(size_type l, size_type r, const operator_type& f) {
@@ -229,11 +246,12 @@ public:
       if(((l >> i) << i) != l) push(l >> i);
       if(((r >> i) << i) != r) push((r - 1) >> i);
     }
+    internal_operator_type embedded_f = spec.embed_operator(f);
     {
       size_type l2 = l, r2 = r;
       while(l < r) {
-        if(l & 1) all_apply(l++, f);
-        if(r & 1) all_apply(--r, f);
+        if(l & 1) all_apply(l++, embedded_f);
+        if(r & 1) all_apply(--r, embedded_f);
         l >>= 1;
         r >>= 1;
       }
@@ -248,19 +266,19 @@ public:
   template<class F> constexpr size_type max_right(size_type l, F f) {
 #ifndef NDEBUG
     if(l > n) throw Exception("LazySegmentTree::max_right: index ", l, " is out of range [0, ", n, "]");
-    if(!std::invoke(f, spec.e())) throw Exception("LazySegmentTree::max_right: predicate must be true for identity");
+    if(!std::invoke(f, spec.extract(spec.e()))) throw Exception("LazySegmentTree::max_right: predicate must be true for identity");
 #endif
     if(l == n) return n;
     l += sz;
     for(size_type i = log; i >= 1; --i) push(l >> i);
-    value_type sm = spec.e();
+    internal_value_type sm = spec.e();
     do {
       while(l % 2 == 0) l >>= 1;
-      if(!std::invoke(f, spec.op(sm, tree[l]))) {
+      if(!std::invoke(f, spec.extract(spec.op(sm, tree[l])))) {
         while(l < sz) {
           push(l);
           l = (2 * l);
-          if(std::invoke(f, spec.op(sm, tree[l]))) {
+          if(std::invoke(f, spec.extract(spec.op(sm, tree[l])))) {
             sm = spec.op(sm, tree[l]);
             l++;
           }
@@ -275,20 +293,20 @@ public:
   template<class F> constexpr size_type min_left(size_type r, F f) {
 #ifndef NDEBUG
     if(r > n) throw Exception("LazySegmentTree::min_left: index ", r, " is out of range [0, ", n, "]");
-    if(!std::invoke(f, spec.e())) throw Exception("LazySegmentTree::min_left: predicate must be true for identity");
+    if(!std::invoke(f, spec.extract(spec.e()))) throw Exception("LazySegmentTree::min_left: predicate must be true for identity");
 #endif
     if(r == 0) return 0;
     r += sz;
     for(size_type i = log; i >= 1; --i) push((r - 1) >> i);
-    value_type sm = spec.e();
+    internal_value_type sm = spec.e();
     do {
       r--;
       while(r > 1 && (r % 2)) r >>= 1;
-      if(!std::invoke(f, spec.op(tree[r], sm))) {
+      if(!std::invoke(f, spec.extract(spec.op(tree[r], sm)))) {
         while(r < sz) {
           push(r);
           r = (2 * r + 1);
-          if(std::invoke(f, spec.op(tree[r], sm))) {
+          if(std::invoke(f, spec.extract(spec.op(tree[r], sm)))) {
             sm = spec.op(tree[r], sm);
             r--;
           }

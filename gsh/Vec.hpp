@@ -149,7 +149,7 @@ public:
     }
   }
   constexpr u32 capacity() const noexcept { return cap; }
-  [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
+  constexpr bool empty() const noexcept { return len == 0; }
   constexpr void reserve(const u32 n) {
     if(n > cap) {
       T* new_ptr = traits::allocate(alloc, n);

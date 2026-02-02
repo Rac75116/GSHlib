@@ -46,7 +46,7 @@ public:
         // TODO
     }
     */
-  [[nodiscard]] constexpr bool empty() const noexcept { return bit.empty(); }
+  constexpr bool empty() const noexcept { return bit.empty(); }
   constexpr value_type operator[](u32 n) const {
     value_type res = bit[n];
     if(!(n & 1)) return res;

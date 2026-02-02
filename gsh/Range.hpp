@@ -78,23 +78,23 @@ public:
   constexpr auto cend() const { return std::ranges::cend(derived()); }
   constexpr auto crbegin() const { return std::reverse_iterator(cend()); }
   constexpr auto crend() const { return std::reverse_iterator(cbegin()); }
-  constexpr reference front() { return *begin(); }
-  constexpr const_reference front() const { return *cbegin(); }
-  constexpr reference back() { return *rbegin(); }
-  constexpr const_reference back() const { return *rbegin(); }
-  constexpr reference operator[](u32 n) {
+  constexpr decltype(auto) front() { return *begin(); }
+  constexpr decltype(auto) front() const { return *cbegin(); }
+  constexpr decltype(auto) back() { return *rbegin(); }
+  constexpr decltype(auto) back() const { return *rbegin(); }
+  constexpr decltype(auto) operator[](u32 n) {
     check_index_on_debug(n);
     return *std::ranges::next(begin(), n);
   }
-  constexpr const_reference operator[](u32 n) const {
+  constexpr decltype(auto) operator[](u32 n) const {
     check_index_on_debug(n);
     return *std::ranges::next(begin(), n);
   }
-  constexpr reference at(u32 n) {
+  constexpr decltype(auto) at(u32 n) {
     check_index(n);
     return *std::ranges::next(begin(), n);
   }
-  constexpr const_reference at(u32 n) const {
+  constexpr decltype(auto) at(u32 n) const {
     check_index(n);
     return *std::ranges::next(begin(), n);
   }
@@ -102,15 +102,10 @@ public:
   template<std::ranges::input_range R, class... Args> static constexpr derived_type from_range(R&& r, Args&&... args) { return derived_type(std::ranges::begin(r), std::ranges::end(r), std::forward<Args>(args)...); }
   template<std::ranges::input_range R> constexpr void assign_range(R&& r) { derived().assign(std::ranges::begin(r), std::ranges::end(r)); }
   constexpr void assign_range(std::initializer_list<value_type> init) { derived().assign(init); }
-  constexpr derived_type copy() const& { return derived(); }
-  constexpr derived_type copy() & { return derived(); }
-  constexpr derived_type copy() && { return std::move(derived()); }
+  constexpr derived_type copy() const { return derived(); }
   constexpr vec_type as_vec() const { return vec_type::from_range(derived()); };
-  constexpr vec_type as_vec() { return vec_type::from_range(derived()); };
   constexpr auto as_set() const { return std::set(begin(), end()); }
-  constexpr auto as_set() { return std::set(begin(), end()); }
   constexpr auto as_multiset() const { return std::multiset(begin(), end()); }
-  constexpr auto as_multiset() { return std::multiset(begin(), end()); }
   constexpr auto slice() { return Subrange(begin(), end()); }
   constexpr auto slice(u32 start) { return Subrange(std::ranges::next(begin(), start), end()); }
   constexpr auto slice(u32 start, u32 end) { return Subrange(std::ranges::next(begin(), start), std::ranges::next(begin(), end)); }
@@ -121,34 +116,9 @@ public:
   constexpr auto drop(u32 n) const { return slice(n); }
   constexpr auto take(u32 n) { return Subrange(begin(), std::ranges::next(begin(), n)); }
   constexpr auto take(u32 n) const { return Subrange(begin(), std::ranges::next(begin(), n)); }
-  template<class T> static constexpr derived_type iota(T&& end) { return from_range(std::views::iota(std::decay_t<T>(), end)); }
-  template<class T, class U> static constexpr derived_type iota(T&& start, U&& end) {
-    using ct = std::common_type_t<T, U>;
-    return from_range(std::views::iota(static_cast<ct>(start), static_cast<ct>(end)));
-  }
-  template<class Proj> requires std::ranges::input_range<derived_type> constexpr void iterate(Proj&& proj = {}) {
-    auto itr = begin();
-    auto sent = end();
-    for(u32 idx = 0; itr != sent; ++itr, ++idx) {
-      if constexpr(requires { std::invoke(proj, *itr, idx, *this); }) std::invoke(proj, *itr, idx, *this);
-      else if constexpr(requires { std::invoke(proj, *itr, idx); }) std::invoke(proj, *itr, idx);
-      else if constexpr(requires { std::invoke(proj, *itr); }) std::invoke(proj, *itr);
-      else proj();
-    }
-  }
-  template<class Proj> requires std::ranges::input_range<derived_type> constexpr void iterate(Proj&& proj = {}) const {
-    auto itr = begin();
-    auto sent = end();
-    for(u32 idx = 0; itr != sent; ++itr, ++idx) {
-      if constexpr(requires { std::invoke(proj, *itr, idx, *this); }) std::invoke(proj, *itr, idx, *this);
-      else if constexpr(requires { std::invoke(proj, *itr, idx); }) std::invoke(proj, *itr, idx);
-      else if constexpr(requires { std::invoke(proj, *itr); }) std::invoke(proj, *itr);
-      else std::invoke(proj);
-    }
-  }
-  template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred> requires std::ranges::input_range<derived_type> [[nodiscard]] constexpr auto filter_view(Pred&& pred = {}) const { return derived() | std::views::filter(std::forward<Pred>(pred)); }
-  template<std::invocable<value_type> Proj> requires std::ranges::input_range<derived_type> [[nodiscard]] constexpr auto transform_view(Proj&& proj = {}) const { return derived() | std::views::transform(std::forward<Proj>(proj)); }
-  template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred> requires std::ranges::input_range<derived_type> [[nodiscard]] constexpr auto erase_if(Pred&& pred = {}) {
+  template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred> requires std::ranges::input_range<derived_type> constexpr auto filter_view(Pred&& pred = {}) const { return derived() | std::views::filter(std::forward<Pred>(pred)); }
+  template<std::invocable<value_type> Proj> requires std::ranges::input_range<derived_type> constexpr auto transform_view(Proj&& proj = {}) const { return derived() | std::views::transform(std::forward<Proj>(proj)); }
+  template<std::indirect_unary_predicate<std::ranges::iterator_t<derived_type>> Pred> requires std::ranges::input_range<derived_type> constexpr auto erase_if(Pred&& pred = {}) {
     auto view = derived().filter([&](auto&& x) { return !std::invoke(pred, x); });
     derived() = derived_type(std::ranges::begin(view), std::ranges::end(view));
   }
@@ -239,14 +209,14 @@ public:
     return res;
   }
   void reverse() requires std::ranges::bidirectional_range<derived_type> && std::permutable<std::ranges::iterator_t<derived_type>> { internal::ReverseImpl(derived()); }
-  [[nodiscard]] auto reversed() const requires std::permutable<std::ranges::iterator_t<vec_type>> {
+  auto reversed() const requires std::permutable<std::ranges::iterator_t<vec_type>> {
     auto res = as_vec();
     internal::ReverseImpl(res);
     return res;
   }
-  [[nodiscard]] auto reversed_view() const requires std::ranges::view<derived_type> && std::ranges::bidirectional_range<derived_type> { return derived() | std::views::reverse; }
+  auto reversed_view() const requires std::ranges::view<derived_type> && std::ranges::bidirectional_range<derived_type> { return derived() | std::views::reverse; }
   template<class Proj = Identity, class Comp = Less> requires std::ranges::forward_range<derived_type> && std::sortable<std::ranges::iterator_t<derived_type>, Comp, Proj> constexpr void sort(Comp&& comp = {}, Proj&& proj = {}) { internal::SortImpl(derived(), std::forward<Comp>(comp), std::forward<Proj>(proj)); }
-  template<class Proj = Identity, class Comp = Less> requires std::sortable<std::ranges::iterator_t<vec_type>, Comp, Proj> [[nodiscard]] constexpr auto sorted(Comp&& comp = {}, Proj&& proj = {}) const {
+  template<class Proj = Identity, class Comp = Less> requires std::sortable<std::ranges::iterator_t<vec_type>, Comp, Proj> constexpr auto sorted(Comp&& comp = {}, Proj&& proj = {}) const {
     auto res = as_vec();
     internal::SortImpl(res, std::forward<Comp>(comp), std::forward<Proj>(proj));
     return res;
@@ -352,7 +322,7 @@ public:
   template<std::ranges::borrowed_range R> requires internal::convertible_to_non_slicing<std::ranges::iterator_t<R>, I> && std::convertible_to<std::ranges::sentinel_t<R>, S> constexpr Subrange(R&& r, std::make_unsigned_t<std::iter_difference_t<I>> n) requires (K == RangeKind::Sized) : Subrange{std::ranges::begin(r), std::ranges::end(r), n} {}
   template<internal::difference_from<Subrange> PairLike> requires internal::pair_like_convertible_from<PairLike, const I&, const S&> constexpr operator PairLike() const { return PairLike(itr, sent); }
   constexpr I begin() const requires std::copyable<I> { return itr; }
-  [[nodiscard]] constexpr I begin() requires (!std::copyable<I>) { return std::move(itr); }
+  constexpr I begin() requires (!std::copyable<I>) { return std::move(itr); }
   constexpr S end() const { return sent; }
   constexpr bool empty() const { return itr == sent; }
   constexpr u32 size() const requires (K == RangeKind::Sized) { return static_cast<u32>(std::ranges::distance(itr, sent)); }
@@ -360,16 +330,16 @@ public:
   constexpr I data() const requires (std::is_pointer_v<I> && !std::copyable<I>) { return std::move(itr); }
   constexpr decltype(auto) operator[](const std::iter_difference_t<I>& n) { return *std::ranges::next(begin(), n); }
   constexpr decltype(auto) operator[](const std::iter_difference_t<I>& n) const { return *std::ranges::next(begin(), n); }
-  [[nodiscard]] constexpr Subrange next(std::iter_difference_t<I> n = 1) const& requires std::forward_iterator<I> {
+  constexpr Subrange next(std::iter_difference_t<I> n = 1) const& requires std::forward_iterator<I> {
     auto tmp = *this;
     tmp.advance(n);
     return tmp;
   }
-  [[nodiscard]] constexpr Subrange next(std::iter_difference_t<I> n = 1) && {
+  constexpr Subrange next(std::iter_difference_t<I> n = 1) && {
     advance(n);
     return std::move(*this);
   }
-  [[nodiscard]] constexpr Subrange prev(std::iter_difference_t<I> n = 1) const requires std::bidirectional_iterator<I> {
+  constexpr Subrange prev(std::iter_difference_t<I> n = 1) const requires std::bidirectional_iterator<I> {
     auto tmp = *this;
     tmp.advance(-n);
     return tmp;

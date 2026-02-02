@@ -11,7 +11,7 @@ template<class D> class UnionFindImpl {
   const D& derived() const noexcept { return static_cast<const D&>(*this); }
 public:
   constexpr u32 size() const noexcept { return derived().parent.size(); }
-  [[nodiscard]] constexpr bool empty() const noexcept { return derived().parent.empty(); }
+  constexpr bool empty() const noexcept { return derived().parent.empty(); }
   constexpr u32 leader(u32 n) {
 #ifndef NDEBUG
     if(n >= derived().parent.size()) throw gsh::Exception("gsh::internal::UnionFindImpl::leader / The index is out of range. ( n=", n, ", size=", derived().parent.size(), " )");

@@ -51,7 +51,7 @@ public:
 };
 class Identity {
 public:
-  template<class T> [[nodiscard]] GSH_INTERNAL_INLINE constexpr T&& operator()(T&& t) const noexcept { return std::forward<T>(t); }
+  template<class T> GSH_INTERNAL_INLINE constexpr T&& operator()(T&& t) const noexcept { return std::forward<T>(t); }
   using is_transparent = void;
 };
 template<class F> class SwapArgs : public F {

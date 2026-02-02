@@ -1,7 +1,11 @@
 #pragma once
+#include "Formatter.hpp"
 #include "InOut.hpp"
 #include "TypeDef.hpp"
+#include "internal/UtilMacro.hpp"
+#include <cstdlib>
 #include <source_location>
+#include <type_traits>
 namespace gsh { namespace internal {
 [[noreturn]] inline void AssertPrint(const c8* message, std::source_location loc) {
   BasicWriter<2048> w(2);

@@ -1,7 +1,10 @@
 #pragma once
+#include "Exception.hpp"
 #include "Memory.hpp"
+#include "TypeDef.hpp"
 #include "Vec.hpp"
 #include <concepts>
+#include <iterator>
 #include <ranges>
 namespace gsh {
 class FunctionalGraph {

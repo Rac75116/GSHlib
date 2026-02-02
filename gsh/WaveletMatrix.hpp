@@ -1,19 +1,17 @@
 #pragma once
-#include "Algorithm.hpp"
+#include "BitVector.hpp"
 #include "Exception.hpp"
 #include "Heap.hpp"
 #include "IndexableDict.hpp"
+#include "TypeDef.hpp"
 #include "Vec.hpp"
-#include <algorithm>
 #include <bit>
 #include <concepts>
 #include <initializer_list>
-#include <limits>
+#include <iterator>
 #include <optional>
-#include <ranges>
 #include <tuple>
 #include <utility>
-#include <vector>
 namespace gsh {
 template<class T> requires std::unsigned_integral<T> class WaveletMatrix {
 public:

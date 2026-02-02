@@ -3,11 +3,16 @@
 #include "Exception.hpp"
 #include "Functional.hpp"
 #include "Numeric.hpp"
+#include "Range.hpp"
+#include "TypeDef.hpp"
 #include "Vec.hpp"
 #include <bit>
 #include <concepts>
+#include <initializer_list>
 #include <iterator>
 #include <limits>
+#include <type_traits>
+#include <utility>
 namespace gsh {
 namespace internal {
 template<class Op, class Id> concept IsValidSegmentSpec = std::invocable<Id> && requires(Op op, const std::invoke_result_t<Id>& a, const std::invoke_result_t<Id>& b) {

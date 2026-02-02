@@ -1,6 +1,12 @@
 #pragma once
 #include "BitVector.hpp"
+#include "Exception.hpp"
+#include "TypeDef.hpp"
+#include "Vec.hpp"
 #include <bit>
+#include <memory>
+#include <string>
+#include <utility>
 namespace gsh {
 class IndexableDict {
   static constexpr u32 word_bits = 64;

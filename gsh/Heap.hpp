@@ -3,6 +3,11 @@
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include "Vec.hpp"
+#include "internal/UtilMacro.hpp"
+#include <bit>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
 namespace gsh {
 template<class T, class Comp = Less, class Alloc = std::allocator<T>> class Heap {
   Vec<T, Alloc> data;

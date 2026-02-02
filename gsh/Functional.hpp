@@ -6,11 +6,12 @@
 #include <bit>
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <iterator>
+#include <ranges>
 #include <type_traits>
-#include <typeindex>
 #include <utility>
 #include <variant>
 namespace gsh {

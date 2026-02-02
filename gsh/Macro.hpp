@@ -1,10 +1,10 @@
 #pragma once
-#include "Formatter.hpp"
 #include "Parser.hpp"
-#include "Range.hpp"
+#include "TypeDef.hpp"
+#include "internal/UtilMacro.hpp"
 #include <cstdlib>
-#include <ranges>
 #include <tuple>
+#include <utility>
 #define NMIN(T) (std::numeric_limits<T>::lowest())
 #define NMAX(T) (std::numeric_limits<T>::max())
 #define GSH_INTERNAL_ARGS0() ()

@@ -2,6 +2,8 @@
 #include "Functional.hpp"
 #include "Modint.hpp"
 #include "Random.hpp"
+#include "TypeDef.hpp"
+#include "Util.hpp"
 #include "Vec.hpp"
 #include <array>
 #include <limits>

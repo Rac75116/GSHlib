@@ -1,12 +1,17 @@
 #pragma once
-#include "Algorithm.hpp"
+#include "Algorithm.hpp" // IWYU pragma: keep
 #include "Int128.hpp"
 #include "Modint.hpp"
 #include "Numeric.hpp"
 #include "Random.hpp"
+#include "Range.hpp"
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include "Vec.hpp"
+#include "internal/UtilMacro.hpp"
+#include <bit>
+#include <cmath>
+#include <type_traits>
 namespace gsh {
 namespace internal {
 struct IsPrime8 {

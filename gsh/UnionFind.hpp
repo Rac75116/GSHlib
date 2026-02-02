@@ -3,6 +3,7 @@
 #include "Functional.hpp"
 #include "TypeDef.hpp"
 #include "Vec.hpp"
+#include "internal/UtilMacro.hpp"
 namespace gsh {
 namespace internal {
 template<class D> class UnionFindImpl {

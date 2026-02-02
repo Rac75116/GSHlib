@@ -1,16 +1,21 @@
 #pragma once
-#include "Algorithm.hpp"
 #include "Exception.hpp"
+#include "Functional.hpp"
 #include "Heap.hpp"
 #include "Memory.hpp"
+#include "Range.hpp"
+#include "TypeDef.hpp"
 #include "UnionFind.hpp"
+#include "Vec.hpp"
 #include <algorithm>
+#include <cstddef>
 #include <iterator>
 #include <limits>
-#include <numeric>
+#include <ranges>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 namespace gsh {
 template<class W = std::monostate> class Edge {
   u32 t = 0;

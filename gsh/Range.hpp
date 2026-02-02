@@ -3,12 +3,18 @@
 #include "Functional.hpp"
 #include "Memory.hpp"
 #include "TypeDef.hpp"
-#include "internal/Operation.hpp"
+#include "internal/UtilMacro.hpp"
 #include "internal/VecFwd.hpp"
 #include <algorithm>
 #include <cctype>
+#include <concepts>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
 #include <ranges>
 #include <set>
+#include <tuple>
+#include <type_traits>
 namespace gsh {
 enum class RangeKind { Sized, Unsized };
 namespace internal {

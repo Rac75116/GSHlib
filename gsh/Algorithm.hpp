@@ -1,11 +1,18 @@
 #pragma once
+#include "Exception.hpp"
 #include "Functional.hpp"
+#include "Int128.hpp"
 #include "Memory.hpp"
 #include "Range.hpp"
 #include "TypeDef.hpp"
 #include "Vec.hpp"
+#include "internal/UtilMacro.hpp"
 #include <algorithm>
-#include <cmath>
+#include <concepts>
+#include <iterator>
+#include <limits>
+#include <ranges>
+#include <type_traits>
 namespace gsh {
 [[maybe_unused]] constexpr struct MinFunc {
   template<class T, class U> constexpr std::common_type_t<T, U> operator()(const T& a, const U& b) const { return a < b ? a : b; }

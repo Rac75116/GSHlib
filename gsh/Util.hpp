@@ -1,11 +1,9 @@
 #pragma once
 #include "TypeDef.hpp"
-#include "internal/Operation.hpp"
 #include "internal/UtilMacro.hpp"
 #include <bit>
 #include <cstring>
 #include <type_traits>
-#include <utility>
 namespace gsh {
 [[noreturn]] inline void Unreachable() {
 #if defined __GNUC__ || defined __clang__

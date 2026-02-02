@@ -1,10 +1,13 @@
 #pragma once
-#include "Functional.hpp"
+#include "Int128.hpp"
 #include "TypeDef.hpp"
 #include <bit>
+#include <concepts>
 #include <ctime>
+#include <iterator>
 #include <random>
 #include <ranges>
+#include <type_traits>
 namespace gsh {
 namespace internal {
 constexpr u64 Splitmix(u64 x) {

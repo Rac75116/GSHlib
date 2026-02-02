@@ -1,9 +1,10 @@
 #pragma once
 #include "Random.hpp"
-#include "Range.hpp"
 #include "TypeDef.hpp"
 #include <chrono>
 #include <cmath>
+#include <memory>
+#include <type_traits>
 namespace gsh {
 class ZeroTemp {
 public:

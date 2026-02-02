@@ -2,13 +2,14 @@
 #include "Exception.hpp"
 #include "Functional.hpp"
 #include "Range.hpp"
+#include "TypeDef.hpp"
 #include "Vec.hpp"
-#include <algorithm>
+#include "internal/UtilMacro.hpp"
 #include <bit>
 #include <concepts>
 #include <cstddef>
+#include <initializer_list>
 #include <iterator>
-#include <ranges>
 #include <type_traits>
 #include <utility>
 namespace gsh {

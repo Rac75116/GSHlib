@@ -1,8 +1,8 @@
 #pragma once
 #include "TypeDef.hpp"
-#include "Util.hpp"
-#include "internal/Operation.hpp"
-#include <compare>
+#include "internal/UtilMacro.hpp"
+#include <type_traits>
+#include <utility>
 namespace gsh {
 namespace internal {
 GSH_INTERNAL_INLINE constexpr std::pair<u64, u64> Divu128(u64 high, u64 low, u64 div) noexcept {

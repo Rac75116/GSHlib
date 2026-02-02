@@ -1,12 +1,14 @@
 #pragma once
 #include "Formatter.hpp"
-#include "Functional.hpp"
 #include "Parser.hpp"
 #include "TypeDef.hpp"
 #include "Util.hpp"
+#include "internal/UtilMacro.hpp"
+#include <concepts>
 #include <cstdlib>
 #include <cstring>
 #include <tuple>
+#include <type_traits>
 #include <unistd.h>
 #include <utility>
 #if defined(__linux__)

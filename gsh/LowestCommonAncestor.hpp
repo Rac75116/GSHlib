@@ -1,6 +1,9 @@
 #pragma once
+#include "Exception.hpp"
 #include "Memory.hpp"
 #include "SparseTable.hpp"
+#include "TypeDef.hpp"
+#include <iterator>
 #include <ranges>
 namespace gsh {
 class LowestCommonAncestor {

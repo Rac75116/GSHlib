@@ -1,10 +1,17 @@
 #pragma once
-#include "SegmentTree.hpp"
+#include "Algorithm.hpp"
+#include "Exception.hpp"
+#include "Functional.hpp"
+#include "Range.hpp"
+#include "TypeDef.hpp"
+#include "Vec.hpp"
 #include <bit>
 #include <concepts>
+#include <initializer_list>
 #include <iterator>
 #include <limits>
 #include <optional>
+#include <type_traits>
 #include <utility>
 namespace gsh {
 namespace internal {

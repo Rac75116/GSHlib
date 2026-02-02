@@ -3,9 +3,14 @@
 #include "Int128.hpp"
 #include "TypeDef.hpp"
 #include "Util.hpp"
+#include "internal/UtilMacro.hpp"
 #include <charconv>
+#include <concepts>
+#include <cstddef>
 #include <ranges>
+#include <system_error>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 namespace gsh {
 namespace io {

@@ -1,6 +1,9 @@
 #pragma once
-#include "Algorithm.hpp"
 #include "Memory.hpp"
+#include "TypeDef.hpp"
+#include "Vec.hpp"
+#include <algorithm>
+#include <ranges>
 namespace gsh {
 namespace internal {
 template<class V, class E> requires std::is_convertible_v<V, E> struct ReRootingNoOpPutEdge {

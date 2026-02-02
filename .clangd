@@ -4,24 +4,15 @@ If:
 CompileFlags:
     Add:
         - -std=gnu++23
-        - -O2
         - -Wall
         - -Wextra
-        - -Wno-unknown-pragmas
-        - -Wno-sign-compare
-        - -Wno-unqualified-std-cast-call
-        - -march=native
-        - -pipe
-        - -static
-        - -s
-        - --include-directory=C:\\Users\\tsout\\Desktop\\Projects\\Kyopro\\lib
-    Compiler: clang++
 
 Diagnostics:
-    UnusedIncludes: None
-
-InlayHints:
-    Enabled: false
+    UnusedIncludes: Strict
+    MissingIncludes: Strict
 
 Hover:
     ShowAKA: true
+
+Completion:
+    HeaderInsertion: IWYU

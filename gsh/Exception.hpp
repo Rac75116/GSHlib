@@ -1,5 +1,4 @@
 #pragma once
-#include "TypeDef.hpp"
 namespace gsh {
 class Exception {
   char str[512];

@@ -1,10 +1,10 @@
 #pragma once
 #include "Exception.hpp"
 #include "Range.hpp"
-#include "Str.hpp"
 #include "TypeDef.hpp"
-#include "Util.hpp"
-#include "internal/UtilMacro.hpp"
+#include <initializer_list>
+#include <iterator>
+#include <memory>
 namespace gsh {
 template<class T, class Alloc = std::allocator<T>> requires std::is_same_v<T, typename std::allocator_traits<Alloc>::value_type> && (!std::is_const_v<T>)class Vec : public ViewInterface<Vec<T, Alloc>, T> {
   using traits = std::allocator_traits<Alloc>;

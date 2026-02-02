@@ -2,6 +2,8 @@
 #include "Exception.hpp"
 #include "Int128.hpp"
 #include "TypeDef.hpp"
+#include "Util.hpp"
+#include "internal/UtilMacro.hpp"
 #include <bit>
 #include <limits>
 #include <type_traits>
@@ -240,7 +242,7 @@ public:
         auto u = t;
         for(u32 i = 0; i != S - 1; ++i) u = derived().mul(u, u);
         if(!derived().same(u, derived().one())) return derived().nan();
-        const auto base = [&]() GSH_INTERNAL_INLINE {
+        const auto base = [&]() GSH_INTERNAL_INLINE_LAMBDA {
           if(md % 3 == 2) return derived().raw(3);
           if(auto x = md % 5; x == 2 || x == 3) return derived().raw(5);
           if(auto x = md % 7; x == 3 || x == 5 || x == 6) return derived().raw(7);

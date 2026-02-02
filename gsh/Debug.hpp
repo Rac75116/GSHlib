@@ -1,6 +1,6 @@
 #pragma once
+#include "Formatter.hpp"
 #include "InOut.hpp"
-#include "Util.hpp"
 #include <source_location>
 #include <type_traits>
 #ifndef NDEBUG

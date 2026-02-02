@@ -1,11 +1,17 @@
 #pragma once
+#include "Exception.hpp"
 #include "Memory.hpp"
 #include "Modint.hpp"
 #include "TypeDef.hpp"
+#include "Util.hpp"
+#include "internal/UtilMacro.hpp"
+#include <bit>
 #include <cmath>
-#include <new>
+#include <limits>
 #include <ranges>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 namespace gsh {
 constexpr u32 CharLength32(u32 x) {
   // clang-format off

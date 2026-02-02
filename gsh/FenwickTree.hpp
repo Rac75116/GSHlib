@@ -1,10 +1,11 @@
 #pragma once
+#include "Exception.hpp"
 #include "TypeDef.hpp"
 #include "Vec.hpp"
-#include "internal/UtilMacro.hpp"
 #include <bit>
 #include <initializer_list>
 #include <iterator>
+#include <memory>
 #include <type_traits>
 namespace gsh {
 template<class T, class Alloc = std::allocator<T>> class RangeSumQuery {

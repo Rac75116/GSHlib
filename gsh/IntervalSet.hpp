@@ -1,10 +1,15 @@
 #pragma once
+#include "Functional.hpp"
 #include "Memory.hpp"
 #include "Range.hpp"
+#include "TypeDef.hpp"
 #include "Vec.hpp"
+#include "internal/UtilMacro.hpp"
 #include <algorithm>
 #include <concepts>
+#include <cstddef>
 #include <functional>
+#include <initializer_list>
 #include <iterator>
 #include <memory>
 #include <new>

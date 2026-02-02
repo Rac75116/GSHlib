@@ -3,8 +3,12 @@
 #include "TypeDef.hpp"
 #include "Util.hpp"
 #include "Vec.hpp"
+#include "internal/UtilMacro.hpp"
 #include <bit>
+#include <cstddef>
 #include <limits>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 namespace gsh {

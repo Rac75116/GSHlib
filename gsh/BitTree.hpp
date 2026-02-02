@@ -3,6 +3,7 @@
 #include "FenwickTree.hpp"
 #include "TypeDef.hpp"
 #include "Util.hpp"
+#include "internal/UtilMacro.hpp"
 #include <bit>
 #include <cstring>
 #include <immintrin.h>

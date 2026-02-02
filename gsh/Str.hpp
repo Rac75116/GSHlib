@@ -1,9 +1,11 @@
 #pragma once
-#include "Range.hpp"
+#include "Exception.hpp"
 #include "TypeDef.hpp"
 #include <charconv>
+#include <concepts>
 #include <string>
 #include <string_view>
+#include <system_error>
 namespace gsh {
 using Str = std::basic_string<c8>;
 using Str8 = std::basic_string<utf8>;

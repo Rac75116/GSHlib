@@ -1,10 +1,7 @@
 #pragma once
-#include "Exception.hpp"
 #include "TypeDef.hpp"
 #include "internal/UtilMacro.hpp"
 #include <cstdlib>
-#include <iterator>
-#include <limits>
 #include <memory>
 #include <new>
 #include <type_traits>

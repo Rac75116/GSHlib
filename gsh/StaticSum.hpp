@@ -1,5 +1,11 @@
 #pragma once
+#include "Exception.hpp"
+#include "Functional.hpp"
+#include "TypeDef.hpp"
 #include "Vec.hpp"
+#include <iterator>
+#include <memory>
+#include <ranges>
 namespace gsh {
 template<class T, class F = PlusFunc, class I = NegateFunc, class Alloc = std::allocator<T>> class StaticSum {
   Vec<T, Alloc> prefix_sum;

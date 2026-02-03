@@ -122,43 +122,46 @@ template<class T> constexpr auto MakeRangeChminChmaxAddRangeSumSpec() {
     constexpr T INF_MIN = std::numeric_limits<T>::lowest();
     if(x.size == 0) return x;
     Node res = x;
-    res.sum += f.add_val * static_cast<T>(x.size);
-    res.max_val += f.add_val;
-    if(res.max2_val != INF_MIN) res.max2_val += f.add_val;
-    res.min_val += f.add_val;
-    if(res.min2_val != INF_MAX) res.min2_val += f.add_val;
-    if(res.max_val > f.chmin_val) {
-      if(res.min_val >= f.chmin_val) {
-        res.sum += (f.chmin_val - res.max_val) * static_cast<T>(res.size);
-        res.max_val = res.min_val = f.chmin_val;
-        res.max2_val = INF_MIN;
-        res.min2_val = INF_MAX;
-      } else if(res.max2_val >= f.chmin_val) {
-        return std::nullopt;
-      } else {
-        res.sum += (f.chmin_val - res.max_val) * static_cast<T>(res.max_cnt);
-        res.max_val = f.chmin_val;
-        if(res.min_val == res.max_val) {
-          res.min_cnt = res.size;
-          res.min2_val = res.max2_val;
+    T upper = f.chmin_val;
+    T lower = f.chmax_val;
+    if(lower > upper) upper = lower;
+    if(f.add_val != static_cast<T>(0)) {
+      res.sum += f.add_val * static_cast<T>(res.size);
+      res.max_val += f.add_val;
+      if(res.max_cnt != res.size) res.max2_val += f.add_val;
+      res.min_val += f.add_val;
+      if(res.min_cnt != res.size) res.min2_val += f.add_val;
+    }
+    if(res.max_val > upper) {
+      if(res.max2_val < upper) {
+        const T old_max = res.max_val;
+        res.sum += (upper - old_max) * static_cast<T>(res.max_cnt);
+        res.max_val = upper;
+        if(res.min_val == old_max) res.min_val = upper;
+        if(res.min2_val == old_max) res.min2_val = upper;
+        if(res.max_val == res.min_val) {
+          res.max_cnt = res.min_cnt = res.size;
+          res.max2_val = INF_MIN;
+          res.min2_val = INF_MAX;
         }
+      } else {
+        return std::nullopt;
       }
     }
-    if(res.min_val < f.chmax_val) {
-      if(res.max_val <= f.chmax_val) {
-        res.sum += (f.chmax_val - res.min_val) * static_cast<T>(res.size);
-        res.max_val = res.min_val = f.chmax_val;
-        res.max2_val = INF_MIN;
-        res.min2_val = INF_MAX;
-      } else if(res.min2_val <= f.chmax_val) {
-        return std::nullopt;
-      } else {
-        res.sum += (f.chmax_val - res.min_val) * static_cast<T>(res.min_cnt);
-        res.min_val = f.chmax_val;
-        if(res.min_val == res.max_val) {
-          res.max_cnt = res.size;
-          res.max2_val = res.min2_val;
+    if(res.min_val < lower) {
+      if(res.min2_val > lower) {
+        const T old_min = res.min_val;
+        res.sum += (lower - old_min) * static_cast<T>(res.min_cnt);
+        res.min_val = lower;
+        if(res.max_val == old_min) res.max_val = lower;
+        if(res.max2_val == old_min) res.max2_val = lower;
+        if(res.max_val == res.min_val) {
+          res.max_cnt = res.min_cnt = res.size;
+          res.max2_val = INF_MIN;
+          res.min2_val = INF_MAX;
         }
+      } else {
+        return std::nullopt;
       }
     }
     return res;
@@ -166,17 +169,22 @@ template<class T> constexpr auto MakeRangeChminChmaxAddRangeSumSpec() {
   auto composition = [](const Op& f, const Op& g) -> Op {
     constexpr T INF_MAX = std::numeric_limits<T>::max();
     constexpr T INF_MIN = std::numeric_limits<T>::lowest();
+    auto clamp = [](const T& v, const T& lo, const T& hi) -> T { return std::min(std::max(v, lo), hi); };
+    T f_upper = f.chmin_val;
+    T f_lower = f.chmax_val;
+    if(f_lower > f_upper) f_upper = f_lower;
+    T g_upper = g.chmin_val;
+    T g_lower = g.chmax_val;
+    if(g_lower > g_upper) g_upper = g_lower;
     Op res;
     res.add_val = f.add_val + g.add_val;
-    T gmin = g.chmin_val;
-    T gmax = g.chmax_val;
-    if(gmin != INF_MAX) gmin += f.add_val;
-    if(gmax != INF_MIN) gmax += f.add_val;
-    gmax = std::max(gmax, f.chmax_val);
-    gmin = std::min(gmin, f.chmin_val);
-    gmin = std::max(gmin, gmax);
-    res.chmax_val = gmax;
-    res.chmin_val = gmin;
+    const T lo = f_lower;
+    const T hi = f_upper;
+    const T new_lower = (g_lower == INF_MIN) ? lo : clamp(g_lower + f.add_val, lo, hi);
+    const T new_upper = (g_upper == INF_MAX) ? hi : clamp(g_upper + f.add_val, lo, hi);
+    res.chmax_val = new_lower;
+    res.chmin_val = new_upper;
+    if(res.chmax_val > res.chmin_val) res.chmin_val = res.chmax_val;
     return res;
   };
   auto id = []() -> Op {
@@ -190,7 +198,11 @@ template<class T> constexpr auto MakeRangeChminChmaxAddRangeSumSpec() {
     constexpr T INF_MIN = std::numeric_limits<T>::lowest();
     return {x, x, INF_MIN, x, INF_MAX, 1, 1, 1};
   };
-  auto embed_operator = [](const std::tuple<T, T, T>& x) -> Op { return {std::get<0>(x), std::get<1>(x), std::get<2>(x)}; };
+  auto embed_operator = [](const std::tuple<T, T, T>& x) -> Op {
+    Op res{std::get<0>(x), std::get<1>(x), std::get<2>(x)};
+    if(res.chmax_val > res.chmin_val) res.chmin_val = res.chmax_val;
+    return res;
+  };
   return MakeLazySegmentSpec<T, std::tuple<T, T, T>, Node, Op>(op, e, mapping, composition, id, extract, embed_value, embed_operator);
 }
 }
@@ -378,7 +390,7 @@ public:
 #endif
     p += sz;
     for(size_type i = log; i >= 1; --i) push(p >> i);
-    tree[p] = spec.mapping(spec.embed_operator(f), tree[p]);
+    all_apply(p, spec.embed_operator(f));
     for(size_type i = 1; i <= log; ++i) update(p >> i);
   }
   constexpr void apply(size_type l, size_type r, const operator_type& f) {

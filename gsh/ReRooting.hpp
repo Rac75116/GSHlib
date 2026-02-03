@@ -3,6 +3,7 @@
 #include "TypeDef.hpp"
 #include "Vec.hpp"
 #include <algorithm>
+#include <functional>
 #include <ranges>
 namespace gsh {
 namespace internal {

@@ -2,6 +2,7 @@
 #include "TypeDef.hpp"
 #include "Vec.hpp"
 #include <cmath>
+#include <functional>
 namespace gsh {
 class Mo {
   struct rg {

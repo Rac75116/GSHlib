@@ -2,6 +2,7 @@
 #include "Functional.hpp"
 #include "TypeDef.hpp"
 #include <deque>
+#include <functional>
 #include <utility>
 namespace gsh {
 template<class T, class Operator = Less> class SlideMin {

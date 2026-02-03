@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <concepts>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <memory>

@@ -4,6 +4,7 @@
 #include <bit>
 #include <concepts>
 #include <ctime>
+#include <functional>
 #include <iterator>
 #include <random>
 #include <ranges>

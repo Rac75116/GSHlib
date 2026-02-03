@@ -7,6 +7,7 @@
 #include <concepts>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <tuple>
 #include <type_traits>
 #include <unistd.h>

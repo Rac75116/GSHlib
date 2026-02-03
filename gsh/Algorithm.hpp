@@ -9,6 +9,7 @@
 #include "internal/UtilMacro.hpp"
 #include <algorithm>
 #include <concepts>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <ranges>

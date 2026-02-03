@@ -8,6 +8,7 @@
 #include "internal/UtilMacro.hpp"
 #include <bit>
 #include <concepts>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <limits>
@@ -49,7 +50,7 @@ public:
   constexpr LazySegmentSpec(const Op& op, const E& e, const Mapping& mapping, const Composition& composition, const Id& id, const Extract& extract, const EmbedValue& embed_value, const EmbedOperator& embed_operator) : op_func(op), e_func(e), mapping_func(mapping), composition_func(composition), id_func(id), extract_func(extract), embed_value_func(embed_value), embed_operator_func(embed_operator) {}
   GSH_INTERNAL_INLINE constexpr internal_value_type op(const internal_value_type& a, const internal_value_type& b) const { return static_cast<internal_value_type>(std::invoke(op_func, a, b)); }
   GSH_INTERNAL_INLINE constexpr internal_value_type e() const { return static_cast<internal_value_type>(std::invoke(e_func)); }
-  GSH_INTERNAL_INLINE constexpr auto mapping(const internal_operator_type& f, const internal_value_type& x) const { return static_cast<internal_value_type>(std::invoke(mapping_func, f, x)); }
+  GSH_INTERNAL_INLINE constexpr auto mapping(const internal_operator_type& f, const internal_value_type& x) const { return std::invoke(mapping_func, f, x); }
   GSH_INTERNAL_INLINE constexpr internal_operator_type composition(const internal_operator_type& f, const internal_operator_type& g) const { return static_cast<internal_operator_type>(std::invoke(composition_func, f, g)); }
   GSH_INTERNAL_INLINE constexpr internal_operator_type id() const { return static_cast<internal_operator_type>(std::invoke(id_func)); }
   GSH_INTERNAL_INLINE constexpr value_type extract(const internal_value_type& x) const { return static_cast<value_type>(std::invoke(extract_func, x)); }
@@ -71,72 +72,130 @@ template<class T> class RangeAndRangeAnd : public decltype(MakeLazySegmentSpec<T
 template<class T> class RangeAffineRangeSum : public decltype(MakeLazySegmentSpec<T, std::pair<T, T>, std::pair<T, u32>, std::pair<T, T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::pair<T, T>& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{f.first * x.first + f.second * static_cast<T>(x.second), x.second}; }, [](const std::pair<T, T>& f, const std::pair<T, T>& g) { return std::pair<T, T>{f.first * g.first, f.first * g.second + f.second}; }, []() -> std::pair<T, T> { return {static_cast<T>(1), static_cast<T>(0)}; }, [](const std::pair<T, u32>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, u32> { return {x, 1}; }, [](const std::pair<T, T>& x) -> std::pair<T, T> { return x; })) {};
 }
 namespace internal {
-template<class T> constexpr auto MakeRangeChminRangeSumSpec() {
-  auto op = [](const std::tuple<T, T, T, u32, u32>& a, const std::tuple<T, T, T, u32, u32>& b) {
-    if(std::get<2>(a) == std::numeric_limits<T>::min()) return b;
-    if(std::get<2>(b) == std::numeric_limits<T>::min()) return a;
-    T sum = std::get<0>(a) + std::get<0>(b);
-    T max_val = std::max(std::get<1>(a), std::get<1>(b));
-    T max2_val = std::max({std::get<2>(a), std::get<2>(b), std::min(std::get<1>(a), std::get<1>(b))});
-    u32 max_cnt = 0;
-    if(std::get<1>(a) == max_val) max_cnt += std::get<3>(a);
-    if(std::get<1>(b) == max_val) max_cnt += std::get<3>(b);
-    u32 size = std::get<4>(a) + std::get<4>(b);
-    return std::tuple<T, T, T, u32, u32>{sum, max_val, max2_val, max_cnt, size};
+template<class T> struct RangeChminChmaxAddRangeSumNode {
+  T sum, max_val, max2_val, min_val, min2_val;
+  u32 max_cnt, min_cnt, size;
+};
+template<class T> struct RangeChminChmaxAddRangeSumOp {
+  T chmin_val, chmax_val, add_val;
+};
+template<class T> constexpr auto MakeRangeChminChmaxAddRangeSumSpec() {
+  using Node = RangeChminChmaxAddRangeSumNode<T>;
+  using Op = RangeChminChmaxAddRangeSumOp<T>;
+  auto op = [](const Node& a, const Node& b) -> Node {
+    if(a.size == 0) return b;
+    if(b.size == 0) return a;
+    Node res;
+    res.sum = a.sum + b.sum;
+    res.size = a.size + b.size;
+    res.max_val = std::max(a.max_val, b.max_val);
+    res.min_val = std::min(a.min_val, b.min_val);
+    if(a.max_val > b.max_val) {
+      res.max_cnt = a.max_cnt;
+      res.max2_val = std::max(a.max2_val, b.max_val);
+    } else if(a.max_val < b.max_val) {
+      res.max_cnt = b.max_cnt;
+      res.max2_val = std::max(a.max_val, b.max2_val);
+    } else {
+      res.max_cnt = a.max_cnt + b.max_cnt;
+      res.max2_val = std::max(a.max2_val, b.max2_val);
+    }
+    if(a.min_val < b.min_val) {
+      res.min_cnt = a.min_cnt;
+      res.min2_val = std::min(a.min2_val, b.min_val);
+    } else if(a.min_val > b.min_val) {
+      res.min_cnt = b.min_cnt;
+      res.min2_val = std::min(a.min_val, b.min2_val);
+    } else {
+      res.min_cnt = a.min_cnt + b.min_cnt;
+      res.min2_val = std::min(a.min2_val, b.min2_val);
+    }
+    return res;
   };
-  auto e = []() -> std::tuple<T, T, T, u32, u32> { return {static_cast<T>(0), std::numeric_limits<T>::min(), std::numeric_limits<T>::min(), 0, 0}; };
-  auto mapping = [](const T& f, const std::tuple<T, T, T, u32, u32>& x) -> std::optional<std::tuple<T, T, T, u32, u32>> {
-    T sum = std::get<0>(x);
-    T max_val = std::get<1>(x);
-    T max2_val = std::get<2>(x);
-    u32 max_cnt = std::get<3>(x);
-    u32 size = std::get<4>(x);
-    if(max_val <= f) return x;
-    if(max2_val < f) { return std::tuple<T, T, T, u32, u32>{sum + (f - max_val) * static_cast<T>(max_cnt), f, max2_val, max_cnt, size}; }
-    return std::nullopt;
+  auto e = []() -> Node {
+    constexpr T INF_MAX = std::numeric_limits<T>::max();
+    constexpr T INF_MIN = std::numeric_limits<T>::lowest();
+    return {static_cast<T>(0), INF_MIN, INF_MIN, INF_MAX, INF_MAX, 0, 0, 0};
   };
-  auto composition = [](const T& f, const T& g) { return std::min(f, g); };
-  auto id = []() -> T { return std::numeric_limits<T>::max(); };
-  auto extract = [](const std::tuple<T, T, T, u32, u32>& x) -> T { return std::get<0>(x); };
-  auto embed_value = [](const T& x) -> std::tuple<T, T, T, u32, u32> { return {x, x, std::numeric_limits<T>::min(), 1, 1}; };
-  auto embed_operator = [](const T& x) -> T { return x; };
-  return MakeLazySegmentSpec<T, T, std::tuple<T, T, T, u32, u32>, T>(op, e, mapping, composition, id, extract, embed_value, embed_operator);
-}
-template<class T> constexpr auto MakeRangeChmaxRangeSumSpec() {
-  auto op = [](const std::tuple<T, T, T, u32, u32>& a, const std::tuple<T, T, T, u32, u32>& b) {
-    if(std::get<2>(a) == std::numeric_limits<T>::max()) return b;
-    if(std::get<2>(b) == std::numeric_limits<T>::max()) return a;
-    T sum = std::get<0>(a) + std::get<0>(b);
-    T min_val = std::min(std::get<1>(a), std::get<1>(b));
-    T min2_val = std::min({std::get<2>(a), std::get<2>(b), std::max(std::get<1>(a), std::get<1>(b))});
-    u32 min_cnt = 0;
-    if(std::get<1>(a) == min_val) min_cnt += std::get<3>(a);
-    if(std::get<1>(b) == min_val) min_cnt += std::get<3>(b);
-    u32 size = std::get<4>(a) + std::get<4>(b);
-    return std::tuple<T, T, T, u32, u32>{sum, min_val, min2_val, min_cnt, size};
+  auto mapping = [](const Op& f, const Node& x) -> std::optional<Node> {
+    constexpr T INF_MAX = std::numeric_limits<T>::max();
+    constexpr T INF_MIN = std::numeric_limits<T>::lowest();
+    if(x.size == 0) return x;
+    Node res = x;
+    res.sum += f.add_val * static_cast<T>(x.size);
+    res.max_val += f.add_val;
+    if(res.max2_val != INF_MIN) res.max2_val += f.add_val;
+    res.min_val += f.add_val;
+    if(res.min2_val != INF_MAX) res.min2_val += f.add_val;
+    if(res.max_val > f.chmin_val) {
+      if(res.min_val >= f.chmin_val) {
+        res.sum += (f.chmin_val - res.max_val) * static_cast<T>(res.size);
+        res.max_val = res.min_val = f.chmin_val;
+        res.max2_val = INF_MIN;
+        res.min2_val = INF_MAX;
+      } else if(res.max2_val >= f.chmin_val) {
+        return std::nullopt;
+      } else {
+        res.sum += (f.chmin_val - res.max_val) * static_cast<T>(res.max_cnt);
+        res.max_val = f.chmin_val;
+        if(res.min_val == res.max_val) {
+          res.min_cnt = res.size;
+          res.min2_val = res.max2_val;
+        }
+      }
+    }
+    if(res.min_val < f.chmax_val) {
+      if(res.max_val <= f.chmax_val) {
+        res.sum += (f.chmax_val - res.min_val) * static_cast<T>(res.size);
+        res.max_val = res.min_val = f.chmax_val;
+        res.max2_val = INF_MIN;
+        res.min2_val = INF_MAX;
+      } else if(res.min2_val <= f.chmax_val) {
+        return std::nullopt;
+      } else {
+        res.sum += (f.chmax_val - res.min_val) * static_cast<T>(res.min_cnt);
+        res.min_val = f.chmax_val;
+        if(res.min_val == res.max_val) {
+          res.max_cnt = res.size;
+          res.max2_val = res.min2_val;
+        }
+      }
+    }
+    return res;
   };
-  auto e = []() -> std::tuple<T, T, T, u32, u32> { return {static_cast<T>(0), std::numeric_limits<T>::max(), std::numeric_limits<T>::max(), 0, 0}; };
-  auto mapping = [](const T& f, const std::tuple<T, T, T, u32, u32>& x) -> std::optional<std::tuple<T, T, T, u32, u32>> {
-    T sum = std::get<0>(x);
-    T min_val = std::get<1>(x);
-    T min2_val = std::get<2>(x);
-    u32 min_cnt = std::get<3>(x);
-    u32 size = std::get<4>(x);
-    if(min_val >= f) return x;
-    if(min2_val > f) { return std::tuple<T, T, T, u32, u32>{sum + (f - min_val) * static_cast<T>(min_cnt), f, min2_val, min_cnt, size}; }
-    return std::nullopt;
+  auto composition = [](const Op& f, const Op& g) -> Op {
+    constexpr T INF_MAX = std::numeric_limits<T>::max();
+    constexpr T INF_MIN = std::numeric_limits<T>::lowest();
+    Op res;
+    res.add_val = f.add_val + g.add_val;
+    T gmin = g.chmin_val;
+    T gmax = g.chmax_val;
+    if(gmin != INF_MAX) gmin += f.add_val;
+    if(gmax != INF_MIN) gmax += f.add_val;
+    gmax = std::max(gmax, f.chmax_val);
+    gmin = std::min(gmin, f.chmin_val);
+    gmin = std::max(gmin, gmax);
+    res.chmax_val = gmax;
+    res.chmin_val = gmin;
+    return res;
   };
-  auto composition = [](const T& f, const T& g) { return std::max(f, g); };
-  auto id = []() -> T { return std::numeric_limits<T>::min(); };
-  auto extract = [](const std::tuple<T, T, T, u32, u32>& x) -> T { return std::get<0>(x); };
-  auto embed_value = [](const T& x) -> std::tuple<T, T, T, u32, u32> { return {x, x, std::numeric_limits<T>::max(), 1, 1}; };
-  auto embed_operator = [](const T& x) -> T { return x; };
-  return MakeLazySegmentSpec<T, T, std::tuple<T, T, T, u32, u32>, T>(op, e, mapping, composition, id, extract, embed_value, embed_operator);
+  auto id = []() -> Op {
+    constexpr T INF_MAX = std::numeric_limits<T>::max();
+    constexpr T INF_MIN = std::numeric_limits<T>::lowest();
+    return {INF_MAX, INF_MIN, static_cast<T>(0)};
+  };
+  auto extract = [](const Node& x) -> T { return x.sum; };
+  auto embed_value = [](const T& x) -> Node {
+    constexpr T INF_MAX = std::numeric_limits<T>::max();
+    constexpr T INF_MIN = std::numeric_limits<T>::lowest();
+    return {x, x, INF_MIN, x, INF_MAX, 1, 1, 1};
+  };
+  auto embed_operator = [](const std::tuple<T, T, T>& x) -> Op { return {std::get<0>(x), std::get<1>(x), std::get<2>(x)}; };
+  return MakeLazySegmentSpec<T, std::tuple<T, T, T>, Node, Op>(op, e, mapping, composition, id, extract, embed_value, embed_operator);
 }
 }
 namespace segment_specs {
-template<class T> class RangeChminRangeSum : public decltype(internal::MakeRangeChminRangeSumSpec<T>()) {};
-template<class T> class RangeChmaxRangeSum : public decltype(internal::MakeRangeChmaxRangeSumSpec<T>()) {};
+template<class T> class RangeChminChmaxAddRangeSum : public decltype(internal::MakeRangeChminChmaxAddRangeSumSpec<T>()) {};
 }
 template<class Spec> requires internal::IsLazySegmentSpecImplemented<Spec> class LazySegmentTree : public ViewInterface<LazySegmentTree<Spec>, typename Spec::value_type> {
   [[no_unique_address]] Spec spec;

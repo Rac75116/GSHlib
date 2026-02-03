@@ -8,6 +8,7 @@
 #include "Vec.hpp"
 #include <bit>
 #include <concepts>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <limits>

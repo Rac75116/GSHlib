@@ -9,6 +9,7 @@
 #include "Vec.hpp"
 #include <algorithm>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <ranges>

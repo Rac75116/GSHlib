@@ -4,6 +4,7 @@
 #include "TypeDef.hpp"
 #include "Vec.hpp"
 #include "internal/UtilMacro.hpp"
+#include <functional>
 namespace gsh {
 namespace internal {
 template<class D> class UnionFindImpl {

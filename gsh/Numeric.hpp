@@ -7,6 +7,7 @@
 #include "internal/UtilMacro.hpp"
 #include <bit>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <ranges>
 #include <tuple>

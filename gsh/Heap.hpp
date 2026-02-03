@@ -5,6 +5,7 @@
 #include "Vec.hpp"
 #include "internal/UtilMacro.hpp"
 #include <bit>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <memory>

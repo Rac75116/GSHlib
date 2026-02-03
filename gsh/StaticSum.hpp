@@ -3,6 +3,7 @@
 #include "Functional.hpp"
 #include "TypeDef.hpp"
 #include "Vec.hpp"
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <ranges>

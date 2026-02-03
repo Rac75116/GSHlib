@@ -61,10 +61,10 @@ public:
 template<class T, class U, class InternalT = T, class InternalU = U, class Op, class E, class Mapping, class Composition, class Id, class Extract = Identity, class EmbedValue = Identity, class EmbedOperator = Identity> constexpr auto MakeLazySegmentSpec(const Op& op = Op(), const E& e = E(), const Mapping& mapping = Mapping(), const Composition& composition = Composition(), const Id& id = Id(), const Extract& extract = Extract(), const EmbedValue& embed_value = EmbedValue(), const EmbedOperator& embed_operator = EmbedOperator()) { return internal::LazySegmentSpec<T, U, InternalT, InternalU, Op, E, Mapping, Composition, Id, Extract, EmbedValue, EmbedOperator>{op, e, mapping, composition, id, extract, embed_value, embed_operator}; }
 namespace segment_specs {
 template<class T> class RangeAddRangeMin : public decltype(MakeLazySegmentSpec<T, T>(Min, []() -> T { return std::numeric_limits<T>::max(); }, Plus, Plus, []() -> T { return static_cast<T>(0); })) {};
-template<class T> class RangeAddRangeMax : public decltype(MakeLazySegmentSpec<T, T>(Max, []() -> T { return std::numeric_limits<T>::min(); }, Plus, Plus, []() -> T { return static_cast<T>(0); })) {};
+template<class T> class RangeAddRangeMax : public decltype(MakeLazySegmentSpec<T, T>(Max, []() -> T { return std::numeric_limits<T>::lowest(); }, Plus, Plus, []() -> T { return static_cast<T>(0); })) {};
 template<class T> class RangeAddRangeSum : public decltype(MakeLazySegmentSpec<T, T, std::pair<T, u32>, T>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const T& f, const std::pair<T, u32>& x) { return std::pair<T, u32>{x.first + f * static_cast<T>(x.second), x.second}; }, Plus, []() -> T { return static_cast<T>(0); }, [](const std::pair<T, u32>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, u32> { return {x, 1}; }, [](const T& x) -> T { return x; })) {};
 template<class T> class RangeSetRangeMin : public decltype(MakeLazySegmentSpec<T, std::optional<T>>(Min, []() -> T { return std::numeric_limits<T>::max(); }, [](const std::optional<T>& f, const T& x) { return f ? *f : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })) {};
-template<class T> class RangeSetRangeMax : public decltype(MakeLazySegmentSpec<T, std::optional<T>>(Max, []() -> T { return std::numeric_limits<T>::min(); }, [](const std::optional<T>& f, const T& x) { return f ? *f : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })) {};
+template<class T> class RangeSetRangeMax : public decltype(MakeLazySegmentSpec<T, std::optional<T>>(Max, []() -> T { return std::numeric_limits<T>::lowest(); }, [](const std::optional<T>& f, const T& x) { return f ? *f : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; })) {};
 template<class T> class RangeSetRangeSum : public decltype(MakeLazySegmentSpec<T, T, std::pair<T, u32>, std::optional<T>>([](const std::pair<T, u32>& a, const std::pair<T, u32>& b) { return std::pair<T, u32>{a.first + b.first, a.second + b.second}; }, []() -> std::pair<T, u32> { return {static_cast<T>(0), 0}; }, [](const std::optional<T>& f, const std::pair<T, u32>& x) { return f ? std::pair<T, u32>{(*f) * static_cast<T>(x.second), x.second} : x; }, [](const std::optional<T>& f, const std::optional<T>& g) { return f ? f : g; }, []() -> std::optional<T> { return std::nullopt; }, [](const std::pair<T, u32>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, u32> { return {x, 1}; }, [](const T& x) -> std::optional<T> { return x; })) {};
 template<class T> class RangeXorRangeXor : public decltype(MakeLazySegmentSpec<T, T, std::pair<T, bool>, T>([](const std::pair<T, bool>& a, const std::pair<T, bool>& b) { return std::pair<T, bool>{a.first ^ b.first, a.second ^ b.second}; }, []() -> std::pair<T, bool> { return {static_cast<T>(0), false}; }, [](const T& f, const std::pair<T, bool>& x) { return std::pair<T, bool>{static_cast<T>(x.first ^ (x.second ? f : static_cast<T>(0))), x.second}; }, Xor, []() -> T { return static_cast<T>(0); }, [](const std::pair<T, bool>& x) -> T { return x.first; }, [](const T& x) -> std::pair<T, bool> { return {x, true}; }, [](const T& x) -> T { return x; })) {};
 template<class T> class RangeOrRangeOr : public decltype(MakeLazySegmentSpec<T, T>(Or, []() -> T { return static_cast<T>(0); }, Or, Or, []() -> T { return static_cast<T>(0); })) {};
@@ -121,10 +121,22 @@ template<class T> constexpr auto MakeRangeChminChmaxAddRangeSumSpec() {
     constexpr T INF_MAX = std::numeric_limits<T>::max();
     constexpr T INF_MIN = std::numeric_limits<T>::lowest();
     if(x.size == 0) return x;
-    Node res = x;
     T upper = f.chmin_val;
     T lower = f.chmax_val;
     if(lower > upper) upper = lower;
+    if(lower == upper) {
+      Node res;
+      res.size = x.size;
+      res.sum = lower * static_cast<T>(res.size);
+      res.max_val = lower;
+      res.min_val = lower;
+      res.max_cnt = res.size;
+      res.min_cnt = res.size;
+      res.max2_val = INF_MIN;
+      res.min2_val = INF_MAX;
+      return res;
+    }
+    Node res = x;
     if(f.add_val != static_cast<T>(0)) {
       res.sum += f.add_val * static_cast<T>(res.size);
       res.max_val += f.add_val;
@@ -133,7 +145,7 @@ template<class T> constexpr auto MakeRangeChminChmaxAddRangeSumSpec() {
       if(res.min_cnt != res.size) res.min2_val += f.add_val;
     }
     if(res.max_val > upper) {
-      if(res.max2_val < upper) {
+      if(res.max_cnt == res.size || res.max2_val < upper) {
         const T old_max = res.max_val;
         res.sum += (upper - old_max) * static_cast<T>(res.max_cnt);
         res.max_val = upper;
@@ -149,7 +161,7 @@ template<class T> constexpr auto MakeRangeChminChmaxAddRangeSumSpec() {
       }
     }
     if(res.min_val < lower) {
-      if(res.min2_val > lower) {
+      if(res.min_cnt == res.size || res.min2_val > lower) {
         const T old_min = res.min_val;
         res.sum += (lower - old_min) * static_cast<T>(res.min_cnt);
         res.min_val = lower;
@@ -247,8 +259,10 @@ private:
     if(k >= sz) [[unlikely]]
       throw Exception("LazySegmentTree: The operation cannot be applied.");
 #endif
-    lazy[k] = spec.composition(f, lazy[k]);
-    push(k);
+    internal_operator_type composed = spec.composition(f, lazy[k]);
+    all_apply(2 * k, composed);
+    all_apply(2 * k + 1, composed);
+    lazy[k] = spec.id();
     update(k);
   }
   GSH_INTERNAL_INLINE void push(size_type k) {
@@ -261,7 +275,7 @@ public:
   constexpr LazySegmentTree(Spec spec) : spec(spec), n(0), sz(0), log(0) {}
   constexpr LazySegmentTree(size_type n, Spec spec = Spec()) : spec(spec), n(n) {
     sz = n > 0 ? std::bit_ceil(n) : 0;
-    log = std::countr_zero(sz);
+    log = sz ? std::countr_zero(sz) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
@@ -269,7 +283,7 @@ public:
   }
   template<class InputIt> requires std::forward_iterator<InputIt> constexpr LazySegmentTree(InputIt first, InputIt last, Spec spec = Spec()) : spec(spec), n(std::ranges::distance(first, last)) {
     sz = n > 0 ? std::bit_ceil(n) : 0;
-    log = std::countr_zero(sz);
+    log = sz ? std::countr_zero(sz) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
@@ -308,7 +322,7 @@ public:
   template<class InputIt> requires std::forward_iterator<InputIt> constexpr void assign(InputIt first, InputIt last) {
     n = std::ranges::distance(first, last);
     sz = n > 0 ? std::bit_ceil(n) : 0;
-    log = std::countr_zero(sz);
+    log = sz ? std::countr_zero(sz) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());
@@ -323,7 +337,7 @@ public:
   constexpr void assign(size_type n, const value_type& u) {
     this->n = n;
     sz = n > 0 ? std::bit_ceil(n) : 0;
-    log = std::countr_zero(sz);
+    log = sz ? std::countr_zero(sz) : 0;
     if(n > 0) {
       tree.assign(2 * sz, spec.e());
       lazy.assign(sz, spec.id());

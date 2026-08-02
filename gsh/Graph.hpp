@@ -258,13 +258,13 @@ public:
     const u32 n = derived().vertex_count();
     const auto inf = std::numeric_limits<W2>::max();
     ShortestPathResult<W2> res(inf, n);
-    Heap<std::pair<W2, u32>, decltype([](const auto& a, const auto& b) { return a.first < b.first; })> pq;
+    Heap<std::pair<W2, u32>, decltype([](const auto& a, const auto& b) { return a.first > b.first; })> pq;
     pq.reserve(derived().edge_count());
     res.dist_[s] = W2{};
     pq.emplace(W2{}, s);
     while(!pq.empty()) {
-      auto [d, v] = pq.min();
-      pq.pop_min();
+      auto [d, v] = pq.top();
+      pq.pop();
       if(v == t) break;
       if(d != res.dist_[v]) continue;
       for(const auto& e : derived()[v]) {

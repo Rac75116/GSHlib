@@ -294,9 +294,9 @@ public:
     auto itr = begin();
     auto sent = end();
     u32 size = std::ranges::distance(itr, sent);
-    vec_type tmp(size);
+    Mem<V> tmp(size);
     for(auto i = static_cast<value_type>(0); i != size; ++i) std::construct_at(&tmp[*(itr++)], i);
-    return tmp;
+    return vec_type(tmp.data(), tmp.data() + tmp.size());
   }
 };
 template<std::ranges::forward_range T, std::ranges::forward_range U> requires (std::derived_from<T, ViewInterface<T, typename T::value_type>> || std::derived_from<U, ViewInterface<U, typename U::value_type>>) auto operator<=>(const T& a, const U& b) { return std::lexicographical_compare_three_way(std::ranges::begin(a), std::ranges::end(a), std::ranges::begin(b), std::ranges::end(b)); }
